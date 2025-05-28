@@ -1,0 +1,20 @@
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy.orm import relationship
+from app.core.database import Base
+from datetime import datetime, timezone
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    full_name = Column(String)
+    phone = Column(String)
+
+    role_id = Column(Integer, ForeignKey("roles.id", ondelete="SET NULL"))
+    position_id = Column(Integer, ForeignKey("positions.id", ondelete="SET NULL"))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    role = relationship("Role", back_populates="users")
+    position = relationship("Position", back_populates="users")
