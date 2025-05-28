@@ -1,0 +1,63 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+
+# C extensions
+*.pyd
+
+# SQLite database
+*.sqlite3
+*.db
+crm.db
+
+# Virtual environment
+.env
+.venv
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# VS Code
+.vscode/
+
+# Pytest cache
+.pytest_cache/
+.cache/
+
+# MyPy
+.mypy_cache/
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# Logs and local files
+*.log
+*.log.*
+*.bak
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Alembic
+alembic/versions/*.pyc
+alembic.ini
+
+# OS generated files
+.DS_Store
+Thumbs.db
