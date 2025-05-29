@@ -1,0 +1,32 @@
+from typing import List
+from pydantic import BaseModel
+from datetime import date
+from decimal import Decimal
+
+class DailyIncome(BaseModel):
+    date: date
+    total_income: Decimal
+
+class DailyOrders(BaseModel):
+    date: date
+    order_count: int
+
+class ManagerIncome(BaseModel):
+    manager_id: int
+    full_name: str
+    total_income: Decimal
+
+class OrderStatusCount(BaseModel):
+    status_name: str
+    count: int
+
+class StatusCount(BaseModel):
+    status_id: int
+    count: int
+
+class OrderSummary(BaseModel):
+    total_orders: int
+    total_income: Decimal
+    average_order_value: Decimal
+    unique_customers: int
+    status_counts: List[StatusCount]
