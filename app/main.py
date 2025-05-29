@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from app.core.database import init_db
 
+from app.api import auth
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
@@ -14,6 +16,4 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-@app.get("/")
-async def root():
-    return {"message": "CRM backend is running 🚀"}
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])

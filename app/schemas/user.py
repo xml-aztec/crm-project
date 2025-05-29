@@ -1,9 +1,9 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import datetime
 
 class UserBase(BaseModel):
-    email: str
+    email: EmailStr
     full_name: Optional[str] = None
     phone: Optional[str] = None
     role_id: int
