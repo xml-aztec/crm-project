@@ -8,6 +8,7 @@ from app.api import categories
 from app.api import subcategories
 from app.api import brands
 from app.api import products
+from app.api import customer_types, order_statuses
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,3 +28,5 @@ app.include_router(categories.router)
 app.include_router(subcategories.router)
 app.include_router(brands.router)
 app.include_router(products.router)
+app.include_router(customer_types.router)
+app.include_router(order_statuses.router)
