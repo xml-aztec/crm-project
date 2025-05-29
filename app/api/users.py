@@ -4,6 +4,9 @@ from app.repositories import user as user_repo
 from app.core.database import SessionLocal
 from app.schemas.user import UserRead
 
+from app.core.dependencies import get_current_user
+from app.models.user import User
+
 router = APIRouter()
 
 async def get_db():
@@ -25,3 +28,7 @@ async def approve_user(user_id: int, db: AsyncSession = Depends(get_db)):
 async def reject_user(user_id: int, db: AsyncSession = Depends(get_db)):
     await user_repo.delete_user(db, user_id)
     return {"detail": "User rejected and deleted"}
+
+@router.get("/me", response_model=UserRead)
+async def get_current_user_profile(current_user: User = Depends(get_current_user)):
+    return current_user
