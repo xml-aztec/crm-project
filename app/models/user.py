@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 from datetime import datetime, timezone
@@ -11,6 +11,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     full_name = Column(String)
     phone = Column(String)
+    is_approved = Column(Boolean, default=False)
 
     role_id = Column(Integer, ForeignKey("roles.id", ondelete="SET NULL"))
     position_id = Column(Integer, ForeignKey("positions.id", ondelete="SET NULL"))
