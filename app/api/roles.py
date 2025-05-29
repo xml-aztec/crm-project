@@ -6,6 +6,11 @@ from app.repositories import role as repo
 
 router = APIRouter(prefix="/roles", tags=["Roles"])
 
-@router.get("/", response_model=list[RoleRead])
+@router.get(
+    "/",
+    response_model=list[RoleRead],
+    summary="Список ролей",
+    description="Возвращает список всех ролей пользователей, доступных в системе."
+)
 async def list_roles(db: AsyncSession = Depends(get_db)):
     return await repo.get_roles(db)

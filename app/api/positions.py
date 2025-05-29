@@ -8,11 +8,22 @@ from app.repositories import position as repo
 
 router = APIRouter(prefix="/positions", tags=["Positions"])
 
-@router.get("/", response_model=list[PositionRead])
+@router.get(
+    "/",
+    response_model=list[PositionRead],
+    summary="Список должностей",
+    description="Возвращает список всех должностей, доступных в системе."
+)
 async def list_positions(db: AsyncSession = Depends(get_db)):
     return await repo.get_positions(db)
 
-@router.post("/", response_model=PositionRead, status_code=201)
+@router.post(
+    "/",
+    response_model=PositionRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Создать должность",
+    description="Создаёт новую должность. Только для администраторов."
+)
 async def create_position(
     position_data: PositionCreate,
     db: AsyncSession = Depends(get_db),
@@ -20,7 +31,12 @@ async def create_position(
 ):
     return await repo.create_position(db, position_data.name)
 
-@router.delete("/{position_id}", status_code=204)
+@router.delete(
+    "/{position_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Удалить должность",
+    description="Удаляет должность по ID. Только для администраторов."
+)
 async def delete_position(
     position_id: int,
     db: AsyncSession = Depends(get_db),

@@ -7,14 +7,24 @@ from app.schemas.user import UserCreate, UserRead
 from app.repositories import user as user_repo
 from app.core.database import SessionLocal
 
-
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 async def get_db():
     async with SessionLocal() as session:
         yield session
 
-@router.post("/register", response_model=UserRead)
+@router.post(
+    "/register",
+    response_model=UserRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Регистрация нового пользователя",
+    description="""
+    Регистрирует нового пользователя и сохраняет в базу. \
+    Требуется одобрение администратора (is_approved=False по умолчанию).
+
+    Возвращает данные пользователя без пароля.
+    """
+)
 async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     existing = await user_repo.get_by_email(db, user_data.email)
     if existing:
@@ -27,8 +37,18 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         return user
     except IntegrityError:
         raise HTTPException(status_code=400, detail="Invalid data")
-    
-@router.post("/login")
+
+@router.post(
+    "/login",
+    summary="Вход пользователя (авторизация)",
+    description="""
+    Аутентифицирует пользователя по email и паролю. \
+    Возвращает JWT токен, если пользователь подтверждён.
+
+    Формат запроса: `application/x-www-form-urlencoded` с полями `username` (email) и `password`.
+    """,
+    response_description="JWT access token"
+)
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)
