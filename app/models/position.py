@@ -6,6 +6,6 @@ class Position(Base):
     __tablename__ = "positions"
 
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, nullable=False)
+    name = Column(String, nullable=False)
 
     users = relationship("User", back_populates="position")

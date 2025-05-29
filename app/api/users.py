@@ -18,7 +18,7 @@ async def get_pending_users(db: AsyncSession = Depends(get_db), current_user: Us
     return await user_repo.list_pending_users(db)
 
 @router.put("/{user_id}/approve", response_model=UserRead)
-async def approve_user(user_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(is_admin)):
+async def approve_user(user_id: int, db: AsyncSession = Depends(get_db)):
     user = await user_repo.approve_user(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

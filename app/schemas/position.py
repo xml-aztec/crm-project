@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 class PositionBase(BaseModel):
-    title: str
+    name: str
 
 class PositionCreate(PositionBase):
     pass
