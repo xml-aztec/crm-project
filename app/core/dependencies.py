@@ -35,3 +35,11 @@ async def get_current_user(
     if user is None or not user.is_approved:
         raise credentials_exception
     return user
+
+async def is_admin(current_user: User = Depends(get_current_user)):
+    if not current_user.role or current_user.role.name != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted to administrators only"
+        )
+    return current_user

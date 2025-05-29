@@ -4,7 +4,7 @@ from app.repositories import user as user_repo
 from app.core.database import SessionLocal
 from app.schemas.user import UserRead
 
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, is_admin
 from app.models.user import User
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -14,18 +14,18 @@ async def get_db():
         yield session
 
 @router.get("/pending", response_model=list[UserRead])
-async def get_pending_users(db: AsyncSession = Depends(get_db)):
+async def get_pending_users(db: AsyncSession = Depends(get_db), current_user: User = Depends(is_admin)):
     return await user_repo.list_pending_users(db)
 
 @router.put("/{user_id}/approve", response_model=UserRead)
-async def approve_user(user_id: int, db: AsyncSession = Depends(get_db)):
+async def approve_user(user_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(is_admin)):
     user = await user_repo.approve_user(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
 @router.delete("/{user_id}")
-async def reject_user(user_id: int, db: AsyncSession = Depends(get_db)):
+async def reject_user(user_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(is_admin)):
     await user_repo.delete_user(db, user_id)
     return {"detail": "User rejected and deleted"}
 

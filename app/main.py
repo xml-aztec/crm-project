@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from app.core.database import init_db
+from app.core.database import init_db, SessionLocal
+from app.utils.init_roles import init_roles
 
 from app.api import auth
 from app.api import users
@@ -11,9 +12,14 @@ from app.api import products
 from app.api import customer_types, order_statuses
 from app.api import orders
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+
+    async with SessionLocal() as session:
+        await init_roles(session)
+
     yield
 
 app = FastAPI(
