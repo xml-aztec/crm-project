@@ -18,6 +18,18 @@ async def list_orders(
     limit: int = 10,
     date_from: Optional[datetime] = Query(None),
     date_to: Optional[datetime] = Query(None),
+    manager_id: Optional[int] = Query(None),
+    status_id: Optional[int] = Query(None),
+    customer_name: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    return await repo.get_orders(db, skip=skip, limit=limit, date_from=date_from, date_to=date_to)
+    return await repo.get_orders(
+        db,
+        skip=skip,
+        limit=limit,
+        date_from=date_from,
+        date_to=date_to,
+        manager_id=manager_id,
+        status_id=status_id,
+        customer_name=customer_name,
+    )

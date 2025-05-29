@@ -2,9 +2,13 @@ import datetime
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 from fastapi import HTTPException
 from datetime import datetime
+from typing import Optional
+from sqlalchemy import select, and_, or_
+from sqlalchemy import func  
+from sqlalchemy.orm import selectinload, joinedload
+from app.models.customer import Customer
 
 from app.models.order import Order
 from app.models.order_item import OrderItem
@@ -51,17 +55,36 @@ async def get_orders(
     limit: int = 10,
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
+    manager_id: Optional[int] = None,
+    status_id: Optional[int] = None,
+    customer_name: Optional[str] = None,
 ):
-    query = select(Order).options(
-        selectinload(Order.items).selectinload(OrderItem.product)
+    query = (
+        select(Order)
+        .options(
+            selectinload(Order.items).selectinload(OrderItem.product),
+            joinedload(Order.customer),  # обязательно
+        )
+        .order_by(Order.id.desc())
+        .offset(skip)
+        .limit(limit)
     )
 
-    if date_from:
-        query = query.where(Order.created_at >= date_from)
-    if date_to:
-        query = query.where(Order.created_at <= date_to)
+    if any([date_from, date_to, manager_id, status_id, customer_name]):
+        filters = []
 
-    query = query.order_by(Order.id.desc()).offset(skip).limit(limit)
+        if date_from:
+            filters.append(Order.created_at >= date_from)
+        if date_to:
+            filters.append(Order.created_at <= date_to)
+        if manager_id:
+            filters.append(Order.manager_id == manager_id)
+        if status_id:
+            filters.append(Order.status_id == status_id)
+        if customer_name:
+            filters.append(func.lower(Customer.name).ilike(f"%{customer_name.lower()}%"))
+
+        query = query.join(Order.customer).where(*filters)
 
     result = await db.execute(query)
     return result.scalars().all()
