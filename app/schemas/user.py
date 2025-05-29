@@ -17,5 +17,14 @@ class UserRead(UserBase):
     created_at: datetime
     is_approved: bool
 
+class UserOut(BaseModel):
+    id: int
+    email: EmailStr
+    full_name: str
+    phone: Optional[str] = None
+    is_approved: bool
+    role_id: int
+    position_id: Optional[int] = None
+
     class Config:
         orm_mode = True

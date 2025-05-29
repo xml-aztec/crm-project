@@ -11,6 +11,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     full_name = Column(String)
     phone = Column(String)
+    is_active = Column(Boolean, default=True)
     is_approved = Column(Boolean, default=False)
 
     role_id = Column(Integer, ForeignKey("roles.id", ondelete="SET NULL"))
