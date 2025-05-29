@@ -4,7 +4,7 @@ from app.core.dependencies import get_db
 from app.repositories import category as repo
 from app.schemas.category import CategoryCreate, CategoryRead
 
-router = APIRouter()
+router = APIRouter(prefix="/categories", tags=["Categories"])
 
 @router.get("/", response_model=list[CategoryRead])
 async def list_categories(db: AsyncSession = Depends(get_db)):

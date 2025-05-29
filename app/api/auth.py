@@ -8,7 +8,7 @@ from app.repositories import user as user_repo
 from app.core.database import SessionLocal
 
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
 async def get_db():
     async with SessionLocal() as session:

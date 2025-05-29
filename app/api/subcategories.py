@@ -4,7 +4,7 @@ from app.core.dependencies import get_db
 from app.repositories import subcategory as repo
 from app.schemas.subcategory import SubcategoryCreate, SubcategoryRead
 
-router = APIRouter()
+router = APIRouter(prefix="/subcategories", tags=["Subcategories"])
 
 @router.get("/", response_model=list[SubcategoryRead])
 async def list_subcategories(db: AsyncSession = Depends(get_db)):

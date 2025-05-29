@@ -6,6 +6,7 @@ from app.api import auth
 from app.api import users
 from app.api import categories
 from app.api import subcategories
+from app.api import brands
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -19,7 +20,8 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-app.include_router(auth.router, prefix="/auth", tags=["Auth"])
-app.include_router(users.router, prefix="/users", tags=["Users"])
-app.include_router(categories.router, prefix="/categories", tags=["Categories"])
-app.include_router(subcategories.router, prefix="/subcategories", tags=["Subcategories"])
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(categories.router)
+app.include_router(subcategories.router)
+app.include_router(brands.router)

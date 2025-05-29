@@ -7,7 +7,7 @@ from app.schemas.user import UserRead
 from app.core.dependencies import get_current_user
 from app.models.user import User
 
-router = APIRouter()
+router = APIRouter(prefix="/users", tags=["Users"])
 
 async def get_db():
     async with SessionLocal() as session:
