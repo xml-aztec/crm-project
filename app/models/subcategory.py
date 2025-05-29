@@ -7,8 +7,7 @@ class Subcategory(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-
     category_id = Column(Integer, ForeignKey("categories.id", ondelete="CASCADE"))
-    category = relationship("Category", back_populates="subcategories")
 
+    category = relationship("Category", back_populates="subcategories")
     products = relationship("Product", back_populates="subcategory", cascade="all, delete-orphan")
