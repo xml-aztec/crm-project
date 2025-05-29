@@ -1,16 +1,15 @@
 from pydantic import BaseModel
 from typing import Optional
-from decimal import Decimal
 
 class ProductBase(BaseModel):
     name: str
-    price: Decimal
-    stock: int = 0
-    is_active: bool = True
     description: Optional[str] = None
-    image_url: Optional[str] = None
-    subcategory_id: int
-    brand_id: int
+    detail: Optional[str] = None  
+    price: float
+    in_stock: bool = True
+    category_id: Optional[int]
+    subcategory_id: Optional[int]
+    brand_id: Optional[int]
 
 class ProductCreate(ProductBase):
     pass
