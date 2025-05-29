@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import delete
 from app.models.user import User
 from app.schemas.user import UserCreate
 from passlib.context import CryptContext
@@ -37,3 +38,20 @@ async def approve_user(db: AsyncSession, user_id: int):
         await db.commit()
         await db.refresh(user)
     return user
+
+async def list_pending_users(db: AsyncSession):
+    result = await db.execute(select(User).where(User.is_approved == False))
+    return result.scalars().all()
+
+async def approve_user(db: AsyncSession, user_id: int):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user:
+        user.is_approved = True
+        await db.commit()
+        await db.refresh(user)
+    return user
+
+async def delete_user(db: AsyncSession, user_id: int):
+    await db.execute(delete(User).where(User.id == user_id))
+    await db.commit()
