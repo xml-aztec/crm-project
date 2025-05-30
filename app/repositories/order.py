@@ -3,9 +3,9 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi import HTTPException
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select
 from sqlalchemy import func  
 from sqlalchemy.orm import selectinload, joinedload
 from app.models.customer import Customer
@@ -88,3 +88,29 @@ async def get_orders(
 
     result = await db.execute(query)
     return result.scalars().all()
+
+async def confirm_order(db: AsyncSession, order_id: int, confirmed: bool) -> Optional[Order]:
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalar_one_or_none()
+
+    if not order:
+        return None
+
+    order.confirmed = confirmed
+    order.confirmed_at = datetime.now(timezone.utc) if confirmed else None
+    await db.commit()
+    await db.refresh(order)
+    return order
+
+
+async def update_order_status(db: AsyncSession, order_id: int, status_id: int) -> Optional[Order]:
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalar_one_or_none()
+
+    if not order:
+        return None
+
+    order.status_id = status_id
+    await db.commit()
+    await db.refresh(order)
+    return order

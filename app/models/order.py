@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, DateTime, Text
+from sqlalchemy import Boolean, Column, Integer, String, Numeric, ForeignKey, DateTime, Text
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 from datetime import datetime, timezone
@@ -13,6 +13,8 @@ class Order(Base):
     total_price = Column(Numeric(10, 2), default=0)
     note = Column(Text, nullable=True) 
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    confirmed = Column(Boolean, default=False)
+    confirmed_at = Column(DateTime(timezone=True), nullable=True)
     
     user = relationship("User")
     customer = relationship("Customer", back_populates="orders")

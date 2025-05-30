@@ -18,6 +18,17 @@ class OrderRead(OrderBase):
     total_price: Decimal
     created_at: datetime
     items: List[OrderItemRead]
+    confirmed: bool
+    confirmed_at: Optional[datetime]
+
+class OrderStatusUpdate(BaseModel):
+    status_id: int
+
+class OrderConfirm(BaseModel):
+    confirmed: bool
+
+class OrderConfirmUpdate(BaseModel):
+    confirmed: bool
 
     class Config:
         orm_mode = True

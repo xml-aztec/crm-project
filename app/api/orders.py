@@ -1,10 +1,10 @@
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_db
 from app.repositories import order as repo
-from app.schemas.order import OrderCreate, OrderRead
+from app.schemas.order import OrderConfirmUpdate, OrderCreate, OrderRead, OrderStatusUpdate
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
@@ -46,3 +46,36 @@ async def list_orders(
         status_id=status_id,
         customer_name=customer_name,
     )
+
+@router.patch(
+    "/{order_id}/confirm",
+    response_model=OrderRead,
+    summary="Подтверждение заказа",
+    description="Позволяет подтвердить или снять подтверждение заказа (например, после проверки админом или менеджером)."
+)
+async def confirm_order(
+    order_id: int = Path(..., description="ID заказа"),
+    data: OrderConfirmUpdate = Body(...),
+    db: AsyncSession = Depends(get_db)
+):
+    order = await repo.confirm_order(db, order_id, data.confirmed)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order
+
+
+@router.patch(
+    "/{order_id}/status",
+    response_model=OrderRead,
+    summary="Обновление статуса заказа",
+    description="Позволяет изменить статус заказа (например: 'Новый' → 'В работе' → 'Завершён')."
+)
+async def change_order_status(
+    order_id: int = Path(..., description="ID заказа"),
+    data: OrderStatusUpdate = Body(...),
+    db: AsyncSession = Depends(get_db)
+):
+    order = await repo.update_order_status(db, order_id, data.status_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order
