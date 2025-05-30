@@ -17,5 +17,14 @@ class ProductCreate(ProductBase):
 class ProductRead(ProductBase):
     id: int
 
+class ProductUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    detail: Optional[str] = None
+    price: Optional[float] = None
+    in_stock: Optional[bool] = None
+    brand_id: Optional[int] = None
+    subcategory_id: Optional[int] = None
+
     class Config:
         orm_mode = True

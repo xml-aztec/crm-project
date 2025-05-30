@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_db
 from app.repositories import product as repo
-from app.schemas.product import ProductCreate, ProductRead
+from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -23,7 +23,23 @@ async def list_products(db: AsyncSession = Depends(get_db)):
     description="Создаёт новый товар с заданными характеристиками."
 )
 async def create_product(data: ProductCreate, db: AsyncSession = Depends(get_db)):
-    return await repo.create(db, product_data=data.dict())
+    return await repo.create(db, product_data=data.model_dump())
+
+@router.patch(
+    "/{product_id}",
+    response_model=ProductRead,
+    summary="Обновить товар",
+    description="Обновляет указанные поля товара: название, цену, бренд или подкатегорию."
+)
+async def update_product(
+    product_id: int,
+    data: ProductUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    product = await repo.update(db, product_id, data.model_dump(exclude_unset=True))
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product
 
 @router.delete(
     "/{product_id}",

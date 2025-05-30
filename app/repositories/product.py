@@ -34,6 +34,19 @@ async def create(db: AsyncSession, product_data: dict) -> Product:
     await db.refresh(product)
     return product
 
+async def update(db: AsyncSession, product_id: int, data: dict):
+    query = await db.execute(select(Product).where(Product.id == product_id))
+    product = query.scalar_one_or_none()
+    if not product:
+        return None
+
+    for field, value in data.items():
+        setattr(product, field, value)
+
+    await db.commit()
+    await db.refresh(product)
+    return product
+
 async def delete(db: AsyncSession, product_id: int):
     product = await get_by_id(db, product_id)
     if product:
