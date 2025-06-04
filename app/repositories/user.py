@@ -43,7 +43,7 @@ async def update_user_admin(
     user = result.scalar_one_or_none()
     if not user:
         return None
-    for key, value in data.items():
+    for key, value in data.model_dump(exclude_unset=True).items():
         setattr(user, key, value)
     await db.commit()
     await db.refresh(user)
