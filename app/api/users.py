@@ -88,3 +88,7 @@ async def reject_user(
 ):
     await user_repo.delete_user(db, user_id)
     return {"detail": f"Заявка пользователя с ID {user_id} отклонена и удалена"}
+
+@router.get("/me", response_model=UserRead)
+async def get_current_user_profile(current_user: User = Depends(get_current_user)):
+    return current_user
