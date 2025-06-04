@@ -35,6 +35,19 @@ async def create_user(db: AsyncSession, user_data: UserCreate):
     await db.refresh(db_user)
     return db_user
 
+async def update_user(db: AsyncSession, user_id: int, data: dict):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        return None
+
+    for field, value in data.items():
+        setattr(user, field, value)
+
+    await db.commit()
+    await db.refresh(user)
+    return user
+
 async def list_pending_users(db: AsyncSession):
     result = await db.execute(select(User).where(User.is_approved == False))
     return result.scalars().all()

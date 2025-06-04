@@ -17,6 +17,14 @@ class UserRead(UserBase):
     created_at: datetime
     is_approved: bool
 
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    position_id: Optional[int] = None
+    role_id: Optional[int] = None
+    is_active: Optional[bool] = None
+
 class UserOut(BaseModel):
     id: int
     email: EmailStr

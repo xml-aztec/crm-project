@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from app.core.database import SessionLocal
 from app.repositories import user as user_repo
-from app.schemas.user import UserOut, UserRead
+from app.schemas.user import UserOut, UserRead, UserUpdate
 from app.core.dependencies import get_current_user, is_admin
 from app.models.user import User
 
@@ -23,6 +23,17 @@ async def get_db():
 )
 async def list_users(db: AsyncSession = Depends(get_db)):
     return await user_repo.get_users(db)
+
+@router.patch("/{user_id}", response_model=UserRead, summary="Обновить пользователя")
+async def update_user(
+    user_id: int,
+    data: UserUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    user = await user_repo.update_user(db, user_id, data.model_dump(exclude_unset=True))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
 
 @router.delete(
     "/{user_id}", 
