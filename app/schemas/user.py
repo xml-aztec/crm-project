@@ -16,6 +16,7 @@ class UserRead(UserBase):
     id: int
     created_at: datetime
     is_approved: bool
+    is_active: Optional[bool] = None
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
@@ -33,6 +34,7 @@ class UserOut(BaseModel):
     is_approved: bool
     role_id: int
     position_id: Optional[int] = None
+    is_active: Optional[bool] = None
 
 class UserUpdateAdmin(BaseModel):
     full_name: Optional[str] = None
