@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.future import select
@@ -35,15 +36,31 @@ async def create_user(db: AsyncSession, user_data: UserCreate):
     await db.refresh(db_user)
     return db_user
 
-async def update_user(db: AsyncSession, user_id: int, data: dict):
+async def update_user_admin(
+    db: AsyncSession, user_id: int, data: dict
+) -> Optional[User]:
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         return None
+    for key, value in data.items():
+        setattr(user, key, value)
+    await db.commit()
+    await db.refresh(user)
+    return user
 
-    for field, value in data.items():
-        setattr(user, field, value)
+async def update_user_self(
+    db: AsyncSession, user_id: int, data: dict
+) -> Optional[User]:
+    allowed_fields = {"full_name", "email", "phone"}  
+    filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
 
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        return None
+    for key, value in filtered_data.items():
+        setattr(user, key, value)
     await db.commit()
     await db.refresh(user)
     return user

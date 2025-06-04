@@ -34,5 +34,18 @@ class UserOut(BaseModel):
     role_id: int
     position_id: Optional[int] = None
 
+class UserUpdateAdmin(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    position_id: Optional[int] = None
+    role_id: Optional[int] = None
+    is_active: Optional[bool] = None
+
+class UserUpdateSelf(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+
     class Config:
         orm_mode = True

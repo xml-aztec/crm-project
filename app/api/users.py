@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from app.core.database import SessionLocal
 from app.repositories import user as user_repo
-from app.schemas.user import UserOut, UserRead, UserUpdate
+from app.schemas.user import UserOut, UserRead, UserUpdate, UserUpdateAdmin, UserUpdateSelf
 from app.core.dependencies import get_current_user, is_admin
 from app.models.user import User
 
@@ -24,16 +24,40 @@ async def get_db():
 async def list_users(db: AsyncSession = Depends(get_db)):
     return await user_repo.get_users(db)
 
-@router.patch("/{user_id}", response_model=UserRead, summary="Обновить пользователя")
-async def update_user(
+@router.patch(
+    "/{user_id}/admin", 
+    response_model=UserRead,
+    summary="Обновление пользователя (админ)",
+    description="Позволяет администратору изменить данные пользователя: имя, email, телефон, роль, должность, активность."
+)
+async def update_user_admin(
     user_id: int,
-    data: UserUpdate,
+    data: UserUpdateAdmin,
     db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_admin),
 ):
-    user = await user_repo.update_user(db, user_id, data.model_dump(exclude_unset=True))
+    user = await user_repo.update_user_admin(db, user_id, data)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+@router.patch(
+    "/me", 
+    response_model=UserRead,
+    summary="Обновление собственного профиля",
+    description="Позволяет пользователю изменить только свои контактные данные: имя, email, телефон. "
+                "Изменение роли и должности невозможно."
+)
+async def update_user_self(
+    data: UserUpdateSelf,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    user = await user_repo.update_user_admin(db, current_user.id, data)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
 
 @router.delete(
     "/{user_id}", 
@@ -89,6 +113,11 @@ async def reject_user(
     await user_repo.delete_user(db, user_id)
     return {"detail": f"Заявка пользователя с ID {user_id} отклонена и удалена"}
 
-@router.get("/me", response_model=UserRead)
+@router.get(
+    "/me", 
+    response_model=UserRead,
+    summary="Получить собственный профиль",
+    description="Возвращает данные текущего авторизованного пользователя. Используется для отображения профиля."
+)
 async def get_current_user_profile(current_user: User = Depends(get_current_user)):
     return current_user
