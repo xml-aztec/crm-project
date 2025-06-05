@@ -21,7 +21,7 @@ async def get_db():
     summary="Список всех пользователей",
     description="Возвращает список всех пользователей, прошедших модерацию."
 )
-async def list_users(db: AsyncSession = Depends(get_db)):
+async def list_users(db: AsyncSession = Depends(get_db), current_user: User = Depends(is_admin)):
     return await user_repo.get_users(db)
 
 @router.patch(
