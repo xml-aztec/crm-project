@@ -64,7 +64,7 @@ async def update_user_self(
     summary="Удаление подтверждённого пользователя",
     description="Удаляет пользователя из базы данных по его ID. Только для подтверждённых пользователей."
 )
-async def delete_user(user_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_user(user_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(is_admin)):
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 
@@ -94,7 +94,7 @@ async def get_pending_users(
     summary="Подтверждение пользователя",
     description="Одобряет регистрацию пользователя и делает его активным. Только для администраторов."
 )
-async def approve_user(user_id: int, db: AsyncSession = Depends(get_db)):
+async def approve_user(user_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(is_admin)):
     user = await user_repo.approve_user(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

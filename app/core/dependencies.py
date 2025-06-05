@@ -19,7 +19,7 @@ async def get_current_user(
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="Не удалось проверить учетные данные",
         headers={"WWW-Authenticate": "Bearer"},
     )
 
@@ -41,6 +41,6 @@ async def is_admin(current_user: User = Depends(get_current_user)):
     if not current_user.role or current_user.role.name != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access restricted to administrators only"
+            detail="Доступ разрешен только администраторам."
         )
     return current_user
