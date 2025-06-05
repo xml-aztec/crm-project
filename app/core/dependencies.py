@@ -32,8 +32,9 @@ async def get_current_user(
         raise credentials_exception
 
     user = await user_repo.get_by_email(db, email)
-    if user is None or not user.is_approved:
+    if user is None or not user.is_approved or not user.is_active:
         raise credentials_exception
+
     return user
 
 async def is_admin(current_user: User = Depends(get_current_user)):
