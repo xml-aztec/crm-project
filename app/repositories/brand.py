@@ -17,6 +17,17 @@ async def create(db: AsyncSession, name: str) -> Brand:
     await db.refresh(brand)
     return brand
 
+async def update(db: AsyncSession, brand_id: int, data):
+    result = await db.execute(select(Brand).where(Brand.id == brand_id))
+    brand = result.scalar_one_or_none()
+    if not brand:
+        return None
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(brand, key, value)
+    await db.commit()
+    await db.refresh(brand)
+    return brand
+
 async def delete(db: AsyncSession, brand_id: int):
     brand = await get_by_id(db, brand_id)
     if brand:

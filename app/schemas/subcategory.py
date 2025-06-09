@@ -10,5 +10,9 @@ class SubcategoryCreate(SubcategoryBase):
 class SubcategoryRead(SubcategoryBase):
     id: int
 
+class SubcategoryUpdate(BaseModel):
+    name: str
+    category_id: int
+
     class Config:
         orm_mode = True

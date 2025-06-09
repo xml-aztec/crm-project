@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_db
 from app.repositories import subcategory as repo
-from app.schemas.subcategory import SubcategoryCreate, SubcategoryRead
+from app.schemas.subcategory import SubcategoryCreate, SubcategoryRead, SubcategoryUpdate
 
 router = APIRouter(prefix="/subcategories", tags=["Subcategories"])
 
@@ -24,6 +24,17 @@ async def list_subcategories(db: AsyncSession = Depends(get_db)):
 )
 async def create_subcategory(data: SubcategoryCreate, db: AsyncSession = Depends(get_db)):
     return await repo.create(db, name=data.name, category_id=data.category_id)
+
+@router.patch("/{subcategory_id}", response_model=SubcategoryRead)
+async def update_subcategory(
+    subcategory_id: int,
+    data: SubcategoryUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    subcategory = await repo.update(db, subcategory_id, data)
+    if not subcategory:
+        raise HTTPException(status_code=404, detail="Подкатегория не найдена")
+    return subcategory
 
 @router.delete(
     "/{sub_id}",

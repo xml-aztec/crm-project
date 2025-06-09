@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_db
 from app.repositories import brand as repo
-from app.schemas.brand import BrandCreate, BrandRead
+from app.schemas.brand import BrandCreate, BrandRead, BrandUpdate
 
 router = APIRouter(prefix="/brands", tags=["Brands"])
 
@@ -24,6 +24,17 @@ async def list_brands(db: AsyncSession = Depends(get_db)):
 )
 async def create_brand(data: BrandCreate, db: AsyncSession = Depends(get_db)):
     return await repo.create(db, name=data.name)
+
+@router.patch("/{brand_id}", response_model=BrandRead)
+async def update_brand(
+    brand_id: int,
+    data: BrandUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    brand = await repo.update(db, brand_id, data)
+    if not brand:
+        raise HTTPException(status_code=404, detail="Бренд не найден")
+    return brand
 
 @router.delete(
     "/{brand_id}",

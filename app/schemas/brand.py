@@ -9,5 +9,8 @@ class BrandCreate(BrandBase):
 class BrandRead(BrandBase):
     id: int
 
+class BrandUpdate(BaseModel):
+    name: str
+
     class Config:
         orm_mode = True

@@ -17,6 +17,17 @@ async def create(db: AsyncSession, name: str, category_id: int) -> Subcategory:
     await db.refresh(sub)
     return sub
 
+async def update(db: AsyncSession, subcategory_id: int, data):
+    result = await db.execute(select(Subcategory).where(Subcategory.id == subcategory_id))
+    subcategory = result.scalar_one_or_none()
+    if not subcategory:
+        return None
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(subcategory, key, value)
+    await db.commit()
+    await db.refresh(subcategory)
+    return subcategory
+
 async def delete(db: AsyncSession, sub_id: int):
     sub = await get_by_id(db, sub_id)
     if sub:

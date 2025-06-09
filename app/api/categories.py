@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_db
 from app.repositories import category as repo
-from app.schemas.category import CategoryCreate, CategoryRead
+from app.schemas.category import CategoryCreate, CategoryRead, CategoryUpdate
 
 router = APIRouter(prefix="/categories", tags=["Categories"])
 
@@ -24,6 +24,17 @@ async def list_categories(db: AsyncSession = Depends(get_db)):
 )
 async def create_category(data: CategoryCreate, db: AsyncSession = Depends(get_db)):
     return await repo.create(db, name=data.name)
+
+@router.patch("/{category_id}", response_model=CategoryRead)
+async def update_category(
+    category_id: int,
+    data: CategoryUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    category = await repo.update(db, category_id, data)
+    if not category:
+        raise HTTPException(status_code=404, detail="Категория не найдена")
+    return category
 
 @router.delete(
     "/{category_id}",

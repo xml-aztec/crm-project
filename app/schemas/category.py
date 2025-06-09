@@ -6,6 +6,9 @@ class CategoryBase(BaseModel):
 class CategoryCreate(CategoryBase):
     pass
 
+class CategoryUpdate(BaseModel):
+    name: str
+
 class CategoryRead(CategoryBase):
     id: int
 
