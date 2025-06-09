@@ -16,6 +16,7 @@ from app.api import roles
 from app.api import positions
 from app.api import analytics
 from app.api import order_items
+from app.api import customers  
 
 
 @asynccontextmanager
@@ -55,3 +56,4 @@ app.include_router(order_items.router)
 app.include_router(roles.router)
 app.include_router(positions.router)
 app.include_router(analytics.router)
+app.include_router(customers.router)
