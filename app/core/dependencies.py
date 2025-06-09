@@ -6,6 +6,8 @@ from app.core.database import SessionLocal
 from app.core import security
 from app.models.user import User
 from app.repositories import user as user_repo
+from app.models.user import User
+from app.repositories import order as order_repo
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -42,5 +44,23 @@ async def is_admin(current_user: User = Depends(get_current_user)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Доступ разрешен только администраторам."
+        )
+    return current_user
+
+async def is_order_owner_or_admin(
+    order_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> User:
+    if current_user.role.name == "admin":
+        return current_user
+
+    order = await order_repo.get_order_by_id(db, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Заказ не найден")
+
+    if order.manager_id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="У вас нет разрешения на доступ к этому заказу"
         )
     return current_user
