@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.dependencies import get_db
 from app.repositories import customer_type as repo
-from app.schemas.customer_type import CustomerTypeCreate, CustomerTypeRead
+from app.schemas.customer_type import CustomerTypeCreate, CustomerTypeRead, CustomerTypeUpdate
 
 router = APIRouter(prefix="/customer-types", tags=["Customer Types"])
 
@@ -24,3 +25,33 @@ async def list_all(db: AsyncSession = Depends(get_db)):
 )
 async def create(data: CustomerTypeCreate, db: AsyncSession = Depends(get_db)):
     return await repo.create(db, data.dict())
+
+@router.patch(
+    "/{type_id}",
+    response_model=CustomerTypeRead,
+    summary="Обновить тип клиента",
+    description="Обновляет название существующего типа клиента по его ID."
+)
+async def update_customer_type(
+    type_id: int,
+    data: CustomerTypeUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    customer_type = await repo.update(db, type_id, data)
+    if not customer_type:
+        raise HTTPException(status_code=404, detail="Тип клиента не найден")
+    return customer_type
+
+@router.delete(
+    "/{type_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Удалить тип клиента",
+    description="Удаляет тип клиента по ID. Используется, если он больше не нужен."
+)
+async def delete_customer_type(
+    type_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    deleted = await repo.delete(db, type_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Тип клиента не найден")

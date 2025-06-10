@@ -9,5 +9,8 @@ class CustomerTypeCreate(CustomerTypeBase):
 class CustomerTypeRead(CustomerTypeBase):
     id: int
 
+class CustomerTypeUpdate(BaseModel):
+    name: str
+
     class Config:
         orm_mode = True
