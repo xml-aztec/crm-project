@@ -1,13 +1,14 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
 from datetime import datetime
 from typing import Optional, List
 
+from app.models.user import User
 from app.schemas.analytics import (
-    DailyIncome, DailyOrders, ManagerIncome, OrderStatusCount, OrderSummary
+    DailyIncome, DailyOrders, ManagerIncome, MonthlyTargetAnalytics, OrderStatusCount, OrderSummary
 )
-from app.core.dependencies import get_db
+from app.core.dependencies import get_current_user, get_db
 from app.models.order import Order
 from app.models.customer import Customer
 from app.models.order_item import OrderItem
@@ -63,3 +64,19 @@ async def get_orders_by_manager(db: AsyncSession = Depends(get_db)):
 )
 async def get_orders_by_status(db: AsyncSession = Depends(get_db)):
     return await repo.get_orders_by_status(db)
+
+@router.get(
+    "/monthly-target/{manager_id}",
+    response_model=MonthlyTargetAnalytics,
+    summary="Аналитика: KPI менеджера за текущий месяц"
+)
+async def monthly_target_analytics(
+    manager_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Только админ или сам менеджер
+    if current_user.role.name != "admin" and current_user.id != manager_id:
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+
+    return await repo.get_monthly_target_data(db, manager_id)

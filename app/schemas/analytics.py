@@ -30,3 +30,9 @@ class OrderSummary(BaseModel):
     average_order_value: Decimal
     unique_customers: int
     status_counts: List[StatusCount]
+
+class MonthlyTargetAnalytics(BaseModel):
+    target: float
+    revenue: float
+    today_revenue: float
+    progress_percent: float

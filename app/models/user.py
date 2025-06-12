@@ -20,3 +20,4 @@ class User(Base):
 
     role = relationship("Role", back_populates="users")
     position = relationship("Position", back_populates="users")
+    monthly_targets = relationship("MonthlyTarget", back_populates="manager", cascade="all, delete-orphan")

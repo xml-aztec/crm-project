@@ -7,6 +7,11 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy import func, cast, Date
 from app.models.user import User
 from app.models.order_status import OrderStatus
+from sqlalchemy import select, func, extract
+from datetime import date
+from app.models.order import Order
+from app.models.order_item import OrderItem
+from app.models.monthly_target import MonthlyTarget
 
 
 async def get_daily_stats(db: AsyncSession):
@@ -117,3 +122,50 @@ async def get_orders_by_status(db: AsyncSession):
         {"status_id": row[0], "status_name": row[1], "order_count": row[2]}
         for row in result.all()
     ]
+
+async def get_monthly_target_data(db: AsyncSession, manager_id: int):
+    today = date.today()
+    year, month = today.year, today.month
+    month_str = f"{year}-{month:02d}-01"
+
+    # KPI (целевой план)
+    kpi_result = await db.execute(
+        select(MonthlyTarget.target_amount).where(
+            MonthlyTarget.manager_id == manager_id,
+            MonthlyTarget.month == month_str
+        )
+    )
+    target_amount = kpi_result.scalar() or 0
+
+    # Общий доход за месяц по заказам менеджера
+    revenue_result = await db.execute(
+        select(func.sum(OrderItem.final_price * OrderItem.quantity))
+        .join(Order)
+        .where(
+            Order.user_id == manager_id,
+            extract("month", Order.created_at) == month,
+            extract("year", Order.created_at) == year
+        )
+    )
+    revenue = revenue_result.scalar() or 0
+
+    # Доход за сегодня
+    today_result = await db.execute(
+        select(func.sum(OrderItem.final_price * OrderItem.quantity))
+        .join(Order)
+        .where(
+            Order.user_id == manager_id,
+            func.date(Order.created_at) == today
+        )
+    )
+    today_revenue = today_result.scalar() or 0
+
+    # Прогресс в %
+    progress = (revenue / target_amount * 100) if target_amount else 0
+
+    return {
+        "target": target_amount,
+        "revenue": revenue,
+        "today_revenue": today_revenue,
+        "progress_percent": round(progress, 2)
+    }
