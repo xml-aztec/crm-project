@@ -35,6 +35,17 @@ async def list_users(
 ):
     return await user_repo.get_users(db)
 
+@router.get("/{user_id}", response_model=UserOut, summary="Профиль пользователя (только для админов)")
+async def get_user_by_id(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_admin),
+):
+    user = await user_repo.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    return user
+
 
 @router.patch(
     "/{user_id}/admin", 
