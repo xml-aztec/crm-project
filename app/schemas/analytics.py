@@ -36,3 +36,17 @@ class MonthlyTargetAnalytics(BaseModel):
     revenue: float
     today_revenue: float
     progress_percent: float
+
+class KPILeaderboardItem(BaseModel):
+    manager_id: int
+    manager_name: str
+    target: Decimal
+    revenue: Decimal
+    progress_percent: float
+
+class LeaderboardEntry(BaseModel):
+    manager_id: int
+    manager_name: str
+    revenue: float
+    target: float
+    progress_percent: float

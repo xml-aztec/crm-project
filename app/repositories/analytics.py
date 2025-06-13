@@ -1,17 +1,13 @@
 from decimal import Decimal
-from sqlalchemy import select, func, cast, Date
+from sqlalchemy import select, func, cast, Date, extract
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.order import Order
-from app.models.order_item import OrderItem
-from sqlalchemy.orm import joinedload
-from sqlalchemy import func, cast, Date
-from app.models.user import User
-from app.models.order_status import OrderStatus
-from sqlalchemy import select, func, extract
 from datetime import date
+
 from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.monthly_target import MonthlyTarget
+from app.models.user import User
+from app.models.order_status import OrderStatus
 
 
 async def get_daily_stats(db: AsyncSession):
@@ -34,7 +30,6 @@ async def get_daily_stats(db: AsyncSession):
         }
         for row in result.fetchall()
     ]
-
 
 
 async def get_order_summary(db: AsyncSession):
@@ -67,6 +62,7 @@ async def get_order_summary(db: AsyncSession):
         "status_counts": status_counts,
     }
 
+
 async def get_daily_orders(db: AsyncSession):
     result = await db.execute(
         select(
@@ -86,6 +82,7 @@ async def get_daily_orders(db: AsyncSession):
         }
         for row in rows
     ]
+
 
 async def get_orders_by_manager(db: AsyncSession):
     result = await db.execute(
@@ -110,6 +107,7 @@ async def get_orders_by_manager(db: AsyncSession):
         for row in rows
     ]
 
+
 async def get_orders_by_status(db: AsyncSession):
     query = (
         select(Order.status_id, OrderStatus.name, func.count(Order.id))
@@ -123,12 +121,12 @@ async def get_orders_by_status(db: AsyncSession):
         for row in result.all()
     ]
 
+
 async def get_monthly_target_data(db: AsyncSession, manager_id: int):
     today = date.today()
     year, month = today.year, today.month
     month_str = f"{year}-{month:02d}-01"
 
-    # KPI (целевой план)
     kpi_result = await db.execute(
         select(MonthlyTarget.target_amount).where(
             MonthlyTarget.manager_id == manager_id,
@@ -137,7 +135,6 @@ async def get_monthly_target_data(db: AsyncSession, manager_id: int):
     )
     target_amount = kpi_result.scalar() or 0
 
-    # Общий доход за месяц по заказам менеджера
     revenue_result = await db.execute(
         select(func.sum(OrderItem.final_price * OrderItem.quantity))
         .join(Order)
@@ -149,7 +146,6 @@ async def get_monthly_target_data(db: AsyncSession, manager_id: int):
     )
     revenue = revenue_result.scalar() or 0
 
-    # Доход за сегодня
     today_result = await db.execute(
         select(func.sum(OrderItem.final_price * OrderItem.quantity))
         .join(Order)
@@ -160,7 +156,6 @@ async def get_monthly_target_data(db: AsyncSession, manager_id: int):
     )
     today_revenue = today_result.scalar() or 0
 
-    # Прогресс в %
     progress = (revenue / target_amount * 100) if target_amount else 0
 
     return {
@@ -169,3 +164,41 @@ async def get_monthly_target_data(db: AsyncSession, manager_id: int):
         "today_revenue": today_revenue,
         "progress_percent": round(progress, 2)
     }
+
+
+async def get_leaderboard_data(db: AsyncSession):
+    today = date.today()
+    year, month = today.year, today.month
+    month_str = f"{year}-{month:02d}-01"
+
+    query = (
+        select(
+            User.id.label("manager_id"),
+            User.full_name.label("manager_name"),
+            func.coalesce(func.sum(OrderItem.final_price * OrderItem.quantity), 0).label("revenue"),
+            MonthlyTarget.target_amount.label("target")
+        )
+        .join(Order, User.id == Order.user_id)
+        .join(OrderItem, OrderItem.order_id == Order.id)
+        .join(MonthlyTarget, MonthlyTarget.manager_id == User.id)
+        .where(
+            extract("month", Order.created_at) == month,
+            extract("year", Order.created_at) == year,
+            MonthlyTarget.month == month_str
+        )
+        .group_by(User.id, User.full_name, MonthlyTarget.target_amount)
+        .order_by(func.sum(OrderItem.final_price * OrderItem.quantity).desc())
+    )
+
+    result = await db.execute(query)
+    rows = result.all()
+    return [
+        {
+            "manager_id": row.manager_id,
+            "manager_name": row.manager_name,
+            "revenue": float(row.revenue),
+            "target": float(row.target),
+            "progress_percent": round((row.revenue / row.target * 100) if row.target else 0, 2)
+        }
+        for row in rows
+    ]
