@@ -9,19 +9,12 @@ from app.utils.validators import validate_month_format
 
 router = APIRouter(prefix="/monthly-targets", tags=["Monthly Targets"])
 
-
-@router.post("/", status_code=201, summary="Создать или обновить KPI")
-async def set_kpi(
-    data: MonthlyTargetCreate,
+@router.get("/", response_model=list[MonthlyTargetOut], summary="Список всех KPI")
+async def get_all_kpis(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(is_admin),
+    _: User = Depends(is_admin)
 ):
-    try:
-        await monthly_target_repo.create_or_update_kpi(db, data)
-        return {"detail": "KPI успешно установлен"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при установке KPI: {e}")
-
+    return await monthly_target_repo.get_all_kpis(db)
 
 @router.get("/{manager_id}/{month}", response_model=MonthlyTargetOut, summary="Получить KPI менеджера за месяц")
 async def get_kpi(
@@ -39,3 +32,30 @@ async def get_kpi(
     if not kpi:
         raise HTTPException(status_code=404, detail="KPI не найден")
     return kpi
+
+@router.post("/", status_code=201, summary="Создать или обновить KPI")
+async def set_kpi(
+    data: MonthlyTargetCreate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_admin),
+):
+    try:
+        await monthly_target_repo.create_or_update_kpi(db, data)
+        return {"detail": "KPI успешно установлен"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при установке KPI: {e}")
+
+@router.delete(
+    "/{kpi_id}",
+    summary="Удалить KPI по ID",
+    description="Удаляет KPI по его уникальному идентификатору. Только для администраторов."
+)
+async def delete_kpi(
+    kpi_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_admin)
+):
+    success = await monthly_target_repo.delete_kpi_by_id(db, kpi_id)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="KPI не найден")
+    return {"detail": f"KPI с ID {kpi_id} успешно удалён"}

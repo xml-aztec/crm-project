@@ -1,11 +1,13 @@
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy.future import select
-from sqlalchemy import delete
+from sqlalchemy import select, delete, func
+from passlib.context import CryptContext
+from app.models.order import Order
+from app.models.product import Product
+from app.models.order_item import OrderItem
 from app.models.user import User
 from app.schemas.user import UserCreate
-from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -24,6 +26,96 @@ async def get_by_email(db: AsyncSession, email: str) -> User | None:
         .where(User.email == email)
     )
     return result.scalar_one_or_none()
+
+async def get_user_stats(db: AsyncSession, user_id: int):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        return None
+
+    query = (
+        select(
+            func.count(Order.id).label("orders_count"),
+            func.coalesce(func.sum(Order.total_price), 0).label("total_income")
+        )
+        .where(Order.user_id == user_id)
+    )
+    result = await db.execute(query)
+    stats = result.one()
+
+    return {
+        "orders_count": stats.orders_count,
+        "total_income": stats.total_income
+    }
+
+def safe_div(a: float, b: int) -> float:
+    return round(a / b, 2) if b else 0
+
+async def get_detailed_user_stats(db: AsyncSession, user_id: int) -> Optional[dict]:
+    user_result = await db.execute(select(User).where(User.id == user_id))
+    user = user_result.scalar_one_or_none()
+    if not user:
+        return None
+
+    query = (
+        select(
+            func.count(Order.id),
+            func.coalesce(func.sum(Order.total_price), 0),
+            func.coalesce(func.avg(Order.total_price), 0)
+        )
+        .where(Order.user_id == user_id)
+    )
+    res = await db.execute(query)
+    orders_count, total_income, avg_check = res.one()
+
+    subq_items = (
+        select(OrderItem.order_id, func.sum(OrderItem.quantity).label("total_items"))
+        .join(Order, Order.id == OrderItem.order_id)
+        .where(Order.user_id == user_id)
+        .group_by(OrderItem.order_id)
+        .subquery()
+    )
+    res2 = await db.execute(select(func.avg(subq_items.c.total_items)))
+    avg_items_per_order = res2.scalar() or 0
+
+    client_type_query = (
+        select(func.count(), Order.customer_id)
+        .select_from(Order)
+        .where(Order.user_id == user_id)
+        .group_by(Order.customer_id)
+    )
+    res3 = await db.execute(client_type_query)
+    orders_by_clients = res3.fetchall()
+
+    top_products_query = (
+        select(Product.name, func.sum(OrderItem.quantity).label("total_sold"))
+        .join(OrderItem, Product.id == OrderItem.product_id)
+        .join(Order, Order.id == OrderItem.order_id)
+        .where(Order.user_id == user_id)
+        .group_by(Product.name)
+        .order_by(func.sum(OrderItem.quantity).desc())
+        .limit(5)
+    )
+    res4 = await db.execute(top_products_query)
+    top_products = [dict(name=name, total_sold=qty) for name, qty in res4.fetchall()]
+
+    canceled_query = (
+        select(func.count())
+        .select_from(Order)
+        .where(Order.user_id == user_id, Order.status_id == 5)
+    )
+    canceled_count = (await db.execute(canceled_query)).scalar() or 0
+
+    return {
+        "orders_count": orders_count,
+        "total_income": float(total_income),
+        "avg_check": float(avg_check),
+        "avg_items_per_order": round(avg_items_per_order, 2),
+        "orders_by_clients": orders_by_clients,
+        "top_products": top_products,
+        "canceled_orders": canceled_count,
+        "canceled_share": round(canceled_count / orders_count, 2) if orders_count else 0
+    }
 
 async def create_user(db: AsyncSession, user_data: UserCreate):
     hashed_password = pwd_context.hash(user_data.password)
@@ -67,19 +159,6 @@ async def update_user_self(
         setattr(user, key, value)
     await db.commit()
     await db.refresh(user)
-    return user
-
-async def list_pending_users(db: AsyncSession):
-    result = await db.execute(select(User).where(User.is_approved == False))
-    return result.scalars().all()
-
-async def approve_user(db: AsyncSession, user_id: int):
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if user:
-        user.is_approved = True
-        await db.commit()
-        await db.refresh(user)
     return user
 
 async def list_pending_users(db: AsyncSession):
