@@ -9,6 +9,7 @@ class Product(Base):
     name = Column(String(200), nullable=False)
     description = Column(String(500), nullable=True)
     detail = Column(String(500), nullable=True)
+    cost_price = Column(Float, nullable=False)
     price = Column(Float, nullable=False)
     in_stock = Column(Boolean, default=True)
 

@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.models.product import Product
+from app.schemas.product import ProductCreate
 
 async def get_all(db: AsyncSession) -> list[Product]:
     result = await db.execute(
@@ -27,12 +28,12 @@ async def get_by_id(db: AsyncSession, product_id: int) -> Product | None:
     )
     return result.scalar_one_or_none()
 
-async def create(db: AsyncSession, product_data: dict) -> Product:
-    product = Product(**product_data)
-    db.add(product)
+async def create(db: AsyncSession, data: ProductCreate):
+    new_product = Product(**data.model_dump())
+    db.add(new_product)
     await db.commit()
-    await db.refresh(product)
-    return product
+    await db.refresh(new_product)
+    return new_product
 
 async def update(db: AsyncSession, product_id: int, data: dict):
     query = await db.execute(select(Product).where(Product.id == product_id))
