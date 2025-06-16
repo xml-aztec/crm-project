@@ -6,6 +6,7 @@ from datetime import date
 from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.monthly_target import MonthlyTarget
+from app.models.product import Product
 from app.models.user import User
 from app.models.order_status import OrderStatus
 
@@ -15,9 +16,14 @@ async def get_daily_stats(db: AsyncSession):
         select(
             cast(Order.created_at, Date).label("date"),
             func.count(Order.id).label("orders_count"),
-            func.coalesce(func.sum(OrderItem.final_price), 0).label("total_revenue")
+            func.coalesce(func.sum(OrderItem.final_price), 0).label("total_revenue"),
+            func.coalesce(
+                func.sum(OrderItem.final_price - (OrderItem.quantity * Product.cost_price)),
+                0
+            ).label("total_profit")
         )
         .join(Order.items)
+        .join(OrderItem.product)
         .group_by(cast(Order.created_at, Date))
         .order_by(cast(Order.created_at, Date).desc())
     )
@@ -27,6 +33,7 @@ async def get_daily_stats(db: AsyncSession):
             "date": row.date.isoformat(),
             "orders_count": row.orders_count,
             "total_revenue": float(row.total_revenue),
+            "total_profit": float(row.total_profit)
         }
         for row in result.fetchall()
     ]
@@ -87,12 +94,18 @@ async def get_daily_orders(db: AsyncSession):
 async def get_orders_by_manager(db: AsyncSession):
     result = await db.execute(
         select(
-            Order.user_id,
+            Order.user_id.label("manager_id"),
             User.full_name,
             func.count(Order.id).label("order_count"),
-            func.coalesce(func.sum(Order.total_price), 0).label("total_sum")
+            func.coalesce(func.sum(Order.total_price), 0).label("total_sum"),
+            func.coalesce(
+                func.sum(OrderItem.final_price - (OrderItem.quantity * Product.cost_price)),
+                0
+            ).label("total_profit")
         )
         .join(User, User.id == Order.user_id)
+        .join(OrderItem, OrderItem.order_id == Order.id)
+        .join(OrderItem.product)
         .group_by(Order.user_id, User.full_name)
         .order_by(func.count(Order.id).desc())
     )
@@ -103,6 +116,7 @@ async def get_orders_by_manager(db: AsyncSession):
             "manager_name": row.full_name,
             "order_count": row.order_count,
             "total_sum": float(row.total_sum),
+            "total_profit": float(row.total_profit)
         }
         for row in rows
     ]
