@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Integer, String, Numeric, ForeignKey, DateTime, Text
+from sqlalchemy import Boolean, Column, Integer, Numeric, ForeignKey, DateTime, Text, Date
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 from datetime import datetime, timezone
@@ -15,6 +15,8 @@ class Order(Base):
     installment_months = Column(Integer, nullable=True)
 
     total_price = Column(Numeric(10, 2), default=0)
+    delivery_address = Column(Text, nullable=True)
+    delivery_date = Column(Date, nullable=True)
     note = Column(Text, nullable=True)
     
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

@@ -184,7 +184,7 @@ async def delete_user(
 async def approve_user(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(is_admin)
+    
 ):
     user = await user_repo.approve_user(db, user_id)
     if not user:

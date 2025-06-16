@@ -61,6 +61,10 @@ async def update_order(db: AsyncSession, order_id: int, data: dict):
         order.installment_months = data["installment_months"]
     if "note" in data:
         order.note = data["note"]
+    if "delivery_address" in data:
+        order.delivery_address = data["delivery_address"]
+    if "delivery_date" in data:
+        order.delivery_date = data["delivery_date"]
 
     await recalculate_order_total(order, db)
 

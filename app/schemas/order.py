@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from decimal import Decimal
-from datetime import datetime
+from datetime import date, datetime
 
 from .order_item import OrderItemRead, OrderItemCreate
 from .payment_method import PaymentMethodOut  
@@ -12,6 +12,8 @@ class OrderBase(BaseModel):
     note: Optional[str] = None
     payment_method_id: Optional[int] = None
     installment_months: Optional[int] = None
+    delivery_address: Optional[str] = None
+    delivery_date: Optional[date] = None
 
 class OrderCreate(OrderBase):
     total_price: Decimal
@@ -20,6 +22,8 @@ class OrderCreate(OrderBase):
 class OrderUpdate(BaseModel):
     payment_method_id: Optional[int] = None
     installment_months: Optional[int] = None
+    delivery_address: Optional[str] = None
+    delivery_date: Optional[date] = None    
     note: Optional[str] = None
 
 class OrderRead(OrderBase):
@@ -29,6 +33,8 @@ class OrderRead(OrderBase):
     items: List[OrderItemRead]
     note: Optional[str] = None
     confirmed: bool
+    delivery_address: Optional[str] = None
+    delivery_date: Optional[date] = None
     confirmed_at: Optional[datetime]
 
     payment_method: Optional[PaymentMethodOut]  # связь для фронта
