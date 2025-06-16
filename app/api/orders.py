@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user, get_db, is_order_owner_or_admin
 from app.models.user import User
 from app.repositories import order as repo
-from app.schemas.order import OrderConfirmUpdate, OrderCreate, OrderRead, OrderStatusUpdate
+from app.schemas.order import OrderConfirmUpdate, OrderCreate, OrderRead, OrderStatusUpdate, OrderUpdate
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
@@ -19,6 +19,23 @@ router = APIRouter(prefix="/orders", tags=["Orders"])
 )
 async def create_order(data: OrderCreate, db: AsyncSession = Depends(get_db)):
     return await repo.create_order(db, data.model_dump(exclude={"items"}), data.items)
+
+@router.patch(
+    "/{order_id}",
+    response_model=OrderRead,
+    summary="Обновить способ оплаты и срок рассрочки",
+    description="Обновляет payment_method_id, installment_months и note. Пересчитывает сумму с учётом наценки."
+)
+async def update_order(
+    order_id: int,
+    data: OrderUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_order_owner_or_admin),
+):
+    updated = await repo.update_order(db, order_id, data.model_dump(exclude_unset=True))
+    if not updated:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return updated
 
 @router.get(
     "/",

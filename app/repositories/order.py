@@ -13,6 +13,7 @@ from app.models.customer import Customer
 from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.product import Product
+from app.utils.orders import recalculate_order_total
 
 
 async def create_order(db: AsyncSession, order_data: dict, items_data: list):
@@ -48,6 +49,24 @@ async def create_order(db: AsyncSession, order_data: dict, items_data: list):
         .where(Order.id == order.id)
     )
     return result.scalar_one()
+
+async def update_order(db: AsyncSession, order_id: int, data: dict):
+    order = await db.get(Order, order_id)
+    if not order:
+        return None
+
+    if "payment_method_id" in data:
+        order.payment_method_id = data["payment_method_id"]
+    if "installment_months" in data:
+        order.installment_months = data["installment_months"]
+    if "note" in data:
+        order.note = data["note"]
+
+    await recalculate_order_total(order, db)
+
+    await db.commit()
+    await db.refresh(order)
+    return order
 
 async def get_orders(
     db: AsyncSession,
