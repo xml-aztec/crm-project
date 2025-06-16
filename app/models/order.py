@@ -10,13 +10,20 @@ class Order(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     customer_id = Column(Integer, ForeignKey("customers.id", ondelete="SET NULL"))
     status_id = Column(Integer, ForeignKey("order_statuses.id", ondelete="SET NULL"))
+    
+    payment_method_id = Column(Integer, ForeignKey("payment_methods.id", ondelete="SET NULL"), nullable=True)
+    installment_months = Column(Integer, nullable=True)
+
     total_price = Column(Numeric(10, 2), default=0)
-    note = Column(Text, nullable=True) 
+    note = Column(Text, nullable=True)
+    
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     confirmed = Column(Boolean, default=False)
     confirmed_at = Column(DateTime(timezone=True), nullable=True)
-    
+
+    # Relationships
     user = relationship("User")
     customer = relationship("Customer", back_populates="orders")
     status = relationship("OrderStatus", back_populates="orders")
+    payment_method = relationship("PaymentMethod")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")

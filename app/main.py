@@ -18,6 +18,7 @@ from app.api import analytics
 from app.api import monthly_targets
 from app.api import order_items
 from app.api import customers  
+from app.api import payment_methods
 
 
 @asynccontextmanager
@@ -54,6 +55,7 @@ app.include_router(customer_types.router)
 app.include_router(order_statuses.router)
 app.include_router(orders.router)
 app.include_router(order_items.router)
+app.include_router(payment_methods.router)
 app.include_router(roles.router)
 app.include_router(positions.router)
 app.include_router(analytics.router)
