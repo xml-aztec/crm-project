@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_db
 from app.core.dependencies import is_admin
 from app.models.user import User
-from app.schemas.position import PositionRead, PositionCreate
+from app.schemas.position import PositionBase, PositionRead, PositionCreate
 from app.repositories import position as repo
 
 router = APIRouter(prefix="/positions", tags=["Positions"])
@@ -30,6 +30,24 @@ async def create_position(
     _: User = Depends(is_admin),
 ):
     return await repo.create_position(db, position_data.name)
+
+
+@router.patch(
+    "/{id}",
+    response_model=PositionRead,
+    summary="Обновить должность",
+    description="Обновляет название должности по ID. Доступно только администратору."
+)
+async def update_position(
+    id: int,
+    data: PositionBase,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_admin),
+):
+    updated = await repo.update(db, id, data)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Должность не найдена")
+    return updated
 
 @router.delete(
     "/{position_id}",

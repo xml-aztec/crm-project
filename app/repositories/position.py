@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from app.models.position import Position
+from app.schemas.position import PositionBase
 
 async def get_positions(db: AsyncSession):
     result = await db.execute(select(Position))
@@ -9,6 +10,16 @@ async def get_positions(db: AsyncSession):
 async def create_position(db: AsyncSession, name: str):
     position = Position(name=name)
     db.add(position)
+    await db.commit()
+    await db.refresh(position)
+    return position
+
+async def update(db: AsyncSession, id: int, data: PositionBase):
+    position = await db.get(Position, id)
+    if not position:
+        return None
+    for key, value in data.dict().items():
+        setattr(position, key, value)
     await db.commit()
     await db.refresh(position)
     return position
