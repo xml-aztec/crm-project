@@ -12,12 +12,14 @@ class OrderBase(BaseModel):
 class OrderCreate(OrderBase):
     total_price: Decimal
     items: List["OrderItemCreate"]
+    note: Optional[str] = None
 
 class OrderRead(OrderBase):
     id: int
     total_price: Decimal
     created_at: datetime
     items: List[OrderItemRead]
+    note: Optional[str] = None
     confirmed: bool
     confirmed_at: Optional[datetime]
 

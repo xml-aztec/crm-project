@@ -23,7 +23,7 @@ async def list_products(db: AsyncSession = Depends(get_db)):
     description="Создаёт новый товар с заданными характеристиками."
 )
 async def create_product(data: ProductCreate, db: AsyncSession = Depends(get_db)):
-    return await repo.create(db, product_data=data.model_dump())
+    return await repo.create(db, data)  # <--- исправлено
 
 @router.patch(
     "/{product_id}",

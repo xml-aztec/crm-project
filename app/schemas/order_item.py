@@ -21,7 +21,7 @@ class OrderItemRead(OrderItemBase):
 
 class OrderItemUpdate(BaseModel):
     quantity: Optional[int] = None
-    price: Optional[float] = None
+    final_price: Optional[float] = None
     note: Optional[str] = None
 
     class Config:

@@ -29,7 +29,7 @@ async def get_by_id(db: AsyncSession, product_id: int) -> Product | None:
     return result.scalar_one_or_none()
 
 async def create(db: AsyncSession, data: ProductCreate):
-    new_product = Product(**data.model_dump())
+    new_product = Product(**data.model_dump()) 
     db.add(new_product)
     await db.commit()
     await db.refresh(new_product)
