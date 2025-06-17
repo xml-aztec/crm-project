@@ -5,7 +5,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user, get_db, is_order_owner_or_admin
 from app.models.user import User
 from app.repositories import order as repo
-from app.schemas.order import OrderConfirmUpdate, OrderCreate, OrderRead, OrderStatusUpdate, OrderUpdate
+from app.schemas.order import (
+    OrderConfirmUpdate,
+    OrderCreate,
+    OrderRead,
+    OrderStatusUpdate,
+    OrderUpdate,
+)
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
@@ -64,6 +70,22 @@ async def list_orders(
         status_id=status_id,
         customer_name=customer_name,
     )
+
+@router.get(
+    "/{order_id}",
+    response_model=OrderRead,
+    summary="Получить заказ по ID",
+    description="Возвращает полную информацию о заказе: клиент, товары, способ оплаты, статус, доставка и т.д."
+)
+async def get_order_by_id(
+    order_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_order_owner_or_admin),
+):
+    order = await repo.get_order_by_id(db, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order
 
 @router.patch(
     "/{order_id}/confirm",

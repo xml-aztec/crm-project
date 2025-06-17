@@ -11,12 +11,34 @@ from sqlalchemy.orm import selectinload, joinedload
 from app.models.customer import Customer
 
 from app.models.order import Order
+from app.models.order_status import OrderStatus
 from app.models.order_item import OrderItem
 from app.models.product import Product
 from app.utils.orders import recalculate_order_total
 
+async def get_order_by_id(db: AsyncSession, order_id: int) -> Optional[Order]:
+    result = await db.execute(
+        select(Order)
+        .options(
+            selectinload(Order.items).selectinload(OrderItem.product),
+            joinedload(Order.customer),
+            selectinload(Order.payment_method),
+            joinedload(Order.status),
+        )
+        .where(Order.id == order_id)
+    )
+    return result.scalar_one_or_none()
 
 async def create_order(db: AsyncSession, order_data: dict, items_data: list):
+    if order_data.get("status_id") is None:
+        result = await db.execute(
+            select(OrderStatus.id).where(OrderStatus.name == "Новый")
+        )
+        default_status_id = result.scalar_one_or_none()
+        if not default_status_id:
+            raise HTTPException(status_code=400, detail="Статус 'Новый' не найден. Добавьте его в базу.")
+        order_data["status_id"] = default_status_id
+
     order = Order(**order_data)
     db.add(order)
     await db.flush()
@@ -45,7 +67,12 @@ async def create_order(db: AsyncSession, order_data: dict, items_data: list):
 
     result = await db.execute(
         select(Order)
-        .options(selectinload(Order.items).selectinload(OrderItem.product))
+        .options(
+            selectinload(Order.items).selectinload(OrderItem.product),
+            joinedload(Order.customer),
+            selectinload(Order.payment_method),
+            joinedload(Order.status), 
+        )
         .where(Order.id == order.id)
     )
     return result.scalar_one()
@@ -86,7 +113,8 @@ async def get_orders(
         select(Order)
         .options(
             selectinload(Order.items).selectinload(OrderItem.product),
-            joinedload(Order.customer),  # обязательно
+            joinedload(Order.customer), 
+            selectinload(Order.payment_method), 
         )
         .order_by(Order.id.desc())
         .offset(skip)
