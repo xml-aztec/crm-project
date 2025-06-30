@@ -50,3 +50,10 @@ class LeaderboardEntry(BaseModel):
     revenue: float
     target: float
     progress_percent: float
+
+class MonthlySummaryResponse(BaseModel):
+    total_orders: int
+    total_income: float
+    average_order_value: float
+    unique_customers: int
+    status_counts: List[StatusCount]

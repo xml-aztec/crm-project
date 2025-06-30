@@ -69,6 +69,36 @@ async def get_order_summary(db: AsyncSession):
         "status_counts": status_counts,
     }
 
+async def get_monthly_summary(db: AsyncSession):
+    today = date.today()
+    year, month = today.year, today.month
+
+    filters = [
+        extract("month", Order.created_at) == month,
+        extract("year", Order.created_at) == year,
+    ]
+
+    total_orders = await db.scalar(select(func.count(Order.id)).where(*filters))
+    total_income = await db.scalar(select(func.coalesce(func.sum(Order.total_price), 0)).where(*filters))
+    average_order_value = await db.scalar(select(func.coalesce(func.avg(Order.total_price), 0)).where(*filters))
+    unique_customers = await db.scalar(select(func.count(func.distinct(Order.customer_id))).where(*filters))
+
+    result = await db.execute(
+        select(Order.status_id, func.count(Order.id))
+        .where(*filters)
+        .group_by(Order.status_id)
+    )
+
+    status_counts = [{"status_id": row[0], "count": row[1]} for row in result.fetchall()]
+
+    return {
+        "total_orders": total_orders,
+        "total_income": float(total_income),
+        "average_order_value": float(average_order_value),
+        "unique_customers": unique_customers,
+        "status_counts": status_counts
+    }
+
 
 async def get_daily_orders(db: AsyncSession):
     result = await db.execute(

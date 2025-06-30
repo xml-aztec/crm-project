@@ -8,6 +8,7 @@ from app.schemas.analytics import (
     DailyIncome,
     DailyOrders,
     ManagerIncome,
+    MonthlySummaryResponse,
     MonthlyTargetAnalytics,
     OrderStatusCount,
     OrderSummary,
@@ -29,6 +30,26 @@ async def get_daily_orders(db: AsyncSession = Depends(get_db)):
 @router.get("/summary", response_model=OrderSummary, summary="Общая аналитика по заказам")
 async def get_summary(db: AsyncSession = Depends(get_db)):
     return await repo.get_order_summary(db)
+
+@router.get(
+    "/monthly-summary",
+    summary="Статистика заказов за текущий месяц",
+    description="""
+Возвращает агрегированную аналитику по заказам **за текущий месяц**:
+- Общее количество заказов
+- Общая сумма
+- Средний чек
+- Количество уникальных клиентов
+- Распределение заказов по статусам
+""",
+    response_model=MonthlySummaryResponse,
+    tags=["Analytics"]
+)
+async def monthly_summary(db: AsyncSession = Depends(get_db)):
+    """
+    Получить сводную аналитику заказов за текущий месяц.
+    """
+    return await repo.get_monthly_summary(db)
 
 @router.get("/orders-by-manager", response_model=List[ManagerIncome], summary="Доход по менеджерам")
 async def get_orders_by_manager(db: AsyncSession = Depends(get_db)):
