@@ -4,7 +4,9 @@ from decimal import Decimal
 from datetime import date, datetime
 
 from .order_item import OrderItemRead, OrderItemCreate
-from .payment_method import PaymentMethodOut  
+from .payment_method import PaymentMethodOut
+from .customer import CustomerBase
+from .user import UserOutOrder
 
 class OrderBase(BaseModel):
     customer_id: Optional[int] = None
@@ -31,13 +33,12 @@ class OrderRead(OrderBase):
     total_price: Decimal
     created_at: datetime
     items: List[OrderItemRead]
-    note: Optional[str] = None
     confirmed: bool
-    delivery_address: Optional[str] = None
-    delivery_date: Optional[date] = None
     confirmed_at: Optional[datetime]
 
-    payment_method: Optional[PaymentMethodOut]  # связь для фронта
+    customer: CustomerBase
+    user: Optional[UserOutOrder]
+    payment_method: Optional[PaymentMethodOut]
     installment_months: Optional[int]
 
     class Config:

@@ -49,5 +49,9 @@ class UserUpdateSelf(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
 
+class UserOutOrder(BaseModel):
+    id: int
+    full_name: str
+
     class Config:
         orm_mode = True

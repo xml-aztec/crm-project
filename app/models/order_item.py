@@ -10,7 +10,11 @@ class OrderItem(Base):
     product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"))
     quantity = Column(Integer, nullable=False)
     unit_price = Column(Numeric(10, 2), nullable=False)
-    final_price = Column(Numeric(10, 2), nullable=False)  # цена после скидки/наценки
+    final_price = Column(Numeric(10, 2), nullable=False)
 
     order = relationship("Order", back_populates="items")
     product = relationship("Product")
+
+    @property
+    def product_name(self) -> str:
+        return self.product.name if self.product else ""

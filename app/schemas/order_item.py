@@ -15,6 +15,7 @@ class OrderItemRead(OrderItemBase):
     id: int
     order_id: int
     product_id: int
+    product_name: str
     quantity: int
     unit_price: float
     final_price: float

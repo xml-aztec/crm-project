@@ -23,8 +23,8 @@ router = APIRouter(prefix="/orders", tags=["Orders"])
     description="Создаёт новый заказ с указанием клиента, статуса, менеджера, списка товаров и общей цены. "
                 "Менеджер может также указать индивидуальные цены и заметку к заказу."
 )
-async def create_order(data: OrderCreate, db: AsyncSession = Depends(get_db)):
-    return await repo.create_order(db, data.model_dump(exclude={"items"}), data.items)
+async def create_order(data: OrderCreate, db: AsyncSession = Depends(get_db, ), current_user: User = Depends(get_current_user)):
+    return await repo.create_order(db, data.model_dump(exclude={"items"}), data.items, current_user)
 
 @router.patch(
     "/{order_id}",

@@ -1,6 +1,9 @@
 from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
 from app.models.order import Order
+from app.models.payment_method import PaymentMethod
 
 async def recalculate_order_total(order: Order, db: AsyncSession) -> Decimal:
     """
@@ -16,15 +19,20 @@ async def recalculate_order_total(order: Order, db: AsyncSession) -> Decimal:
         if item.final_price:
             base_total += item.final_price
 
-    # 2. Применение наценки, если есть
-    if order.payment_method and order.payment_method.surcharge_percent:
-        surcharge = Decimal(order.payment_method.surcharge_percent) / Decimal("100")
-        base_total += base_total * surcharge
+    # 2. Получение наценки (если есть)
+    surcharge_percent = Decimal("0.00")
+    if order.payment_method_id:
+        result = await db.execute(
+            select(PaymentMethod.surcharge_percent).where(PaymentMethod.id == order.payment_method_id)
+        )
+        surcharge_percent = result.scalar_one_or_none() or Decimal("0.00")
 
-    # 3. Округление
-    order.total_price = base_total.quantize(Decimal("0.01"))
+    # 3. Применение наценки
+    surcharge = base_total * (surcharge_percent / Decimal("100"))
+    total = base_total + surcharge
 
-    # 4. Сохранение
+    # 4. Округление и сохранение
+    order.total_price = total.quantize(Decimal("0.01"))
     db.add(order)
     await db.commit()
     await db.refresh(order)
