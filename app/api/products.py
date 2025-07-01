@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_db
@@ -11,11 +12,37 @@ router = APIRouter(prefix="/products", tags=["Products"])
 @router.get(
     "/",
     response_model=list[ProductRead],
-    summary="Список товаров",
-    description="Возвращает список всех товаров с их параметрами (название, бренд, категория и т.д.)."
+    summary="Список товаров с фильтрацией",
+    description="Фильтрация по имени, SKU, штрихкоду, категориям, бренду, цене, наличию и себестоимости."
 )
-async def list_products(db: AsyncSession = Depends(get_db)):
-    return await repo.get_all(db)
+async def list_products(
+    db: AsyncSession = Depends(get_db),
+    name: Optional[str] = Query(None),
+    sku: Optional[str] = Query(None),
+    barcode: Optional[str] = Query(None),
+    brand_id: Optional[int] = Query(None),
+    category_id: Optional[int] = Query(None),
+    subcategory_id: Optional[int] = Query(None),
+    in_stock: Optional[bool] = Query(None),
+    min_price: Optional[float] = Query(None),
+    max_price: Optional[float] = Query(None),
+    min_cost_price: Optional[float] = Query(None),
+    max_cost_price: Optional[float] = Query(None),
+):
+    return await repo.get_filtered(
+        db=db,
+        name=name,
+        sku=sku,
+        barcode=barcode,
+        brand_id=brand_id,
+        category_id=category_id,
+        subcategory_id=subcategory_id,
+        in_stock=in_stock,
+        min_price=min_price,
+        max_price=max_price,
+        min_cost_price=min_cost_price,
+        max_cost_price=max_cost_price,
+    )
 
 @router.get(
     "/{product_id}",

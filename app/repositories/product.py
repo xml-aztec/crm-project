@@ -1,5 +1,6 @@
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import exists, select
+from sqlalchemy import and_, exists, select
 from sqlalchemy.orm import selectinload
 from app.models.product import Product
 from app.schemas.product import ProductCreate
@@ -7,16 +8,55 @@ from fastapi import HTTPException
 
 from app.utils.barcode_utils import generate_qr_base64, validate_ean13, generate_sku
 
-async def get_all(db: AsyncSession) -> list[Product]:
-    result = await db.execute(
-        select(Product)
-        .options(
-            selectinload(Product.category),
-            selectinload(Product.subcategory),
-            selectinload(Product.brand)
-        )
-        .order_by(Product.name)
+async def get_filtered(
+    db: AsyncSession,
+    name: Optional[str] = None,
+    sku: Optional[str] = None,
+    barcode: Optional[str] = None,
+    brand_id: Optional[int] = None,
+    category_id: Optional[int] = None,
+    subcategory_id: Optional[int] = None,
+    in_stock: Optional[bool] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    min_cost_price: Optional[float] = None,
+    max_cost_price: Optional[float] = None,
+) -> list[Product]:
+    query = select(Product).options(
+        selectinload(Product.category),
+        selectinload(Product.subcategory),
+        selectinload(Product.brand)
     )
+
+    filters = []
+
+    if name:
+        filters.append(Product.name.ilike(f"%{name}%"))
+    if sku:
+        filters.append(Product.sku.ilike(f"%{sku}%"))
+    if barcode:
+        filters.append(Product.barcode.ilike(f"%{barcode}%"))
+    if brand_id:
+        filters.append(Product.brand_id == brand_id)
+    if category_id:
+        filters.append(Product.category_id == category_id)
+    if subcategory_id:
+        filters.append(Product.subcategory_id == subcategory_id)
+    if in_stock is not None:
+        filters.append(Product.in_stock == in_stock)
+    if min_price is not None:
+        filters.append(Product.price >= min_price)
+    if max_price is not None:
+        filters.append(Product.price <= max_price)
+    if min_cost_price is not None:
+        filters.append(Product.cost_price >= min_cost_price)
+    if max_cost_price is not None:
+        filters.append(Product.cost_price <= max_cost_price)
+
+    if filters:
+        query = query.where(and_(*filters))
+
+    result = await db.execute(query.order_by(Product.name))
     return result.scalars().all()
 
 async def get_by_id(db: AsyncSession, product_id: int) -> Product | None:
