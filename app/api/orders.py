@@ -112,9 +112,14 @@ async def confirm_order(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(is_order_owner_or_admin),
 ):
-    order = await repo.confirm_order(db, order_id, data.confirmed)
+    order = await repo.get_order_by_id(db, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    if data.confirmed:
+        await repo.check_stock_before_confirmation(db, order)
+
+    order = await repo.confirm_order(db, order_id, data.confirmed)
+
     return order
 
 

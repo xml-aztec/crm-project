@@ -10,9 +10,30 @@ from app.models.order import Order
 from app.models.order_status import OrderStatus
 from app.models.order_item import OrderItem
 from app.models.product import Product
+from app.models.product_stock import ProductStock
 from app.models.user import User
 from app.utils.orders import recalculate_order_total
 
+
+async def check_stock_before_confirmation(db: AsyncSession, order: Order):
+    await db.refresh(order, ["items"])
+
+    for item in order.items:
+        stmt = select(ProductStock).where(
+            ProductStock.product_id == item.product_id,
+            ProductStock.warehouse_id == order.warehouse_id
+        )
+        result = await db.execute(stmt)
+        stock = result.scalar_one_or_none()
+
+        if not stock or stock.quantity < item.quantity:
+            product_name = item.product.name if item.product else f"Product ID {item.product_id}"
+            warehouse_name = order.warehouse.name if order.warehouse else f"Warehouse ID {order.warehouse_id}"
+            raise HTTPException(
+                status_code=400,
+                detail=f"Недостаточно товара '{product_name}' на складе '{warehouse_name}'."
+            )
+        
 
 async def get_order_by_id(db: AsyncSession, order_id: int, current_user: User) -> Optional[Order]:
     result = await db.execute(
