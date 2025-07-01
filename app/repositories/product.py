@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.orm import selectinload
 from app.models.product import Product
 from app.schemas.product import ProductCreate
@@ -38,10 +38,16 @@ async def create(db: AsyncSession, data: ProductCreate):
     if data.barcode and not validate_ean13(data.barcode):
         raise HTTPException(status_code=400, detail="Невалидный EAN‑13 штрихкод")
 
-    new_product = Product(**data.model_dump())
+    sku = data.sku or generate_sku()
 
-    if not new_product.sku:
-        new_product.sku = generate_sku()
+    exists_query = await db.execute(
+        select(exists().where(Product.sku == sku))
+    )
+    if exists_query.scalar():
+        raise HTTPException(status_code=400, detail="Такой SKU уже существует")
+
+    new_product = Product(**data.model_dump())
+    new_product.sku = sku
 
     db.add(new_product)
     await db.commit()

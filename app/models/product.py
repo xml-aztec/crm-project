@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -22,3 +22,7 @@ class Product(Base):
     category = relationship("Category")
     subcategory = relationship("Subcategory")
     brand = relationship("Brand")
+
+    __table_args__ = (
+        UniqueConstraint("sku", name="uq_product_sku"),
+    )

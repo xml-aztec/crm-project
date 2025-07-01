@@ -12,7 +12,7 @@ class ProductBase(BaseModel):
     category_id: Optional[int]
     subcategory_id: Optional[int]
     brand_id: Optional[int]
-    sku: str 
+    sku: Optional[str] = None
     barcode: Optional[str] = None 
 
     @field_validator("barcode")
