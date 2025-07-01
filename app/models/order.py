@@ -19,6 +19,7 @@ class Order(Base):
     delivery_address = Column(Text, nullable=True)
     delivery_date = Column(Date, nullable=True)
     note = Column(Text, nullable=True)
+    warehouse_id = Column(Integer, ForeignKey("warehouses.id", ondelete="SET NULL"), nullable=True)
     
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     confirmed = Column(Boolean, default=False)
@@ -33,3 +34,4 @@ class Order(Base):
     status = relationship("OrderStatus", back_populates="orders")
     payment_method = relationship("PaymentMethod")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+    warehouse = relationship("Warehouse")
