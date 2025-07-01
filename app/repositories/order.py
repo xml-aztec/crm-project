@@ -12,6 +12,7 @@ from app.models.order_item import OrderItem
 from app.models.product import Product
 from app.models.product_stock import ProductStock
 from app.models.user import User
+from app.models.warehouse import Warehouse
 from app.utils.orders import recalculate_order_total
 from app.utils.stock import restore_stock_for_order
 
@@ -52,7 +53,6 @@ async def get_order_by_id(db: AsyncSession, order_id: int, current_user: User) -
     if not order:
         return None
 
-    # Проверка доступа
     if current_user.role.name != "admin":
         if order.status and order.status.name == "Отменён" and order.user_id == current_user.id:
             raise HTTPException(403, detail="Вы не можете просматривать отменённый заказ")
@@ -66,6 +66,21 @@ async def create_order(
     items_data: list[OrderItem],
     current_user: User 
 ):
+    if current_user.role.name.lower() != "admin":
+        if order_data.get("warehouse_id") is None:
+            raise HTTPException(400, detail="Склад должен быть указан")
+        
+        result = await db.execute(
+            select(Warehouse.branch_id).where(Warehouse.id == order_data["warehouse_id"])
+        )
+        branch_id = result.scalar_one_or_none()
+
+        if branch_id != current_user.branch_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Нельзя создать заказ на складе другого филиала"
+            )
+
     if not order_data.get("status_id"):
         result = await db.execute(
             select(OrderStatus.id).where(OrderStatus.name == "Новый")
@@ -179,7 +194,12 @@ async def get_orders(
     return result.scalars().all()
 
 
-async def confirm_order(db: AsyncSession, order_id: int, confirmed: bool) -> Optional[Order]:
+async def confirm_order(
+    db: AsyncSession,
+    order_id: int,
+    confirmed: bool,
+    current_user: User
+) -> Optional[Order]:
     result = await db.execute(
         select(Order)
         .options(
@@ -188,12 +208,23 @@ async def confirm_order(db: AsyncSession, order_id: int, confirmed: bool) -> Opt
             joinedload(Order.user),
             selectinload(Order.payment_method),
             joinedload(Order.status),
+            joinedload(Order.warehouse).joinedload(Warehouse.branch),
         )
         .where(Order.id == order_id)
     )
     order = result.scalar_one_or_none()
     if not order:
         return None
+
+    if (
+        current_user.role.name.lower() != "admin"
+        and order.warehouse
+        and order.warehouse.branch_id != current_user.branch_id
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Нельзя подтвердить заказ в другом филиале"
+        )
 
     if order.confirmed and not confirmed:
         await restore_stock_for_order(db, order.id)

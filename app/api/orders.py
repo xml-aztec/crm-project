@@ -111,7 +111,7 @@ async def confirm_order(
     order_id: int = Path(..., description="ID заказа"),
     data: OrderConfirmUpdate = Body(...),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(is_order_owner_or_admin),
+    current_user: User = Depends(get_current_user),  
 ):
     order = await repo.get_order_by_id(db, order_id)
     if not order:
@@ -121,7 +121,7 @@ async def confirm_order(
         await repo.check_stock_before_confirmation(db, order)
         await update_stock_on_order_confirmed(db, order)
 
-    order = await repo.confirm_order(db, order_id, data.confirmed)
+    order = await repo.confirm_order(db, order_id, data.confirmed, current_user=current_user)  
 
     return order
 
