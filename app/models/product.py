@@ -12,6 +12,8 @@ class Product(Base):
     cost_price = Column(Float, nullable=False)
     price = Column(Float, nullable=False)
     in_stock = Column(Boolean, default=True)
+    sku = Column(String, unique=True, nullable=False)
+    barcode = Column(String, unique=True, nullable=True)
 
     category_id = Column(Integer, ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
     subcategory_id = Column(Integer, ForeignKey("subcategories.id", ondelete="SET NULL"), nullable=True)

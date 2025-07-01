@@ -3,6 +3,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.models.product import Product
 from app.schemas.product import ProductCreate
+from fastapi import HTTPException
+
+from app.utils.barcode_utils import generate_qr_base64, validate_ean13
 
 async def get_all(db: AsyncSession) -> list[Product]:
     result = await db.execute(
@@ -26,11 +29,22 @@ async def get_by_id(db: AsyncSession, product_id: int) -> Product | None:
             selectinload(Product.brand)
         )
     )
-    return result.scalar_one_or_none()
+    product = result.scalar_one_or_none()
+    if product:
+        product.qr_code = generate_qr_base64(product.sku or str(product.id))
+    return product
 
 async def create(db: AsyncSession, data: ProductCreate):
-    new_product = Product(**data.model_dump()) 
+    if data.barcode and not validate_ean13(data.barcode):
+        raise HTTPException(status_code=400, detail="Невалидный EAN‑13 штрихкод")
+
+    new_product = Product(**data.model_dump())
     db.add(new_product)
+    await db.flush()
+
+    if not new_product.sku:
+        new_product.sku = f"PRD-{new_product.id:04d}"
+
     await db.commit()
     await db.refresh(new_product)
     return new_product

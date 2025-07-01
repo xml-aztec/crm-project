@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_db
 from app.repositories import product as repo
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
+from app.utils.barcode_utils import generate_qr_image
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -15,6 +17,31 @@ router = APIRouter(prefix="/products", tags=["Products"])
 async def list_products(db: AsyncSession = Depends(get_db)):
     return await repo.get_all(db)
 
+@router.get(
+    "/{product_id}",
+    response_model=ProductRead,
+    summary="Получить товар по ID",
+    description="Возвращает полную информацию о товаре, включая QR-код."
+)
+async def get_product(product_id: int, db: AsyncSession = Depends(get_db)):
+    product = await repo.get_by_id(db, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product
+
+@router.get(
+    "/{product_id}/qr",
+    summary="Скачать QR-код товара",
+    description="Генерирует PNG-файл QR-кода на основе SKU или ID."
+)
+async def get_product_qr(product_id: int, db: AsyncSession = Depends(get_db)):
+    product = await repo.get_by_id(db, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    img_io = generate_qr_image(product.sku or str(product.id))
+    return StreamingResponse(img_io, media_type="image/png")
+
 @router.post(
     "/",
     response_model=ProductRead,
@@ -23,7 +50,7 @@ async def list_products(db: AsyncSession = Depends(get_db)):
     description="Создаёт новый товар с заданными характеристиками."
 )
 async def create_product(data: ProductCreate, db: AsyncSession = Depends(get_db)):
-    return await repo.create(db, data)  # <--- исправлено
+    return await repo.create(db, data) 
 
 @router.patch(
     "/{product_id}",
