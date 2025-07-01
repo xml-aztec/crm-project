@@ -9,7 +9,10 @@ from app.api import users
 from app.api import categories
 from app.api import subcategories
 from app.api import brands
+from app.api import branches
+from app.api import warehouses
 from app.api import products
+from app.api import product_stocks
 from app.api import customer_types, order_statuses
 from app.api import orders
 from app.api import roles
