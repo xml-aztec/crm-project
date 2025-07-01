@@ -31,16 +31,35 @@ async def get_product(product_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.get(
     "/{product_id}/qr",
-    summary="Скачать QR-код товара",
-    description="Генерирует PNG-файл QR-кода на основе SKU или ID."
+    summary="Получить QR-код товара (PNG)",
+    description="Генерирует PNG-файл QR-кода на основе SKU или ID (для отображения)."
 )
 async def get_product_qr(product_id: int, db: AsyncSession = Depends(get_db)):
     product = await repo.get_by_id(db, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    
+
     img_io = generate_qr_image(product.sku or str(product.id))
     return StreamingResponse(img_io, media_type="image/png")
+
+@router.get(
+    "/{product_id}/qr/download",
+    summary="Скачать QR-код товара (PNG)",
+    description="Генерирует PNG-файл QR-кода с заголовком для скачивания файла."
+)
+async def download_product_qr(product_id: int, db: AsyncSession = Depends(get_db)):
+    product = await repo.get_by_id(db, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    img_io = generate_qr_image(product.sku or str(product.id))
+    filename = f"qr_{product.sku or product.id}.png"
+
+    headers = {
+        "Content-Disposition": f'attachment; filename="{filename}"'
+    }
+
+    return StreamingResponse(img_io, media_type="image/png", headers=headers)
 
 @router.post(
     "/",

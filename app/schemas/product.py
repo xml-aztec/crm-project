@@ -1,4 +1,5 @@
-from pydantic import BaseModel, constr
+import re
+from pydantic import BaseModel, field_validator
 from typing import Optional
 
 class ProductBase(BaseModel):
@@ -14,13 +15,30 @@ class ProductBase(BaseModel):
     sku: str 
     barcode: Optional[str] = None 
 
+    @field_validator("barcode")
+    @classmethod
+    def validate_barcode(cls, v):
+        if v is None:
+            return v
+
+        if not re.fullmatch(r"\d{13}", v):
+            raise ValueError("Штрихкод должен содержать 13 цифр (EAN-13)")
+
+        digits = list(map(int, v))
+        checksum = (10 - (
+            sum(digits[i] if i % 2 == 0 else digits[i] * 3 for i in range(12)) % 10
+        )) % 10
+
+        if digits[12] != checksum:
+            raise ValueError("Недействительный штрихкод: неверная контрольная сумма")
+        
+        return v
+
 class ProductCreate(ProductBase):
     pass
 
 class ProductRead(ProductBase):
     id: int
-    sku: Optional[str] = None
-    barcode: Optional[str] = None
     qr_code: Optional[str] = None 
 
     class Config:
@@ -37,6 +55,25 @@ class ProductUpdate(BaseModel):
     subcategory_id: Optional[int] = None
     sku: Optional[str] = None
     barcode: Optional[str] = None
+
+    @field_validator("barcode")
+    @classmethod
+    def validate_barcode(cls, v):
+        if v is None:
+            return v
+
+        if not re.fullmatch(r"\d{13}", v):
+            raise ValueError("Штрихкод должен содержать 13 цифр (EAN-13)")
+
+        digits = list(map(int, v))
+        checksum = (10 - (
+            sum(digits[i] if i % 2 == 0 else digits[i] * 3 for i in range(12)) % 10
+        )) % 10
+
+        if digits[12] != checksum:
+            raise ValueError("Недействительный штрихкод: неверная контрольная сумма")
+        
+        return v
 
     class Config:
         orm_mode = True
