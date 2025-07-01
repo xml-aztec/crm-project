@@ -1,6 +1,7 @@
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.order_item import OrderItem
 from app.models.product_stock import ProductStock
 from app.models.order import Order
 from app.schemas.order import OrderRead
@@ -35,5 +36,27 @@ async def update_stock_on_order_confirmed(db: AsyncSession, order: Order):
             )
 
         stock.quantity -= quantity
+
+    await db.commit()
+
+async def restore_stock_for_order(db: AsyncSession, order_id: int):
+    """ 
+    Восстанавливает остатки товаров на складе при отмене заказа.
+    """
+    result = await db.execute(
+        select(OrderItem).where(OrderItem.order_id == order_id)
+    )
+    items = result.scalars().all()
+
+    for item in items:
+        stmt = (
+            update(ProductStock)
+            .where(
+                ProductStock.product_id == item.product_id,
+                ProductStock.warehouse_id == item.order.warehouse_id  
+            )
+            .values(quantity=ProductStock.quantity + item.quantity)
+        )
+        await db.execute(stmt)
 
     await db.commit()

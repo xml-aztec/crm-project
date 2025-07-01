@@ -13,6 +13,7 @@ from app.models.product import Product
 from app.models.product_stock import ProductStock
 from app.models.user import User
 from app.utils.orders import recalculate_order_total
+from app.utils.stock import restore_stock_for_order
 
 
 async def check_stock_before_confirmation(db: AsyncSession, order: Order):
@@ -194,11 +195,17 @@ async def confirm_order(db: AsyncSession, order_id: int, confirmed: bool) -> Opt
     if not order:
         return None
 
+    if order.confirmed and not confirmed:
+        await restore_stock_for_order(db, order.id)
+
     order.confirmed = confirmed
     order.confirmed_at = datetime.now(timezone.utc) if confirmed else None
 
     if confirmed and order.finalized_total_price is None:
         order.finalized_total_price = order.total_price
+
+    if not confirmed:
+        order.finalized_total_price = None
 
     await db.commit()
     await db.refresh(order)
@@ -260,8 +267,12 @@ async def update_order_status(
 async def delete_order(db: AsyncSession, order_id: int) -> None:
     result = await db.execute(select(Order).where(Order.id == order_id))
     order = result.scalar_one_or_none()
+
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")
+
+    if order.confirmed:
+        await restore_stock_for_order(db, order)
 
     await db.delete(order)
     await db.commit()
