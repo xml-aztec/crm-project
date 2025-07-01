@@ -1,7 +1,7 @@
 from decimal import Decimal
-from sqlalchemy import select, func, cast, Date, extract
+from sqlalchemy import and_, select, func, cast, Date, extract
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import date
+from datetime import date, datetime, timezone
 
 from app.models.order import Order
 from app.models.order_item import OrderItem
@@ -68,36 +68,50 @@ async def get_order_summary(db: AsyncSession):
         "unique_customers": unique_customers,
         "status_counts": status_counts,
     }
+
 async def get_monthly_summary(db: AsyncSession):
     today = date.today()
     year, month = today.year, today.month
 
-    date_filters = [
-        extract("month", Order.created_at) == month,
-        extract("year", Order.created_at) == year,
-    ]
+    # Начало месяца
+    start_date = datetime(year, month, 1, tzinfo=timezone.utc)
+    # Начало следующего месяца
+    if month == 12:
+        end_date = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
+    else:
+        end_date = datetime(year, month + 1, 1, tzinfo=timezone.utc)
 
+    # Получаем id статуса "Завершён"
     completed_status_id = await db.scalar(
-        select(OrderStatus.id).where(OrderStatus.name == "Завершен")
+        select(OrderStatus.id).where(OrderStatus.name.in_(["Завершен", "Завершён", "Completed"]))
     )
 
-    completed_filters = date_filters + [Order.status_id == completed_status_id]
+    # Основные фильтры
+    date_filters = and_(Order.created_at >= start_date, Order.created_at < end_date)
+    completed_filters = and_(
+        date_filters,
+        Order.status_id == completed_status_id
+    )
 
-    total_orders = await db.scalar(select(func.count(Order.id)).where(*date_filters))
+    total_orders = await db.scalar(
+        select(func.count(Order.id)).where(date_filters)
+    )
+
     unique_customers = await db.scalar(
-        select(func.count(func.distinct(Order.customer_id))).where(*date_filters)
+        select(func.count(func.distinct(Order.customer_id))).where(date_filters)
     )
 
     total_income = await db.scalar(
-        select(func.coalesce(func.sum(Order.total_price), 0)).where(*completed_filters)
+        select(func.coalesce(func.sum(Order.total_price), 0)).where(completed_filters)
     )
+
     average_order_value = await db.scalar(
-        select(func.coalesce(func.avg(Order.total_price), 0)).where(*completed_filters)
+        select(func.coalesce(func.avg(Order.total_price), 0)).where(completed_filters)
     )
 
     result = await db.execute(
         select(Order.status_id, func.count(Order.id))
-        .where(*date_filters)
+        .where(date_filters)
         .group_by(Order.status_id)
     )
 
@@ -108,7 +122,7 @@ async def get_monthly_summary(db: AsyncSession):
         "total_income": float(total_income),
         "average_order_value": float(average_order_value),
         "unique_customers": unique_customers,
-        "status_counts": status_counts
+        "status_counts": status_counts,
     }
 
 

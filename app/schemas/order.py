@@ -31,6 +31,7 @@ class OrderUpdate(BaseModel):
 class OrderRead(OrderBase):
     id: int
     total_price: Decimal
+    finalized_total_price: Optional[Decimal] = None
     created_at: datetime
     items: List[OrderItemRead]
     confirmed: bool
@@ -41,11 +42,15 @@ class OrderRead(OrderBase):
     payment_method: Optional[PaymentMethodOut]
     installment_months: Optional[int]
 
+    cancellation_reason: Optional[str] = None
+    cancelled_at: Optional[datetime] = None
+
     class Config:
         orm_mode = True
 
 class OrderStatusUpdate(BaseModel):
     status_id: int
+    cancellation_reason: Optional[str] = None
 
 class OrderConfirm(BaseModel):
     confirmed: bool

@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Path, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -48,19 +48,16 @@ async def is_admin(current_user: User = Depends(get_current_user)):
     return current_user
 
 async def is_order_owner_or_admin(
-    order_id: int,
+    order_id: int = Path(...),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
 ) -> User:
-    if current_user.role.name == "admin":
-        return current_user
+    order = await order_repo.get_order_by_id(db, order_id, current_user)
 
-    order = await order_repo.get_order_by_id(db, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")
 
-    if order.manager_id != current_user.id:
-        raise HTTPException(
-            status_code=403, detail="У вас нет разрешения на доступ к этому заказу"
-        )
+    if current_user.role.name != "Админ" and order.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Нет доступа к заказу")
+
     return current_user

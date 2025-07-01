@@ -1,8 +1,8 @@
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.dependencies import get_current_user, get_db, is_order_owner_or_admin
+from app.core.dependencies import get_current_user, get_db, is_admin, is_order_owner_or_admin
 from app.models.user import User
 from app.repositories import order as repo
 from app.schemas.order import (
@@ -15,6 +15,7 @@ from app.schemas.order import (
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
+
 @router.post(
     "/",
     response_model=OrderRead,
@@ -23,8 +24,18 @@ router = APIRouter(prefix="/orders", tags=["Orders"])
     description="Создаёт новый заказ с указанием клиента, статуса, менеджера, списка товаров и общей цены. "
                 "Менеджер может также указать индивидуальные цены и заметку к заказу."
 )
-async def create_order(data: OrderCreate, db: AsyncSession = Depends(get_db, ), current_user: User = Depends(get_current_user)):
-    return await repo.create_order(db, data.model_dump(exclude={"items"}), data.items, current_user)
+async def create_order(
+    data: OrderCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await repo.create_order(
+        db,
+        data.model_dump(exclude={"items"}),
+        data.items,
+        current_user
+    )
+
 
 @router.patch(
     "/{order_id}",
@@ -43,11 +54,12 @@ async def update_order(
         raise HTTPException(status_code=404, detail="Order not found")
     return updated
 
+
 @router.get(
     "/",
     response_model=list[OrderRead],
     summary="Список заказов с фильтрами",
-    description="Админ видит все заказы. Менеджер — только свои."
+    description="Админ видит все заказы. Менеджер — только свои. Отменённые заказы скрываются от менеджера."
 )
 async def list_orders(
     skip: int = 0,
@@ -59,17 +71,17 @@ async def list_orders(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    manager_id = current_user.id if current_user.role.name == "manager" else None
     return await repo.get_orders(
-        db,
+        db=db,
+        current_user=current_user,
         skip=skip,
         limit=limit,
         date_from=date_from,
         date_to=date_to,
-        manager_id=manager_id,
         status_id=status_id,
         customer_name=customer_name,
     )
+
 
 @router.get(
     "/{order_id}",
@@ -80,12 +92,13 @@ async def list_orders(
 async def get_order_by_id(
     order_id: int,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(is_order_owner_or_admin),
+    current_user: User = Depends(get_current_user), 
 ):
-    order = await repo.get_order_by_id(db, order_id)
+    order = await repo.get_order_by_id(db, order_id, current_user) 
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     return order
+
 
 @router.patch(
     "/{order_id}/confirm",
@@ -104,19 +117,40 @@ async def confirm_order(
         raise HTTPException(status_code=404, detail="Order not found")
     return order
 
+
 @router.patch(
     "/{order_id}/status",
     response_model=OrderRead,
     summary="Обновление статуса заказа",
-    description="Позволяет изменить статус заказа (например: 'Новый' → 'В работе' → 'Завершён')."
+    description="Позволяет изменить статус заказа (например: 'Новый' → 'В работе' → 'Завершён' или 'Отменён')."
 )
 async def change_order_status(
     order_id: int = Path(..., description="ID заказа"),
     data: OrderStatusUpdate = Body(...),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(is_order_owner_or_admin),
+    current_user: User = Depends(get_current_user),
 ):
-    order = await repo.update_order_status(db, order_id, data.status_id)
+    order = await repo.update_order_status(
+        db=db,
+        order_id=order_id,
+        status_id=data.status_id,
+        current_user=current_user,
+        cancellation_reason=data.cancellation_reason,
+    )
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     return order
+
+@router.delete(
+    "/{order_id}",
+    status_code=204,
+    summary="Удаление заказа (только админ)",
+    description="Удаляет заказ из базы данных. Доступно только администраторам."
+)
+async def delete_order(
+    order_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_admin),
+):
+    await repo.delete_order(db, order_id)
+    return Response(status_code=204)

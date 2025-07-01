@@ -25,7 +25,11 @@ async def list_subcategories(db: AsyncSession = Depends(get_db)):
 async def create_subcategory(data: SubcategoryCreate, db: AsyncSession = Depends(get_db)):
     return await repo.create(db, name=data.name, category_id=data.category_id)
 
-@router.patch("/{subcategory_id}", response_model=SubcategoryRead)
+@router.patch(""
+"   /{subcategory_id}", 
+    response_model=SubcategoryRead,
+    summary="Обновить подкатегорию",
+    description="Обновляет имя подкатегории и/или ID категории, к которой она относится.")
 async def update_subcategory(
     subcategory_id: int,
     data: SubcategoryUpdate,
