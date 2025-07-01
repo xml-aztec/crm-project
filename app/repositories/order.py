@@ -31,7 +31,7 @@ async def get_order_by_id(db: AsyncSession, order_id: int, current_user: User) -
         return None
 
     # Проверка доступа
-    if current_user.role.name != "Админ":
+    if current_user.role.name != "admin":
         if order.status and order.status.name == "Отменён" and order.user_id == current_user.id:
             raise HTTPException(403, detail="Вы не можете просматривать отменённый заказ")
 
@@ -92,6 +92,7 @@ async def create_order(
     )
     return result.scalar_one()
 
+
 async def get_orders(
     db: AsyncSession,
     current_user: User,
@@ -119,40 +120,41 @@ async def get_orders(
 
     filters = []
 
-    if current_user.role.name != "Админ":
+    if current_user.role.name != "admin":
         filters.append(Order.user_id == current_user.id)
 
         cancelled_status_result = await db.execute(
-            select(OrderStatus.id).where(OrderStatus.name == "Отменён")
+            select(OrderStatus.id).where(OrderStatus.name == "Отменен")
         )
         cancelled_status_id = cancelled_status_result.scalar_one_or_none()
         if cancelled_status_id is not None:
-            filters.append(
-                (Order.status_id != cancelled_status_id)
-            )
+            filters.append(Order.status_id != cancelled_status_id)
+
+    else:
+        if manager_id:
+            filters.append(Order.user_id == manager_id)
+
+    if status_id:
+        filters.append(Order.status_id == status_id)
+
+    if customer_name:
+        filters.append(func.lower(Customer.name).ilike(f"%{customer_name.lower()}%"))
 
     if date_from:
         if date_from.tzinfo is None:
             date_from = date_from.replace(tzinfo=timezone.utc)
         filters.append(Order.created_at >= date_from)
+
     if date_to:
         if date_to.tzinfo is None:
             date_to = date_to.replace(tzinfo=timezone.utc)
         filters.append(Order.created_at <= date_to)
-
-    if manager_id:
-        filters.append(Order.user_id == manager_id)
-    if status_id:
-        filters.append(Order.status_id == status_id)
-    if customer_name:
-        filters.append(func.lower(Customer.name).ilike(f"%{customer_name.lower()}%"))
 
     if filters:
         query = query.join(Order.customer).where(*filters)
 
     result = await db.execute(query)
     return result.scalars().all()
-
 
 
 async def confirm_order(db: AsyncSession, order_id: int, confirmed: bool) -> Optional[Order]:
