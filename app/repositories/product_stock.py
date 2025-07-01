@@ -1,7 +1,29 @@
+from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.product_stock import ProductStock
 from app.schemas.product_stock import ProductStockCreate
+
+async def filter(
+    db: AsyncSession,
+    product_id: Optional[int] = None,
+    warehouse_id: Optional[int] = None,
+    in_stock_only: bool = False
+) -> List[ProductStock]:
+    stmt = select(ProductStock)
+
+    if product_id is not None:
+        stmt = stmt.where(ProductStock.product_id == product_id)
+
+    if warehouse_id is not None:
+        stmt = stmt.where(ProductStock.warehouse_id == warehouse_id)
+
+    if in_stock_only:
+        stmt = stmt.where(ProductStock.quantity > 0)
+
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
 
 async def upsert(db: AsyncSession, data: ProductStockCreate):
     stmt = select(ProductStock).where(
