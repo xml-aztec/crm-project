@@ -21,7 +21,7 @@ class Order(Base):
     note = Column(Text, nullable=True)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id", ondelete="SET NULL"), nullable=True)
     branch_id = Column(Integer, ForeignKey("branches.id", ondelete="SET NULL"), nullable=True)
-    
+
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     confirmed = Column(Boolean, default=False)
     confirmed_at = Column(DateTime(timezone=True), nullable=True)

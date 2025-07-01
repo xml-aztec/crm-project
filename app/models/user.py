@@ -17,6 +17,7 @@ class User(Base):
     role_id = Column(Integer, ForeignKey("roles.id", ondelete="SET NULL"))
     position_id = Column(Integer, ForeignKey("positions.id", ondelete="SET NULL"))
     branch_id = Column(Integer, ForeignKey("branches.id", ondelete="SET NULL"), nullable=True)
+
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     role = relationship("Role", back_populates="users")
