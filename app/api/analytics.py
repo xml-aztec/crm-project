@@ -35,21 +35,22 @@ async def get_summary(db: AsyncSession = Depends(get_db)):
     "/monthly-summary",
     summary="Статистика заказов за текущий месяц",
     description="""
-Возвращает агрегированную аналитику по заказам **за текущий месяц**:
-- Общее количество заказов
-- Общая сумма
-- Средний чек
-- Количество уникальных клиентов
-- Распределение заказов по статусам
-""",
+    Возвращает агрегированную аналитику по заказам **за текущий месяц**:
+    - Общее количество заказов
+    - Общая сумма
+    - Средний чек
+    - Количество уникальных клиентов
+    - Распределение заказов по статусам
+    """,
     response_model=MonthlySummaryResponse,
     tags=["Analytics"]
 )
-async def monthly_summary(db: AsyncSession = Depends(get_db)):
+async def monthly_summary(db: AsyncSession = Depends(get_db),
+                          current_user: User = Depends(get_current_user),):
     """
     Получить сводную аналитику заказов за текущий месяц.
     """
-    return await repo.get_monthly_summary(db)
+    return await repo.get_monthly_summary(db, current_user)
 
 @router.get("/orders-by-manager", response_model=List[ManagerIncome], summary="Доход по менеджерам")
 async def get_orders_by_manager(db: AsyncSession = Depends(get_db)):

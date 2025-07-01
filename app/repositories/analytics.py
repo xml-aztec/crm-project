@@ -68,50 +68,41 @@ async def get_order_summary(db: AsyncSession):
         "unique_customers": unique_customers,
         "status_counts": status_counts,
     }
-
-async def get_monthly_summary(db: AsyncSession):
+async def get_monthly_summary(db: AsyncSession, current_user: User):
     today = date.today()
     year, month = today.year, today.month
 
-    # Начало месяца
     start_date = datetime(year, month, 1, tzinfo=timezone.utc)
-    # Начало следующего месяца
     if month == 12:
         end_date = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
     else:
         end_date = datetime(year, month + 1, 1, tzinfo=timezone.utc)
 
-    # Получаем id статуса "Завершён"
     completed_status_id = await db.scalar(
         select(OrderStatus.id).where(OrderStatus.name.in_(["Завершен", "Завершён", "Completed"]))
     )
 
-    # Основные фильтры
-    date_filters = and_(Order.created_at >= start_date, Order.created_at < end_date)
-    completed_filters = and_(
-        date_filters,
-        Order.status_id == completed_status_id
-    )
+    base_filter = and_(Order.created_at >= start_date, Order.created_at < end_date)
+    completed_filter = and_(base_filter, Order.status_id == completed_status_id)
 
-    total_orders = await db.scalar(
-        select(func.count(Order.id)).where(date_filters)
-    )
+    if current_user.role.name != "admin":
+        base_filter = and_(base_filter, Order.user_id == current_user.id)
+        completed_filter = and_(completed_filter, Order.user_id == current_user.id)
 
+    total_orders = await db.scalar(select(func.count(Order.id)).where(base_filter))
     unique_customers = await db.scalar(
-        select(func.count(func.distinct(Order.customer_id))).where(date_filters)
+        select(func.count(func.distinct(Order.customer_id))).where(base_filter)
     )
-
     total_income = await db.scalar(
-        select(func.coalesce(func.sum(Order.total_price), 0)).where(completed_filters)
+        select(func.coalesce(func.sum(Order.total_price), 0)).where(completed_filter)
     )
-
     average_order_value = await db.scalar(
-        select(func.coalesce(func.avg(Order.total_price), 0)).where(completed_filters)
+        select(func.coalesce(func.avg(Order.total_price), 0)).where(completed_filter)
     )
 
     result = await db.execute(
         select(Order.status_id, func.count(Order.id))
-        .where(date_filters)
+        .where(base_filter)
         .group_by(Order.status_id)
     )
 
