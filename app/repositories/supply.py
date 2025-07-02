@@ -8,7 +8,7 @@ from typing import Optional
 from app.models.supply import Supply
 from app.models.supply_item import SupplyItem
 from app.models.product_stock import ProductStock
-from app.schemas.supply import SupplyCreate
+from app.schemas.supply import SupplyCreate, SupplyUpdate
 
 
 async def create_supply(db: AsyncSession, data: SupplyCreate):
@@ -110,3 +110,108 @@ async def get_supply_by_id(db: AsyncSession, supply_id: int):
             item.product_name = item.product.name if item.product else ""
 
     return supply
+
+async def update_supply(db: AsyncSession, supply_id: int, data: SupplyUpdate):
+    supply = await get_supply_by_id(db, supply_id)
+    if not supply:
+        raise HTTPException(status_code=404, detail="Поставка не найдена")
+
+    try:
+        for item in supply.items:
+            stock_stmt = select(ProductStock).where(
+                ProductStock.product_id == item.product_id,
+                ProductStock.warehouse_id == supply.warehouse_id
+            )
+            stock_result = await db.execute(stock_stmt)
+            stock = stock_result.scalar_one_or_none()
+            if stock:
+                stock.quantity -= item.quantity
+
+        await db.execute(
+            SupplyItem.__table__.delete().where(SupplyItem.supply_id == supply.id)
+        )
+
+        if data.supplier_name is not None:
+            supply.supplier_name = data.supplier_name
+        if data.delivered_at is not None:
+            supply.delivered_at = data.delivered_at
+
+        if data.items:
+            for item in data.items:
+                new_item = SupplyItem(
+                    supply_id=supply.id,
+                    product_id=item.product_id,
+                    quantity=item.quantity,
+                    cost_price=item.cost_price,
+                    unit_price=item.unit_price
+                )
+                db.add(new_item)
+
+                stock_stmt = select(ProductStock).where(
+                    ProductStock.product_id == item.product_id,
+                    ProductStock.warehouse_id == supply.warehouse_id
+                )
+                stock_result = await db.execute(stock_stmt)
+                stock = stock_result.scalar_one_or_none()
+
+                if stock:
+                    stock.quantity += item.quantity
+                else:
+                    db.add(ProductStock(
+                        product_id=item.product_id,
+                        warehouse_id=supply.warehouse_id,
+                        quantity=item.quantity
+                    ))
+
+        await db.commit()
+        await db.refresh(supply)
+
+        return await get_supply_by_id(db, supply_id)
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Ошибка при обновлении поставки: {str(e)}")
+
+
+async def delete_supply(db: AsyncSession, supply_id: int):
+    result = await db.execute(
+        select(Supply).where(Supply.id == supply_id).options(
+            selectinload(Supply.items)
+        )
+    )
+    supply = result.scalar_one_or_none()
+
+    if not supply:
+        raise HTTPException(status_code=404, detail="Поставка не найдена")
+
+    for item in supply.items:
+        stock_query = await db.execute(
+            select(ProductStock).where(
+                ProductStock.product_id == item.product_id,
+                ProductStock.warehouse_id == supply.warehouse_id
+            )
+        )
+        stock = stock_query.scalar_one_or_none()
+
+        if not stock or stock.quantity < item.quantity:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Нельзя удалить поставку: недостаточно товара на складе (Товар ID: {item.product_id})"
+            )
+        
+    for item in supply.items:
+        stock_query = await db.execute(
+            select(ProductStock).where(
+                ProductStock.product_id == item.product_id,
+                ProductStock.warehouse_id == supply.warehouse_id
+            )
+        )
+        stock = stock_query.scalar_one()
+        stock.quantity -= item.quantity
+
+    for item in supply.items:
+        await db.delete(item)
+    await db.delete(supply)
+
+    await db.commit()
+    return {"detail": "Поставка успешно удалена"}

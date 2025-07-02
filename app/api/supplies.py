@@ -4,7 +4,7 @@ from typing import List, Optional
 from datetime import date
 
 from app.core.dependencies import get_db, is_admin
-from app.schemas.supply import SupplyCreate, SupplyOut
+from app.schemas.supply import SupplyCreate, SupplyUpdate, SupplyOut
 from app.repositories import supply as repo
 
 router = APIRouter(prefix="/supplies", tags=["Supplies"])
@@ -55,3 +55,27 @@ async def get_supply(supply_id: int, db: AsyncSession = Depends(get_db)):
     if not supply:
         raise HTTPException(status_code=404, detail="Поставка не найдена")
     return supply
+
+@router.patch(
+    "/{supply_id}",
+    response_model=SupplyOut,
+    summary="Обновить поставку",
+    description="Редактирует поставку и корректирует остатки на складе. Доступно только администратору.",
+    dependencies=[Depends(is_admin)]
+)
+async def update_supply(
+    supply_id: int,
+    data: SupplyUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    return await repo.update_supply(db, supply_id, data)
+
+@router.delete(
+    "/{supply_id}",
+    status_code=204,
+    summary="Удалить поставку",
+    description="Удаляет поставку и корректирует остатки. Доступно только администратору.",
+    dependencies=[Depends(is_admin)]
+)
+async def delete_supply(supply_id: int, db: AsyncSession = Depends(get_db)):
+    await repo.delete_supply(db, supply_id)
