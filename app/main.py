@@ -15,6 +15,7 @@ from app.api import products
 from app.api import product_stocks
 from app.api import customer_types, order_statuses
 from app.api import orders
+from app.api import supplies
 from app.api import roles
 from app.api import positions
 from app.api import analytics
@@ -61,6 +62,7 @@ app.include_router(customer_types.router)
 app.include_router(order_statuses.router)
 app.include_router(orders.router)
 app.include_router(order_items.router)
+app.include_router(supplies.router)
 app.include_router(payment_methods.router)
 app.include_router(roles.router)
 app.include_router(positions.router)
