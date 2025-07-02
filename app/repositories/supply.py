@@ -11,13 +11,14 @@ from app.models.product_stock import ProductStock
 from app.schemas.supply import SupplyCreate, SupplyUpdate
 
 
-async def create_supply(db: AsyncSession, data: SupplyCreate):
+async def create_supply(db: AsyncSession, data: SupplyCreate, created_by: int):
     try:
         supply = Supply(
             supplier_name=data.supplier_name,
             warehouse_id=data.warehouse_id,
             delivered_at=data.delivered_at,
             created_at=datetime.now(timezone.utc),
+            created_by=created_by
         )
         db.add(supply)
         await db.flush()
@@ -49,13 +50,23 @@ async def create_supply(db: AsyncSession, data: SupplyCreate):
                 ))
 
         await db.commit()
-        await db.refresh(supply)
+
+        result = await db.execute(
+            select(Supply)
+            .where(Supply.id == supply.id)
+            .options(selectinload(Supply.items).joinedload(SupplyItem.product))
+        )
+        supply = result.scalar_one_or_none()
+
+        if not supply:
+            raise HTTPException(status_code=404, detail="Поставка не найдена после создания")
+
         return supply
 
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Ошибка создания поставки: {str(e)}")
-
+    
 
 async def get_all_supplies(
     db: AsyncSession,
@@ -101,7 +112,10 @@ async def get_supply_by_id(db: AsyncSession, supply_id: int):
     result = await db.execute(
         select(Supply)
         .where(Supply.id == supply_id)
-        .options(selectinload(Supply.items).joinedload(SupplyItem.product))
+        .options(
+            selectinload(Supply.items).joinedload(SupplyItem.product),
+            selectinload(Supply.warehouse)
+        )
     )
     supply = result.scalar_one_or_none()
 

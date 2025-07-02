@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Накладная поставки №{{ supply.id }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+
+        body {
+            font-family: DejaVu Sans, sans-serif;
+            font-size: 12px;
+            margin: 0;
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 20px;
+            margin-bottom: 30px;
+            page-break-after: avoid;
+        }
+
+        .info {
+            margin-bottom: 20px;
+            page-break-inside: avoid;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        thead {
+            display: table-header-group;
+        }
+
+        tbody tr {
+            page-break-inside: avoid;
+        }
+
+        th, td {
+            border: 1px solid #333;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f0f0f0;
+        }
+
+        .right {
+            text-align: right;
+        }
+
+        .footer {
+            margin-top: 50px;
+            page-break-inside: avoid;
+        }
+    </style>
+</head>
+<body>
+    <h1>Накладная поставки №{{ supply.id }}</h1>
+
+    <div class="info">
+        <p><strong>Поставщик:</strong> {{ supply.supplier_name }}</p>
+        <p><strong>Склад:</strong> {{ supply.warehouse.name }}</p>
+        <p><strong>Дата поставки:</strong> {{ supply.delivered_at.strftime("%d.%m.%Y") }}</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>Товар</th>
+                <th>Кол-во</th>
+                <th>Закуп. цена</th>
+                <th>Прод. цена</th>
+                <th>Сумма (закуп)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in supply["items"] %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ item.product_name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td class="right">{{ "{:,.2f}".format(item.cost_price or 0) }}</td>
+                <td class="right">{{ "{:,.2f}".format(item.unit_price or 0) }}</td>
+                <td class="right">{{ "{:,.2f}".format((item.cost_price or 0) * item.quantity) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="5" class="right">Итого:</th>
+                <th class="right">{{ "{:,.2f}".format(total_cost) }}</th>
+            </tr>
+        </tfoot>
+    </table>
+
+    <div class="footer">
+        <p><strong>Ответственный:</strong> _______________________________________</p>
+        <p><strong>Дата печати:</strong> {{ supply.created_at.strftime("%d.%m.%Y %H:%M") }}</p>
+    </div>
+</body>
+</html>

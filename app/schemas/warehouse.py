@@ -14,8 +14,10 @@ class WarehouseUpdate(BaseModel):
     location: Optional[str] = None
     branch_id: Optional[int] = None
 
-class WarehouseOut(WarehouseBase):
+class WarehouseOut(BaseModel):
     id: int
+    name: str
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }

@@ -1,7 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from typing import Optional, List
 from datetime import datetime
 
+from app.schemas.warehouse import WarehouseOut
 
 class SupplyItemCreate(BaseModel):
     product_id: int
@@ -38,6 +39,20 @@ class SupplyItemOut(BaseModel):
     cost_price: Optional[float]
     unit_price: Optional[float]
 
+    @model_validator(mode="before")
+    @classmethod
+    def load_product_name(cls, data):
+        if isinstance(data, dict):
+            return data
+        return {
+            "id": data.id,
+            "product_id": data.product_id,
+            "product_name": getattr(data.product, "name", None),
+            "quantity": data.quantity,
+            "cost_price": data.cost_price,
+            "unit_price": data.unit_price
+        }
+
     model_config = {
         "from_attributes": True
     }
@@ -46,7 +61,7 @@ class SupplyItemOut(BaseModel):
 class SupplyOut(BaseModel):
     id: int
     supplier_name: str
-    warehouse_id: int
+    warehouse: WarehouseOut
     delivered_at: datetime
     created_at: datetime
     items: List[SupplyItemOut]
