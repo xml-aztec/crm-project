@@ -1,13 +1,15 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, insert, update
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select, and_, insert, update
+from sqlalchemy.orm import selectinload, joinedload
 from fastapi import HTTPException
 from datetime import datetime, timezone
+from typing import Optional
 
 from app.models.supply import Supply
 from app.models.supply_item import SupplyItem
 from app.models.product_stock import ProductStock
 from app.schemas.supply import SupplyCreate
+
 
 async def create_supply(db: AsyncSession, data: SupplyCreate):
     try:
@@ -18,7 +20,7 @@ async def create_supply(db: AsyncSession, data: SupplyCreate):
             created_at=datetime.now(timezone.utc),
         )
         db.add(supply)
-        await db.flush()  
+        await db.flush()
 
         for item in data.items:
             supply_item = SupplyItem(
@@ -54,18 +56,57 @@ async def create_supply(db: AsyncSession, data: SupplyCreate):
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Ошибка создания поставки: {str(e)}")
 
-async def get_all_supplies(db: AsyncSession):
-    result = await db.execute(
+
+async def get_all_supplies(
+    db: AsyncSession,
+    warehouse_id: Optional[int] = None,
+    supplier_name: Optional[str] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+    limit: int = 50,
+    offset: int = 0
+):
+    filters = []
+    if warehouse_id:
+        filters.append(Supply.warehouse_id == warehouse_id)
+    if supplier_name:
+        filters.append(Supply.supplier_name.ilike(f"%{supplier_name}%"))
+    if date_from:
+        filters.append(Supply.delivered_at >= date_from)
+    if date_to:
+        filters.append(Supply.delivered_at <= date_to)
+
+    query = (
         select(Supply)
-        .options(selectinload(Supply.items))
+        .options(selectinload(Supply.items).joinedload(SupplyItem.product))
         .order_by(Supply.created_at.desc())
+        .offset(offset)
+        .limit(limit)
     )
-    return result.scalars().all()
+
+    if filters:
+        query = query.where(and_(*filters))
+
+    result = await db.execute(query)
+    supplies = result.scalars().unique().all()
+
+    for supply in supplies:
+        for item in supply.items:
+            item.product_name = item.product.name if item.product else ""
+
+    return supplies
+
 
 async def get_supply_by_id(db: AsyncSession, supply_id: int):
     result = await db.execute(
         select(Supply)
         .where(Supply.id == supply_id)
-        .options(selectinload(Supply.items))
+        .options(selectinload(Supply.items).joinedload(SupplyItem.product))
     )
-    return result.scalar_one_or_none()
+    supply = result.scalar_one_or_none()
+
+    if supply:
+        for item in supply.items:
+            item.product_name = item.product.name if item.product else ""
+
+    return supply

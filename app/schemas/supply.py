@@ -17,6 +17,7 @@ class SupplyCreate(BaseModel):
 class SupplyItemOut(BaseModel):
     id: int
     product_id: int
+    product_name: str
     quantity: int
     cost_price: Optional[float]
     unit_price: Optional[float]
