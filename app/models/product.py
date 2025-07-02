@@ -11,7 +11,6 @@ class Product(Base):
     detail = Column(String(500), nullable=True)
     cost_price = Column(Float, nullable=False)
     price = Column(Float, nullable=False)
-    in_stock = Column(Boolean, default=True)
     sku = Column(String, unique=True, nullable=False)
     barcode = Column(String, unique=True, nullable=True)
 

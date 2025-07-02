@@ -8,7 +8,6 @@ class ProductBase(BaseModel):
     detail: Optional[str] = None  
     cost_price: float
     price: float
-    in_stock: bool = True
     category_id: Optional[int]
     subcategory_id: Optional[int]
     brand_id: Optional[int]
@@ -51,7 +50,6 @@ class ProductUpdate(BaseModel):
     detail: Optional[str] = None
     cost_price: Optional[float] = None 
     price: Optional[float] = None
-    in_stock: Optional[bool] = None
     brand_id: Optional[int] = None
     subcategory_id: Optional[int] = None
     sku: Optional[str] = None

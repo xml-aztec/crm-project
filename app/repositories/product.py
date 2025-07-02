@@ -18,7 +18,7 @@ async def get_filtered(
     brand_id: Optional[int] = None,
     category_id: Optional[int] = None,
     subcategory_id: Optional[int] = None,
-    in_stock: Optional[bool] = None,
+    available_quantity_min: Optional[int] = None,
     min_price: Optional[float] = None,
     max_price: Optional[float] = None,
     min_cost_price: Optional[float] = None,
@@ -44,8 +44,6 @@ async def get_filtered(
         filters.append(Product.category_id == category_id)
     if subcategory_id:
         filters.append(Product.subcategory_id == subcategory_id)
-    if in_stock is not None:
-        filters.append(Product.in_stock == in_stock)
     if min_price is not None:
         filters.append(Product.price >= min_price)
     if max_price is not None:
@@ -61,15 +59,22 @@ async def get_filtered(
     result = await db.execute(query.order_by(Product.name))
     products = result.scalars().all()
 
+    filtered_products = []
     for product in products:
         stock_query = await db.execute(
             select(func.coalesce(func.sum(ProductStock.quantity), 0))
             .where(ProductStock.product_id == product.id)
         )
-        product.available_quantity = stock_query.scalar()
+        available_quantity = stock_query.scalar()
+        product.available_quantity = available_quantity
         product.qr_code = generate_qr_base64(product.sku or str(product.id))
 
-    return products
+        if available_quantity_min is not None and available_quantity < available_quantity_min:
+            continue
+
+        filtered_products.append(product)
+
+    return filtered_products
 
 
 async def get_by_id(db: AsyncSession, product_id: int) -> Optional[Product]:
