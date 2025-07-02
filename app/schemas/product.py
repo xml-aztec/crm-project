@@ -40,6 +40,7 @@ class ProductCreate(ProductBase):
 class ProductRead(ProductBase):
     id: int
     qr_code: Optional[str] = None 
+    available_quantity: int
 
     class Config:
         orm_mode = True

@@ -14,7 +14,7 @@ from app.models.product_stock import ProductStock
 from app.models.user import User
 from app.models.warehouse import Warehouse
 from app.utils.orders import recalculate_order_total
-from app.utils.stock import restore_stock_for_order
+from app.utils.stock import check_stock_before_order_creation, deduct_stock_for_order, restore_stock_for_order
 
 
 async def check_stock_before_confirmation(db: AsyncSession, order: Order):
@@ -89,6 +89,8 @@ async def create_order(
         if not default_status_id:
             raise HTTPException(400, detail="Статус 'Новый' не найден. Добавьте его в базу.")
         order_data["status_id"] = default_status_id
+
+    await check_stock_before_order_creation(db, order_data["warehouse_id"], items_data)
 
     order = Order(**order_data, user_id=current_user.id, created_at=datetime.now(timezone.utc))
     db.add(order)
@@ -228,6 +230,9 @@ async def confirm_order(
 
     if order.confirmed and not confirmed:
         await restore_stock_for_order(db, order.id)
+
+    if confirmed and not order.confirmed:
+        await deduct_stock_for_order(db, order)
 
     order.confirmed = confirmed
     order.confirmed_at = datetime.now(timezone.utc) if confirmed else None
