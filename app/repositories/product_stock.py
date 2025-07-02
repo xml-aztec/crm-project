@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.product_stock import ProductStock
 from app.schemas.product_stock import ProductStockCreate
 
-async def filter(
+async def filter_stock(
     db: AsyncSession,
     product_id: Optional[int] = None,
     warehouse_id: Optional[int] = None,

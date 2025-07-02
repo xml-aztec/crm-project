@@ -32,7 +32,7 @@ async def get_stock_list(
     in_stock_only: bool = Query(False, description="Показать только товары с положительным остатком"),
     db: AsyncSession = Depends(get_db),
 ) -> List[ProductStockOut]:
-    return await repo.filter(
+    return await repo.filter_stock(
         db,
         product_id=product_id,
         warehouse_id=warehouse_id,
