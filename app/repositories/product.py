@@ -1,12 +1,14 @@
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import and_, exists, select
+from sqlalchemy import and_, exists, select, func
 from sqlalchemy.orm import selectinload
-from app.models.product import Product
-from app.schemas.product import ProductCreate
 from fastapi import HTTPException
 
+from app.models.product import Product
+from app.models.product_stock import ProductStock
+from app.schemas.product import ProductCreate
 from app.utils.barcode_utils import generate_qr_base64, validate_ean13, generate_sku
+
 
 async def get_filtered(
     db: AsyncSession,
@@ -25,7 +27,7 @@ async def get_filtered(
     query = select(Product).options(
         selectinload(Product.category),
         selectinload(Product.subcategory),
-        selectinload(Product.brand)
+        selectinload(Product.brand),
     )
 
     filters = []
@@ -57,21 +59,39 @@ async def get_filtered(
         query = query.where(and_(*filters))
 
     result = await db.execute(query.order_by(Product.name))
-    return result.scalars().all()
+    products = result.scalars().all()
 
-async def get_by_id(db: AsyncSession, product_id: int) -> Product | None:
+    for product in products:
+        stock_query = await db.execute(
+            select(func.coalesce(func.sum(ProductStock.quantity), 0))
+            .where(ProductStock.product_id == product.id)
+        )
+        product.available_quantity = stock_query.scalar()
+        product.qr_code = generate_qr_base64(product.sku or str(product.id))
+
+    return products
+
+
+async def get_by_id(db: AsyncSession, product_id: int) -> Optional[Product]:
     result = await db.execute(
         select(Product)
         .where(Product.id == product_id)
         .options(
             selectinload(Product.category),
             selectinload(Product.subcategory),
-            selectinload(Product.brand)
+            selectinload(Product.brand),
         )
     )
     product = result.scalar_one_or_none()
     if product:
         product.qr_code = generate_qr_base64(product.sku or str(product.id))
+
+        stock_query = await db.execute(
+            select(func.coalesce(func.sum(ProductStock.quantity), 0))
+            .where(ProductStock.product_id == product.id)
+        )
+        product.available_quantity = stock_query.scalar()
+
     return product
 
 async def create(db: AsyncSession, data: ProductCreate):
