@@ -17,6 +17,8 @@ class WarehouseUpdate(BaseModel):
 class WarehouseOut(BaseModel):
     id: int
     name: str
+    location: Optional[str] = None
+    branch_id: Optional[int] = None
 
     model_config = {
         "from_attributes": True
