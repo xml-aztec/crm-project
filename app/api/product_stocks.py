@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from app.core.dependencies import get_db
-from app.schemas.product_stock import ProductStockOut, ProductStockCreate, ProductStockUpdate
+from app.schemas.product_stock import ProductStockOut, ProductStockCreate, ProductStockUpdate, StockListResponse
 from app.repositories import product_stock as repo
 
 router = APIRouter(prefix="/stock", tags=["Product Stock"])
@@ -22,22 +22,21 @@ async def create_stock(
 
 @router.get(
     "/",
-    response_model=List[ProductStockOut],
-    summary="Список остатков",
-    description="Получить список остатков товаров с возможностью фильтрации по товару, складу и наличию (quantity > 0)."
+    response_model=StockListResponse,
+    summary="Список остатков с фильтрацией и статистикой",
+    description="Возвращает список остатков товаров с возможностью фильтрации по товару, складу, уровню запасов, SKU, штрихкоду и названию."
 )
 async def get_stock_list(
     product_id: Optional[int] = Query(None, description="Фильтрация по ID товара"),
     warehouse_id: Optional[int] = Query(None, description="Фильтрация по ID склада"),
-    in_stock_only: bool = Query(False, description="Показать только товары с положительным остатком"),
+    sku: Optional[str] = Query(None, description="Поиск по SKU товара"),
+    barcode: Optional[str] = Query(None, description="Поиск по штрихкоду товара"),
+    name: Optional[str] = Query(None, description="Поиск по названию товара"),
+    stock_level: Optional[Literal["all", "in_stock", "low_stock", "out_of_stock"]] = Query("all", description="Фильтрация по уровню запасов"),
     db: AsyncSession = Depends(get_db),
-) -> List[ProductStockOut]:
-    return await repo.filter_stock(
-        db,
-        product_id=product_id,
-        warehouse_id=warehouse_id,
-        in_stock_only=in_stock_only
-    )
+) -> StockListResponse:
+    stocks, stats = await repo.get_filtered_with_stats(db, product_id, warehouse_id, sku, barcode, name, stock_level)
+    return StockListResponse(stocks=stocks, stats=stats)
 
 @router.get(
     "/{stock_id}",

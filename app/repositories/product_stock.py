@@ -1,28 +1,73 @@
-from typing import List, Optional
-from sqlalchemy import select
+from typing import List, Optional, Tuple
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.product import Product
 from app.models.product_stock import ProductStock
 from app.schemas.product_stock import ProductStockCreate
 
-async def filter_stock(
+LOW_STOCK_THRESHOLD = 10
+
+async def get_filtered_with_stats(
     db: AsyncSession,
     product_id: Optional[int] = None,
     warehouse_id: Optional[int] = None,
-    in_stock_only: bool = False
-) -> List[ProductStock]:
-    stmt = select(ProductStock)
+    sku: Optional[str] = None,
+    barcode: Optional[str] = None,
+    name: Optional[str] = None,
+    stock_level: str = "all"  # all, in_stock, low_stock, out_of_stock
+) -> Tuple[List[ProductStock], dict]:
+    stmt = select(ProductStock).join(Product, ProductStock.product_id == Product.id)
 
     if product_id is not None:
         stmt = stmt.where(ProductStock.product_id == product_id)
-
     if warehouse_id is not None:
         stmt = stmt.where(ProductStock.warehouse_id == warehouse_id)
+    if sku:
+        stmt = stmt.where(Product.sku.ilike(f"%{sku}%"))
+    if barcode:
+        stmt = stmt.where(Product.barcode.ilike(f"%{barcode}%"))
+    if name:
+        stmt = stmt.where(Product.name.ilike(f"%{name}%"))
 
-    if in_stock_only:
-        stmt = stmt.where(ProductStock.quantity > 0)
+    if stock_level == "in_stock":
+        stmt = stmt.where(ProductStock.quantity > LOW_STOCK_THRESHOLD)
+    elif stock_level == "low_stock":
+        stmt = stmt.where(ProductStock.quantity > 0, ProductStock.quantity <= LOW_STOCK_THRESHOLD)
+    elif stock_level == "out_of_stock":
+        stmt = stmt.where(ProductStock.quantity == 0)
 
     result = await db.execute(stmt)
-    return result.scalars().all()
+    stocks = result.scalars().all()
+
+    stat_stmt = select(
+        func.count(ProductStock.id),
+        func.sum(case((ProductStock.quantity > LOW_STOCK_THRESHOLD, 1), else_=0)),
+        func.sum(case(((ProductStock.quantity > 0) & (ProductStock.quantity <= LOW_STOCK_THRESHOLD), 1), else_=0)),
+        func.sum(case((ProductStock.quantity == 0, 1), else_=0)),
+    ).join(Product, ProductStock.product_id == Product.id)
+
+    if product_id is not None:
+        stat_stmt = stat_stmt.where(ProductStock.product_id == product_id)
+    if warehouse_id is not None:
+        stat_stmt = stat_stmt.where(ProductStock.warehouse_id == warehouse_id)
+    if sku:
+        stat_stmt = stat_stmt.where(Product.sku.ilike(f"%{sku}%"))
+    if barcode:
+        stat_stmt = stat_stmt.where(Product.barcode.ilike(f"%{barcode}%"))
+    if name:
+        stat_stmt = stat_stmt.where(Product.name.ilike(f"%{name}%"))
+
+    stat_result = await db.execute(stat_stmt)
+    total, in_stock, low_stock, out_of_stock = stat_result.one()
+
+    stats = {
+        "total": total or 0,
+        "in_stock": in_stock or 0,
+        "low_stock": low_stock or 0,
+        "out_of_stock": out_of_stock or 0,
+    }
+
+    return stocks, stats
 
 
 async def upsert(db: AsyncSession, data: ProductStockCreate):
@@ -77,8 +122,8 @@ async def delete(db: AsyncSession, stock_id: int):
 
 async def filter(
     db: AsyncSession,
-    product_id: int | None = None,
-    warehouse_id: int | None = None,
+    product_id: Optional[int] = None,
+    warehouse_id: Optional[int] = None,
 ):
     stmt = select(ProductStock)
 
