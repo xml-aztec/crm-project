@@ -17,7 +17,7 @@ async def init_db():
     from app.models import (
         category, subcategory, brand, product,
         customer_type, customer, order_status, order, order_item,
-        user, role, position, monthly_target, payment_method, warehouse, product_stock, branch, supply, supply_item
+        user, role, position, monthly_target, payment_method, warehouse, product_stock, branch, supply, supply_item, supplier
     )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

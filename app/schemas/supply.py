@@ -2,6 +2,7 @@ from pydantic import BaseModel, model_validator
 from typing import Optional, List
 from datetime import datetime
 
+from app.schemas.supplier import SupplierOut
 from app.schemas.warehouse import WarehouseOut
 
 class SupplyItemCreate(BaseModel):
@@ -10,13 +11,11 @@ class SupplyItemCreate(BaseModel):
     cost_price: Optional[float] = None
     unit_price: Optional[float] = None
 
-
 class SupplyCreate(BaseModel):
-    supplier_name: str
+    supplier_id: int
     warehouse_id: int
     delivered_at: datetime
     items: List[SupplyItemCreate]
-
 
 class SupplyItemUpdate(BaseModel):
     product_id: int
@@ -24,12 +23,10 @@ class SupplyItemUpdate(BaseModel):
     cost_price: Optional[float] = None
     unit_price: Optional[float] = None
 
-
 class SupplyUpdate(BaseModel):
-    supplier_name: Optional[str] = None
+    supplier_id: Optional[int] = None
     delivered_at: Optional[datetime] = None
     items: Optional[List[SupplyItemUpdate]] = None
-
 
 class SupplyItemOut(BaseModel):
     id: int
@@ -57,10 +54,9 @@ class SupplyItemOut(BaseModel):
         "from_attributes": True
     }
 
-
 class SupplyOut(BaseModel):
     id: int
-    supplier_name: str
+    supplier: SupplierOut
     warehouse: WarehouseOut
     delivered_at: datetime
     created_at: datetime
@@ -69,3 +65,7 @@ class SupplyOut(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+class SupplyListResponse(BaseModel):
+    total: int
+    items: List[SupplyOut]

@@ -1,27 +1,69 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, insert, update
-from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy import func, select, and_, delete
+from sqlalchemy.orm import selectinload
 from fastapi import HTTPException
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List, Dict
 
 from app.models.supply import Supply
 from app.models.supply_item import SupplyItem
 from app.models.product_stock import ProductStock
+from app.models.supplier import Supplier
 from app.schemas.supply import SupplyCreate, SupplyUpdate
+
+
+async def count_supplies(
+    db: AsyncSession,
+    warehouse_id: Optional[int] = None,
+    supplier_id: Optional[int] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+) -> int:
+    filters = []
+    if warehouse_id is not None:
+        filters.append(Supply.warehouse_id == warehouse_id)
+    if supplier_id is not None:
+        filters.append(Supply.supplier_id == supplier_id)
+    if date_from is not None:
+        filters.append(Supply.delivered_at >= date_from)
+    if date_to is not None:
+        filters.append(Supply.delivered_at <= date_to)
+
+    stmt = select(func.count(Supply.id))
+    if filters:
+        stmt = stmt.where(and_(*filters))
+
+    result = await db.execute(stmt)
+    (total,) = result.one()
+    return total or 0
 
 
 async def create_supply(db: AsyncSession, data: SupplyCreate, created_by: int):
     try:
+        supplier = await db.scalar(select(Supplier).where(Supplier.id == data.supplier_id))
+        if not supplier:
+            raise HTTPException(status_code=400, detail="Поставщик не найден")
+
         supply = Supply(
-            supplier_name=data.supplier_name,
+            supplier_id=data.supplier_id,
             warehouse_id=data.warehouse_id,
             delivered_at=data.delivered_at,
             created_at=datetime.now(timezone.utc),
             created_by=created_by
         )
         db.add(supply)
-        await db.flush()
+        await db.flush() 
+
+        product_ids = [item.product_id for item in data.items]
+        stocks_result = await db.execute(
+            select(ProductStock).where(
+                and_(
+                    ProductStock.product_id.in_(product_ids),
+                    ProductStock.warehouse_id == data.warehouse_id
+                )
+            )
+        )
+        stocks: Dict[int, ProductStock] = {stock.product_id: stock for stock in stocks_result.scalars().all()}
 
         for item in data.items:
             supply_item = SupplyItem(
@@ -33,31 +75,30 @@ async def create_supply(db: AsyncSession, data: SupplyCreate, created_by: int):
             )
             db.add(supply_item)
 
-            stmt = select(ProductStock).where(
-                ProductStock.product_id == item.product_id,
-                ProductStock.warehouse_id == data.warehouse_id
-            )
-            result = await db.execute(stmt)
-            stock = result.scalar_one_or_none()
-
+            stock = stocks.get(item.product_id)
             if stock:
                 stock.quantity += item.quantity
             else:
-                db.add(ProductStock(
+                new_stock = ProductStock(
                     product_id=item.product_id,
                     warehouse_id=data.warehouse_id,
                     quantity=item.quantity
-                ))
+                )
+                db.add(new_stock)
+                stocks[item.product_id] = new_stock
 
         await db.commit()
 
         result = await db.execute(
             select(Supply)
             .where(Supply.id == supply.id)
-            .options(selectinload(Supply.items).joinedload(SupplyItem.product))
+            .options(
+                selectinload(Supply.items).joinedload(SupplyItem.product),
+                selectinload(Supply.warehouse),
+                selectinload(Supply.supplier)
+            )
         )
         supply = result.scalar_one_or_none()
-
         if not supply:
             raise HTTPException(status_code=404, detail="Поставка не найдена после создания")
 
@@ -66,30 +107,34 @@ async def create_supply(db: AsyncSession, data: SupplyCreate, created_by: int):
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Ошибка создания поставки: {str(e)}")
-    
+
 
 async def get_all_supplies(
     db: AsyncSession,
     warehouse_id: Optional[int] = None,
-    supplier_name: Optional[str] = None,
+    supplier_id: Optional[int] = None,
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
     limit: int = 50,
     offset: int = 0
-):
+) -> List[Supply]:
     filters = []
-    if warehouse_id:
+    if warehouse_id is not None:
         filters.append(Supply.warehouse_id == warehouse_id)
-    if supplier_name:
-        filters.append(Supply.supplier_name.ilike(f"%{supplier_name}%"))
-    if date_from:
+    if supplier_id is not None:
+        filters.append(Supply.supplier_id == supplier_id)
+    if date_from is not None:
         filters.append(Supply.delivered_at >= date_from)
-    if date_to:
+    if date_to is not None:
         filters.append(Supply.delivered_at <= date_to)
 
     query = (
         select(Supply)
-        .options(selectinload(Supply.items).joinedload(SupplyItem.product))
+        .options(
+            selectinload(Supply.items).joinedload(SupplyItem.product),
+            selectinload(Supply.warehouse),
+            selectinload(Supply.supplier)
+        )
         .order_by(Supply.created_at.desc())
         .offset(offset)
         .limit(limit)
@@ -108,13 +153,14 @@ async def get_all_supplies(
     return supplies
 
 
-async def get_supply_by_id(db: AsyncSession, supply_id: int):
+async def get_supply_by_id(db: AsyncSession, supply_id: int) -> Optional[Supply]:
     result = await db.execute(
         select(Supply)
         .where(Supply.id == supply_id)
         .options(
             selectinload(Supply.items).joinedload(SupplyItem.product),
-            selectinload(Supply.warehouse)
+            selectinload(Supply.warehouse),
+            selectinload(Supply.supplier)
         )
     )
     supply = result.scalar_one_or_none()
@@ -125,32 +171,59 @@ async def get_supply_by_id(db: AsyncSession, supply_id: int):
 
     return supply
 
+
 async def update_supply(db: AsyncSession, supply_id: int, data: SupplyUpdate):
     supply = await get_supply_by_id(db, supply_id)
     if not supply:
         raise HTTPException(status_code=404, detail="Поставка не найдена")
 
     try:
-        for item in supply.items:
-            stock_stmt = select(ProductStock).where(
-                ProductStock.product_id == item.product_id,
-                ProductStock.warehouse_id == supply.warehouse_id
+        old_product_ids = [item.product_id for item in supply.items]
+        stock_result = await db.execute(
+            select(ProductStock).where(
+                and_(
+                    ProductStock.product_id.in_(old_product_ids),
+                    ProductStock.warehouse_id == supply.warehouse_id
+                )
             )
-            stock_result = await db.execute(stock_stmt)
-            stock = stock_result.scalar_one_or_none()
-            if stock:
-                stock.quantity -= item.quantity
-
-        await db.execute(
-            SupplyItem.__table__.delete().where(SupplyItem.supply_id == supply.id)
         )
+        stocks: Dict[int, ProductStock] = {stock.product_id: stock for stock in stock_result.scalars().all()}
 
-        if data.supplier_name is not None:
-            supply.supplier_name = data.supplier_name
+        for item in supply.items:
+            stock = stocks.get(item.product_id)
+            if not stock or stock.quantity < item.quantity:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Недостаточно товара на складе для обновления (Товар ID: {item.product_id})"
+                )
+
+        for item in supply.items:
+            stock = stocks.get(item.product_id)
+            stock.quantity -= item.quantity
+
+        await db.execute(delete(SupplyItem).where(SupplyItem.supply_id == supply.id))
+
+        if data.supplier_id is not None:
+            supplier = await db.scalar(select(Supplier).where(Supplier.id == data.supplier_id))
+            if not supplier:
+                raise HTTPException(status_code=400, detail="Поставщик не найден")
+            supply.supplier_id = data.supplier_id
+
         if data.delivered_at is not None:
             supply.delivered_at = data.delivered_at
 
         if data.items:
+            new_product_ids = [item.product_id for item in data.items]
+            new_stock_result = await db.execute(
+                select(ProductStock).where(
+                    and_(
+                        ProductStock.product_id.in_(new_product_ids),
+                        ProductStock.warehouse_id == supply.warehouse_id
+                    )
+                )
+            )
+            new_stocks: Dict[int, ProductStock] = {stock.product_id: stock for stock in new_stock_result.scalars().all()}
+
             for item in data.items:
                 new_item = SupplyItem(
                     supply_id=supply.id,
@@ -161,21 +234,17 @@ async def update_supply(db: AsyncSession, supply_id: int, data: SupplyUpdate):
                 )
                 db.add(new_item)
 
-                stock_stmt = select(ProductStock).where(
-                    ProductStock.product_id == item.product_id,
-                    ProductStock.warehouse_id == supply.warehouse_id
-                )
-                stock_result = await db.execute(stock_stmt)
-                stock = stock_result.scalar_one_or_none()
-
+                stock = new_stocks.get(item.product_id)
                 if stock:
                     stock.quantity += item.quantity
                 else:
-                    db.add(ProductStock(
+                    new_stock = ProductStock(
                         product_id=item.product_id,
                         warehouse_id=supply.warehouse_id,
                         quantity=item.quantity
-                    ))
+                    )
+                    db.add(new_stock)
+                    new_stocks[item.product_id] = new_stock
 
         await db.commit()
         await db.refresh(supply)
@@ -198,29 +267,27 @@ async def delete_supply(db: AsyncSession, supply_id: int):
     if not supply:
         raise HTTPException(status_code=404, detail="Поставка не найдена")
 
-    for item in supply.items:
-        stock_query = await db.execute(
-            select(ProductStock).where(
-                ProductStock.product_id == item.product_id,
+    product_ids = [item.product_id for item in supply.items]
+    stock_result = await db.execute(
+        select(ProductStock).where(
+            and_(
+                ProductStock.product_id.in_(product_ids),
                 ProductStock.warehouse_id == supply.warehouse_id
             )
         )
-        stock = stock_query.scalar_one_or_none()
+    )
+    stocks: Dict[int, ProductStock] = {stock.product_id: stock for stock in stock_result.scalars().all()}
 
+    for item in supply.items:
+        stock = stocks.get(item.product_id)
         if not stock or stock.quantity < item.quantity:
             raise HTTPException(
                 status_code=400,
                 detail=f"Нельзя удалить поставку: недостаточно товара на складе (Товар ID: {item.product_id})"
             )
-        
+
     for item in supply.items:
-        stock_query = await db.execute(
-            select(ProductStock).where(
-                ProductStock.product_id == item.product_id,
-                ProductStock.warehouse_id == supply.warehouse_id
-            )
-        )
-        stock = stock_query.scalar_one()
+        stock = stocks.get(item.product_id)
         stock.quantity -= item.quantity
 
     for item in supply.items:

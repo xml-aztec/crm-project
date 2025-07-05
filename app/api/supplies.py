@@ -1,18 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Optional
+from typing import Optional
 from datetime import date
 
 from app.core.dependencies import get_current_user, get_db, is_admin
 from app.models.user import User
-from app.schemas.supply import SupplyCreate, SupplyUpdate, SupplyOut
+from app.schemas.supply import SupplyCreate, SupplyUpdate, SupplyOut, SupplyListResponse
 from app.repositories import supply as repo
 from app.utils.pdf import render_supply_pdf
 
 router = APIRouter(prefix="/supplies", tags=["Supplies"])
 
 @router.post(
-    "/", 
+    "/",
     response_model=SupplyOut,
     summary="Создать поставку",
     description="Создаёт новую поставку и обновляет остатки на складе. Доступно только администратору.",
@@ -26,32 +26,33 @@ async def create_supply(
     return await repo.create_supply(db, data, created_by=current_user.id)
 
 @router.get(
-    "/", 
-    response_model=List[SupplyOut],
-    summary="Список поставок",
-    description="Получить список всех поставок с фильтрами и пагинацией."
+    "/",
+    response_model=SupplyListResponse,
+    summary="Список поставок с пагинацией",
+    description="Получить список всех поставок с фильтрами, пагинацией и общим количеством записей."
 )
 async def list_supplies(
     warehouse_id: Optional[int] = Query(None, description="Фильтр по складу"),
-    supplier_name: Optional[str] = Query(None, description="Фильтр по имени поставщика"),
+    supplier_id: Optional[int] = Query(None, description="Фильтр по ID поставщика"),
     date_from: Optional[date] = Query(None, description="Начальная дата поставки"),
     date_to: Optional[date] = Query(None, description="Конечная дата поставки"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    return await repo.get_all_supplies(
+    supplies, total = await repo.get_all_supplies(
         db,
         warehouse_id=warehouse_id,
-        supplier_name=supplier_name,
+        supplier_id=supplier_id,
         date_from=date_from,
         date_to=date_to,
         limit=limit,
         offset=offset
     )
+    return SupplyListResponse(total=total, items=supplies)
 
 @router.get(
-    "/{supply_id}", 
+    "/{supply_id}",
     response_model=SupplyOut,
     summary="Получить поставку по ID",
     description="Получить подробную информацию о конкретной поставке и её позициях."
