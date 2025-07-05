@@ -4,6 +4,7 @@ from datetime import datetime
 
 from app.schemas.supplier import SupplierOut
 from app.schemas.warehouse import WarehouseOut
+from app.schemas.user import UserOutOrder 
 
 class SupplyItemCreate(BaseModel):
     product_id: int
@@ -60,6 +61,7 @@ class SupplyOut(BaseModel):
     warehouse: WarehouseOut
     delivered_at: datetime
     created_at: datetime
+    created_user: UserOutOrder
     items: List[SupplyItemOut]
 
     model_config = {

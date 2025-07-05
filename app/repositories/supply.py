@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select, and_, delete
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 from fastapi import HTTPException
 from datetime import datetime, timezone
 from typing import Optional, List, Dict
@@ -95,7 +95,8 @@ async def create_supply(db: AsyncSession, data: SupplyCreate, created_by: int):
             .options(
                 selectinload(Supply.items).joinedload(SupplyItem.product),
                 selectinload(Supply.warehouse),
-                selectinload(Supply.supplier)
+                selectinload(Supply.supplier),
+                selectinload(Supply.created_user) 
             )
         )
         supply = result.scalar_one_or_none()
@@ -133,7 +134,8 @@ async def get_all_supplies(
         .options(
             selectinload(Supply.items).joinedload(SupplyItem.product),
             selectinload(Supply.warehouse),
-            selectinload(Supply.supplier)
+            selectinload(Supply.supplier),
+            selectinload(Supply.created_user)  
         )
         .order_by(Supply.created_at.desc())
         .offset(offset)
@@ -160,7 +162,8 @@ async def get_supply_by_id(db: AsyncSession, supply_id: int) -> Optional[Supply]
         .options(
             selectinload(Supply.items).joinedload(SupplyItem.product),
             selectinload(Supply.warehouse),
-            selectinload(Supply.supplier)
+            selectinload(Supply.supplier),
+            selectinload(Supply.created_user) 
         )
     )
     supply = result.scalar_one_or_none()
