@@ -4,7 +4,6 @@ from pathlib import Path
 import qrcode
 from io import BytesIO
 import base64
-
 from app.schemas.supply import SupplyOut
 from app.core.config import settings
 
@@ -29,20 +28,35 @@ def generate_qr_base64(data: str) -> str:
 def render_supply_pdf(supply: SupplyOut) -> bytes:
     supply_data = supply.model_dump()
 
+    items_list = [
+        item.model_dump() if hasattr(item, "model_dump") else item
+        for item in getattr(supply, "items", [])
+    ]
+    supply_data["items"] = items_list
+
     total_cost = sum(
-        (item["cost_price"] or 0) * item["quantity"]
-        for item in supply_data["items"]
+        (item.get("cost_price") or 0) * item.get("quantity", 0)
+        for item in items_list
     )
 
     qr_url = f"{settings.BASE_URL}/supplies/{supply.id}"
     qr_code = generate_qr_base64(qr_url)
 
+    supplier = supply_data.get("supplier", {})
+    created_user = supply_data.get("created_user", {})
+
     template = env.get_template("supply_invoice.html")
     html_content = template.render(
         supply=supply_data,
+        items=items_list,
         total_cost=total_cost,
         qr_code=qr_code,
-        qr_url=qr_url
+        qr_url=qr_url,
+        supplier_name=supplier.get("name", ""),
+        supplier_contact_person=supplier.get("contact_person", ""),
+        supplier_contact_info=supplier.get("contact_info", ""),
+        supplier_address=supplier.get("address", ""),
+        created_user_full_name=created_user.get("full_name", "")
     )
 
     options = {

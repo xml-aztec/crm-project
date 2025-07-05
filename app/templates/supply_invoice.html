@@ -1,181 +1,191 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head>
+  <head>
     <meta charset="UTF-8" />
     <title>Накладная поставки №{{ supply.id }}</title>
     <style>
-        @page {
-            size: A4;
-            margin: 20mm;
-        }
-
-        body {
-            font-family: "DejaVu Sans", Arial, sans-serif;
-            font-size: 13px;
-            margin: 0;
-            padding: 40px;
-            position: relative;
-            color: #222;
-            background: #fff;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }
-
-        h1 {
-            font-weight: 700;
-            font-size: 24px;
-            margin-bottom: 25px;
-            text-align: center;
-            color: #004080;
-            page-break-after: avoid;
-        }
-
-        .info {
-            margin-bottom: 30px;
-            page-break-inside: avoid;
-            line-height: 1.5;
-        }
-        .info p {
-            margin: 5px 0;
-            font-size: 14px;
-        }
-        .info strong {
-            color: #004080;
-            min-width: 120px;
-            display: inline-block;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 0;
-            page-break-inside: auto;
-            font-size: 13px;
-        }
-
-        thead {
-            display: table-header-group;
-            background-color: #e0e7f1;
-            color: #004080;
-            font-weight: 600;
-        }
-
-        th, td {
-            border: 1px solid #aaa;
-            padding: 8px 12px;
-            vertical-align: middle;
-        }
-
-        tbody tr:nth-child(even) {
-            background-color: #f9fafd;
-        }
-
-        tbody tr:hover {
-            background-color: #dbe6f7;
-        }
-
-        th {
-            text-align: left;
-            white-space: nowrap;
-        }
-
-        td.right, th.right {
-            text-align: right;
-            white-space: nowrap;
-        }
-
-        .footer {
-            margin-top: 60px;
-            font-size: 13px;
-            color: #444;
-            page-break-inside: avoid;
-        }
-        .footer p {
-            margin: 10px 0;
-        }
-        .footer strong {
-            min-width: 120px;
-            display: inline-block;
-            color: #004080;
-        }
-
-        /* QR-код справа сверху */
-        .qr {
-            position: absolute;
-            top: 40px;
-            right: 40px;
-            width: 110px;
-            height: 110px;
-            box-shadow: 0 0 8px rgba(0,0,0,0.1);
-            padding: 8px;
-            background: white;
-            border-radius: 8px;
-        }
-        .qr img {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
-
-        /* Чтобы при разрыве страницы таблица не ломалась */
-        tbody tr {
-            page-break-inside: avoid;
-        }
-
+      @page {
+        size: A4;
+        margin: 20mm;
+      }
+      body {
+        font-family: "DejaVu Sans", Arial, sans-serif;
+        font-size: 13px;
+        margin: 0;
+        padding: 40px;
+        position: relative;
+        color: #222;
+        background: #fff;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      h1 {
+        font-weight: 700;
+        font-size: 24px;
+        margin-bottom: 25px;
+        text-align: center;
+        color: #004080;
+        page-break-after: avoid;
+      }
+      .info {
+        margin-bottom: 30px;
+        page-break-inside: avoid;
+        line-height: 1.5;
+      }
+      .info p {
+        margin: 5px 0;
+        font-size: 14px;
+      }
+      .info strong {
+        color: #004080;
+        min-width: 120px;
+        display: inline-block;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 0;
+        page-break-inside: auto;
+        font-size: 13px;
+      }
+      thead {
+        display: table-header-group;
+        background-color: #e0e7f1;
+        color: #004080;
+        font-weight: 600;
+      }
+      th,
+      td {
+        border: 1px solid #aaa;
+        padding: 8px 12px;
+        vertical-align: middle;
+      }
+      tbody tr:nth-child(even) {
+        background-color: #f9fafd;
+      }
+      tbody tr:hover {
+        background-color: #dbe6f7;
+      }
+      th {
+        text-align: left;
+        white-space: nowrap;
+      }
+      td.right,
+      th.right {
+        text-align: right;
+        white-space: nowrap;
+      }
+      .footer {
+        margin-top: 60px;
+        font-size: 13px;
+        color: #444;
+        page-break-inside: avoid;
+      }
+      .footer p {
+        margin: 10px 0;
+      }
+      .footer strong {
+        min-width: 120px;
+        display: inline-block;
+        color: #004080;
+      }
+      .qr {
+        position: absolute;
+        top: 40px;
+        right: 40px;
+        width: 110px;
+        height: 110px;
+        box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+        padding: 8px;
+        background: white;
+        border-radius: 8px;
+      }
+      .qr img {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      tbody tr {
+        page-break-inside: avoid;
+      }
     </style>
-</head>
-<body>
-
-    <div class="qr">
-        <img src="{{ qr_code }}" alt="QR-код" title="QR-код с ссылкой на поставку">
+  </head>
+  <body>
+    <div class="qr" role="img" aria-label="QR-код с ссылкой на поставку">
+      <img
+        src="{{ qr_code }}"
+        alt="QR-код"
+        title="QR-код с ссылкой на поставку"
+      />
     </div>
-
     <h1>Накладная поставки №{{ supply.id }}</h1>
-
-    <div class="info" role="contentinfo" aria-label="Информация о поставке">
-        <p><strong>Поставщик:</strong> {{ supply.supplier_name }}</p>
-        <p><strong>Склад:</strong> {{ supply.warehouse.name }}</p>
-        <p><strong>Дата поставки:</strong> {{ supply.delivered_at.strftime("%d.%m.%Y") }}</p>
+    <div class="info" role="contentinfo" aria-label="Информация о поставщике">
+      <p><strong>Поставщик:</strong> {{ supplier_name }}</p>
+      {% if supplier_contact_person %}
+      <p><strong>Контактное лицо:</strong> {{ supplier_contact_person }}</p>
+      {% endif %} {% if supplier_contact_info %}
+      <p><strong>Контакты:</strong> {{ supplier_contact_info }}</p>
+      {% endif %} {% if supplier_address %}
+      <p><strong>Адрес:</strong> {{ supplier_address }}</p>
+      {% endif %}
     </div>
-
+    <div
+      class="info"
+      role="contentinfo"
+      aria-label="Информация о складе и дате поставки"
+    >
+      <p><strong>Склад:</strong> {{ supply.warehouse.name }}</p>
+      <p>
+        <strong>Дата поставки:</strong> {{
+        supply.delivered_at.strftime("%d.%m.%Y") }}
+      </p>
+    </div>
+    <div class="info" role="contentinfo" aria-label="Ответственный за поставку">
+      <p><strong>Ответственный:</strong> {{ created_user_full_name }}</p>
+    </div>
     <table aria-describedby="table-caption">
-        <caption id="table-caption" style="text-align:left; font-weight:bold; margin-bottom:8px;">
-            Список товаров в поставке
-        </caption>
-        <thead>
-            <tr>
-                <th scope="col">№</th>
-                <th scope="col">Товар</th>
-                <th scope="col" class="right">Кол-во</th>
-                <th scope="col" class="right">Закуп. цена</th>
-                <th scope="col" class="right">Прод. цена</th>
-                <th scope="col" class="right">Сумма (закуп)</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in supply["items"] %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ item.product_name }}</td>
-                <td class="right">{{ item.quantity }}</td>
-                <td class="right">{{ "{:,.2f}".format(item.cost_price or 0) }}</td>
-                <td class="right">{{ "{:,.2f}".format(item.unit_price or 0) }}</td>
-                <td class="right">{{ "{:,.2f}".format((item.cost_price or 0) * item.quantity) }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-        <tfoot>
-            <tr>
-                <th colspan="5" class="right">Итого:</th>
-                <th class="right">{{ "{:,.2f}".format(total_cost) }}</th>
-            </tr>
-        </tfoot>
+      <caption
+        id="table-caption"
+        style="text-align: left; font-weight: bold; margin-bottom: 8px"
+      >
+        Список товаров в поставке
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">№</th>
+          <th scope="col">Товар</th>
+          <th scope="col" class="right">Кол-во</th>
+          <th scope="col" class="right">Закуп. цена</th>
+          <th scope="col" class="right">Прод. цена</th>
+          <th scope="col" class="right">Сумма (закуп)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ item.product_name }}</td>
+          <td class="right">{{ item.quantity }}</td>
+          <td class="right">{{ "{:,.2f}".format(item.cost_price or 0) }}</td>
+          <td class="right">{{ "{:,.2f}".format(item.unit_price or 0) }}</td>
+          <td class="right">
+            {{ "{:,.2f}".format((item.cost_price or 0) * item.quantity) }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th colspan="5" class="right">Итого:</th>
+          <th class="right">{{ "{:,.2f}".format(total_cost) }}</th>
+        </tr>
+      </tfoot>
     </table>
-
     <div class="footer" role="contentinfo">
-        <p><strong>Ответственный:</strong> _______________________________________</p>
-        <p><strong>Дата печати:</strong> {{ supply.created_at.strftime("%d.%m.%Y %H:%M") }}</p>
+      <p>
+        <strong>Дата печати:</strong> {{ supply.created_at.strftime("%d.%m.%Y
+        %H:%M") }}
+      </p>
     </div>
-
-</body>
+  </body>
 </html>
