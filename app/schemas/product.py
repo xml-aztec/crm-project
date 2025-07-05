@@ -17,20 +17,14 @@ class ProductBase(BaseModel):
     @field_validator("barcode")
     @classmethod
     def validate_barcode(cls, v):
-        if v is None:
-            return v
-
+        if v is None or v == "":
+            return None  
         if not re.fullmatch(r"\d{13}", v):
             raise ValueError("Штрихкод должен содержать 13 цифр (EAN-13)")
-
         digits = list(map(int, v))
-        checksum = (10 - (
-            sum(digits[i] if i % 2 == 0 else digits[i] * 3 for i in range(12)) % 10
-        )) % 10
-
+        checksum = (10 - sum(digits[i] if i % 2 == 0 else digits[i] * 3 for i in range(12)) % 10) % 10
         if digits[12] != checksum:
             raise ValueError("Недействительный штрихкод: неверная контрольная сумма")
-        
         return v
 
 class ProductCreate(ProductBase):
@@ -58,20 +52,14 @@ class ProductUpdate(BaseModel):
     @field_validator("barcode")
     @classmethod
     def validate_barcode(cls, v):
-        if v is None:
-            return v
-
+        if v is None or v == "":
+            return None
         if not re.fullmatch(r"\d{13}", v):
             raise ValueError("Штрихкод должен содержать 13 цифр (EAN-13)")
-
         digits = list(map(int, v))
-        checksum = (10 - (
-            sum(digits[i] if i % 2 == 0 else digits[i] * 3 for i in range(12)) % 10
-        )) % 10
-
+        checksum = (10 - sum(digits[i] if i % 2 == 0 else digits[i] * 3 for i in range(12)) % 10) % 10
         if digits[12] != checksum:
             raise ValueError("Недействительный штрихкод: неверная контрольная сумма")
-        
         return v
 
     class Config:

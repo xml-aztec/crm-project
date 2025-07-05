@@ -61,7 +61,7 @@ class SupplyOut(BaseModel):
     warehouse: WarehouseOut
     delivered_at: datetime
     created_at: datetime
-    created_user: UserOutOrder
+    created_user: Optional[UserOutOrder]
     items: List[SupplyItemOut]
 
     model_config = {

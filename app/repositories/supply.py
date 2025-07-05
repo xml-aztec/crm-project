@@ -3,7 +3,7 @@ from sqlalchemy import func, select, and_, delete
 from sqlalchemy.orm import selectinload, joinedload
 from fastapi import HTTPException
 from datetime import datetime, timezone
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 
 from app.models.supply import Supply
 from app.models.supply_item import SupplyItem
@@ -52,7 +52,7 @@ async def create_supply(db: AsyncSession, data: SupplyCreate, created_by: int):
             created_by=created_by
         )
         db.add(supply)
-        await db.flush() 
+        await db.flush()
 
         product_ids = [item.product_id for item in data.items]
         stocks_result = await db.execute(
@@ -96,7 +96,7 @@ async def create_supply(db: AsyncSession, data: SupplyCreate, created_by: int):
                 selectinload(Supply.items).joinedload(SupplyItem.product),
                 selectinload(Supply.warehouse),
                 selectinload(Supply.supplier),
-                selectinload(Supply.created_user) 
+                selectinload(Supply.created_user),
             )
         )
         supply = result.scalar_one_or_none()
@@ -118,7 +118,7 @@ async def get_all_supplies(
     date_to: Optional[datetime] = None,
     limit: int = 50,
     offset: int = 0
-) -> List[Supply]:
+) -> Tuple[List[Supply], int]:
     filters = []
     if warehouse_id is not None:
         filters.append(Supply.warehouse_id == warehouse_id)
@@ -129,13 +129,21 @@ async def get_all_supplies(
     if date_to is not None:
         filters.append(Supply.delivered_at <= date_to)
 
+    total = await count_supplies(
+        db,
+        warehouse_id=warehouse_id,
+        supplier_id=supplier_id,
+        date_from=date_from,
+        date_to=date_to
+    )
+
     query = (
         select(Supply)
         .options(
             selectinload(Supply.items).joinedload(SupplyItem.product),
             selectinload(Supply.warehouse),
             selectinload(Supply.supplier),
-            selectinload(Supply.created_user)  
+            selectinload(Supply.created_user),
         )
         .order_by(Supply.created_at.desc())
         .offset(offset)
@@ -152,7 +160,7 @@ async def get_all_supplies(
         for item in supply.items:
             item.product_name = item.product.name if item.product else ""
 
-    return supplies
+    return supplies, total
 
 
 async def get_supply_by_id(db: AsyncSession, supply_id: int) -> Optional[Supply]:
@@ -163,7 +171,7 @@ async def get_supply_by_id(db: AsyncSession, supply_id: int) -> Optional[Supply]
             selectinload(Supply.items).joinedload(SupplyItem.product),
             selectinload(Supply.warehouse),
             selectinload(Supply.supplier),
-            selectinload(Supply.created_user) 
+            selectinload(Supply.created_user),
         )
     )
     supply = result.scalar_one_or_none()
