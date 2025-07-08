@@ -8,9 +8,10 @@ class UserBase(BaseModel):
     phone: Optional[str] = None
     role_id: int
     position_id: Optional[int] = None
+    salary_base: Optional[int] = None
 
 class UserCreate(UserBase):
-    password: str 
+    password: str
 
 class UserRead(UserBase):
     id: int
@@ -25,6 +26,7 @@ class UserUpdate(BaseModel):
     position_id: Optional[int] = None
     role_id: Optional[int] = None
     is_active: Optional[bool] = None
+    salary_base: Optional[int] = None
 
 class UserOut(BaseModel):
     id: int
@@ -35,6 +37,7 @@ class UserOut(BaseModel):
     role_id: int
     position_id: Optional[int] = None
     is_active: Optional[bool] = None
+    salary_base: Optional[int] = None
 
 class UserUpdateAdmin(BaseModel):
     full_name: Optional[str] = None
@@ -43,6 +46,7 @@ class UserUpdateAdmin(BaseModel):
     position_id: Optional[int] = None
     role_id: Optional[int] = None
     is_active: Optional[bool] = None
+    salary_base: Optional[int] = None
 
 class UserUpdateSelf(BaseModel):
     full_name: Optional[str] = None
@@ -54,5 +58,5 @@ class UserOutOrder(BaseModel):
     full_name: str
 
     model_config = {
-    "from_attributes": True
+        "from_attributes": True
     }

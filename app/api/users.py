@@ -108,7 +108,7 @@ async def get_user_statistics(
     "/{user_id}/admin",
     response_model=UserRead,
     summary="Обновление пользователя (админ)",
-    description="Позволяет администратору изменить данные другого пользователя: имя, email, телефон, роль, должность, активность."
+    description="Позволяет администратору изменить данные другого пользователя: имя, email, телефон, роль, должность, активность, ставка зарплаты."
 )
 async def update_user_admin(
     user_id: int,

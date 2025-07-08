@@ -7,7 +7,7 @@ from app.models.order import Order
 from app.models.product import Product
 from app.models.order_item import OrderItem
 from app.models.user import User
-from app.schemas.user import UserCreate
+from app.schemas.user import UserCreate, UserUpdateAdmin
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -125,16 +125,15 @@ async def create_user(db: AsyncSession, user_data: UserCreate):
         full_name=user_data.full_name,
         phone=user_data.phone,
         role_id=user_data.role_id,
-        position_id=user_data.position_id
+        position_id=user_data.position_id,
+        salary_base=user_data.salary_base  
     )
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
     return db_user
 
-async def update_user_admin(
-    db: AsyncSession, user_id: int, data: dict
-) -> Optional[User]:
+async def update_user_admin(db: AsyncSession, user_id: int, data: UserUpdateAdmin) -> Optional[User]:
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
