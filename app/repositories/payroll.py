@@ -1,5 +1,5 @@
 from typing import Optional, List
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
 from fastapi import HTTPException
@@ -45,8 +45,8 @@ async def generate_payrolls_for_month(db: AsyncSession, month: str, creator_id: 
 
     for user in users:
         base = user.salary_base
-        bonus = 0  # Заглушка, можно связать с KPI
-        penalty = 0  # Заглушка, можно потом добавить
+        bonus = 0
+        penalty = 0
         total = base + bonus - penalty
 
         payroll = Payroll(
@@ -107,3 +107,32 @@ async def pay_salary(db: AsyncSession, payroll_id: int):
     await db.commit()
 
     return {"status": "ok", "paid": payroll.total_paid}
+
+
+async def update_payroll_by_id(db: AsyncSession, payroll_id: int, data: dict) -> Optional[Payroll]:
+    payroll = await db.get(Payroll, payroll_id)
+    if not payroll:
+        return None
+
+    for key, value in data.items():
+        setattr(payroll, key, value)
+
+    base = data.get("base_salary", payroll.base_salary)
+    bonus = data.get("bonus_amount", payroll.bonus_amount)
+    penalty = data.get("penalty_amount", payroll.penalty_amount)
+    payroll.total_paid = base + bonus - penalty
+
+    await db.commit()
+    await db.refresh(payroll)
+    return payroll
+
+
+async def delete_payroll_by_id(db: AsyncSession, payroll_id: int) -> None:
+    payroll = await db.get(Payroll, payroll_id)
+    if not payroll:
+        raise HTTPException(status_code=404, detail="Зарплата не найдена")
+    if payroll.paid_at:
+        raise HTTPException(status_code=400, detail="Нельзя удалить уже выплаченную зарплату")
+
+    await db.delete(payroll)
+    await db.commit()

@@ -1,14 +1,16 @@
-from fastapi import APIRouter, Depends, Query, Path
+from fastapi import APIRouter, Depends, Query, Path, HTTPException, status
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db, is_admin
 from app.models.user import User
-from app.schemas.payroll import PayrollOut
+from app.schemas.payroll import PayrollOut, PayrollUpdate
 from app.repositories.payroll import (
     generate_payrolls_for_month,
     get_payrolls,
     pay_salary,
+    update_payroll_by_id,
+    delete_payroll_by_id
 )
 
 router = APIRouter(prefix="/payrolls", tags=["Payrolls"])
@@ -83,3 +85,39 @@ async def pay_salary_endpoint(
     current_user: User = Depends(is_admin),
 ):
     return await pay_salary(db, payroll_id)
+
+
+@router.patch(
+    "/{payroll_id}",
+    response_model=PayrollOut,
+    summary="Редактирование записи о зарплате",
+    description="""
+    Позволяет изменить базовую ставку, бонус, штраф или комментарий. При изменении автоматически пересчитывается итоговая сумма (`total_paid`).
+    
+    Требуется авторизация администратора.
+    """
+)
+async def update_payroll(
+    payroll_id: int,
+    data: PayrollUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(is_admin),
+):
+    updated = await update_payroll_by_id(db, payroll_id, data.model_dump(exclude_unset=True))
+    if not updated:
+        raise HTTPException(status_code=404, detail="Запись о зарплате не найдена")
+    return updated
+
+
+@router.delete(
+    "/{payroll_id}",
+    summary="Удалить запись о зарплате",
+    description="Удаляет запись о зарплате. Нельзя удалить уже выплаченную ЗП. Только для админов."
+)
+async def delete_payroll(
+    payroll_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_admin),
+):
+    await delete_payroll_by_id(db, payroll_id)
+    return {"detail": f"Запись с ID={payroll_id} удалена"}

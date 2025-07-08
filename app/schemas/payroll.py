@@ -15,3 +15,10 @@ class PayrollOut(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class PayrollUpdate(BaseModel):
+    base_salary: Optional[int] = None
+    bonus_amount: Optional[int] = None
+    penalty_amount: Optional[int] = None
+    comment: Optional[str] = None
