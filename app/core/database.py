@@ -19,7 +19,7 @@ async def init_db():
         customer_type, customer, order_status, order, order_item,
         user, role, position, monthly_target, payment_method, warehouse, 
         product_stock, branch, supply, supply_item, supplier, payroll, 
-        cashflow, cashflow_category, cashflow_type, kpi_rule
+        cashflow, cashflow_category, cashflow_type, kpi_rule, budget
     )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

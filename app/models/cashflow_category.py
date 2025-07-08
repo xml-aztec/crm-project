@@ -11,3 +11,4 @@ class CashFlowCategory(Base):
     type_id = Column(Integer, ForeignKey("cash_flow_types.id", ondelete="CASCADE"))
 
     type = relationship("CashFlowType")
+    budgets = relationship("Budget", back_populates="category")
