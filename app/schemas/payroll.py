@@ -18,7 +18,9 @@ class PayrollOut(BaseModel):
 
 
 class PayrollUpdate(BaseModel):
-    base_salary: Optional[int] = None
-    bonus_amount: Optional[int] = None
-    penalty_amount: Optional[int] = None
-    comment: Optional[str] = None
+    base_salary: Optional[int]
+    bonus_amount: Optional[int]
+    penalty_amount: Optional[int]
+    kpi_percent: Optional[int]
+    kpi_rule_id: Optional[int]
+    comment: Optional[str]

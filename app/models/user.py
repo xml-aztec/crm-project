@@ -3,6 +3,8 @@ from sqlalchemy.orm import relationship
 from app.core.database import Base
 from datetime import datetime, timezone
 
+from app.models.payroll import Payroll
+
 class User(Base):
     __tablename__ = "users"
 
@@ -22,7 +24,7 @@ class User(Base):
 
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    payrolls = relationship("Payroll", back_populates="user", cascade="all, delete-orphan", foreign_keys="[Payroll.user_id]")
+    payrolls = relationship("Payroll", back_populates="user", cascade="all, delete-orphan", foreign_keys=[Payroll.user_id])
     role = relationship("Role", back_populates="users")
     position = relationship("Position", back_populates="users")
     monthly_targets = relationship("MonthlyTarget", back_populates="manager", cascade="all, delete-orphan")

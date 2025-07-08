@@ -9,7 +9,7 @@ async def list_rules(db: AsyncSession):
     return result.scalars().all()
 
 async def create_rule(db: AsyncSession, data: KpiRuleCreate):
-    rule = KpiRule(**data.dict())
+    rule = KpiRule(**data.model_dump())
     db.add(rule)
     await db.commit()
     await db.refresh(rule)

@@ -1,5 +1,5 @@
 from typing import Optional, List
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
 from fastapi import HTTPException
@@ -9,6 +9,10 @@ from app.models.payroll import Payroll
 from app.models.cashflow import CashFlow
 from app.models.cashflow_type import CashFlowType
 from app.models.cashflow_category import CashFlowCategory
+from app.models.kpi_rule import KpiRule
+from app.models.monthly_target import MonthlyTarget
+from app.models.order import Order
+from app.repositories.monthly_target import get_manager_kpi
 
 
 async def get_payrolls(
@@ -35,7 +39,40 @@ async def get_payrolls(
     return result.scalars().all()
 
 
+async def get_actual_sales(db: AsyncSession, manager_id: int, month: str) -> float:
+    year, month_num = map(int, month.split("-"))
+    start = datetime(year, month_num, 1, tzinfo=timezone.utc)
+    if month_num == 12:
+        end = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
+    else:
+        end = datetime(year, month_num + 1, 1, tzinfo=timezone.utc)
+
+    result = await db.execute(
+        select(func.sum(Order.finalized_total_price))
+        .where(
+            and_(
+                Order.user_id == manager_id,
+                Order.confirmed == True,
+                Order.confirmed_at >= start,
+                Order.confirmed_at < end
+            )
+        )
+    )
+    return float(result.scalar() or 0.0)
+
+
+async def get_matching_kpi_rule(db: AsyncSession, percent: float) -> Optional[KpiRule]:
+    result = await db.execute(
+        select(KpiRule).where(KpiRule.min_percent <= percent).order_by(KpiRule.min_percent.desc())
+    )
+    return result.scalars().first()
+
+
 async def generate_payrolls_for_month(db: AsyncSession, month: str, creator_id: int) -> List[Payroll]:
+    existing = await db.execute(select(Payroll).where(Payroll.month == month))
+    if existing.scalars().first():
+        raise HTTPException(status_code=400, detail=f"Зарплаты за {month} уже были сгенерированы")
+
     result = await db.execute(
         select(User).where(User.is_active == True, User.salary_base > 0)
     )
@@ -47,6 +84,23 @@ async def generate_payrolls_for_month(db: AsyncSession, month: str, creator_id: 
         base = user.salary_base
         bonus = 0
         penalty = 0
+        kpi_percent = None
+        kpi_rule_id = None
+
+        target_obj = await get_manager_kpi(db, user.id, month)
+        if target_obj:
+            target = target_obj.target_amount
+            actual = await get_actual_sales(db, user.id, month)
+            if target > 0:
+                kpi_percent = round((actual / target) * 100, 2)
+                rule = await get_matching_kpi_rule(db, kpi_percent)
+                if rule:
+                    kpi_rule_id = rule.id
+                    if rule.bonus > 0:
+                        bonus = int(base * rule.bonus / 100)
+                    elif rule.penalty > 0:
+                        penalty = int(base * rule.penalty / 100)
+
         total = base + bonus - penalty
 
         payroll = Payroll(
@@ -57,12 +111,58 @@ async def generate_payrolls_for_month(db: AsyncSession, month: str, creator_id: 
             penalty_amount=penalty,
             total_paid=total,
             created_by=creator_id,
+            kpi_percent=kpi_percent,
+            kpi_rule_id=kpi_rule_id
         )
         payrolls.append(payroll)
 
     db.add_all(payrolls)
     await db.commit()
     return payrolls
+
+
+async def recalculate_payroll(db: AsyncSession, payroll_id: int) -> Payroll:
+    payroll = await db.get(Payroll, payroll_id)
+    if not payroll:
+        raise HTTPException(status_code=404, detail="Запись о зарплате не найдена")
+
+    if payroll.paid_at:
+        raise HTTPException(status_code=400, detail="Нельзя пересчитать уже выплаченную зарплату")
+
+    user = await db.get(User, payroll.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Сотрудник не найден")
+
+    target_obj = await get_manager_kpi(db, user.id, payroll.month)
+    base = user.salary_base
+    bonus = 0
+    penalty = 0
+    kpi_percent = None
+    kpi_rule_id = None
+
+    if target_obj:
+        target = target_obj.target_amount
+        actual = await get_actual_sales(db, user.id, payroll.month)
+        if target > 0:
+            kpi_percent = round((actual / target) * 100, 2)
+            rule = await get_matching_kpi_rule(db, kpi_percent)
+            if rule:
+                kpi_rule_id = rule.id
+                if rule.bonus > 0:
+                    bonus = int(base * rule.bonus / 100)
+                elif rule.penalty > 0:
+                    penalty = int(base * rule.penalty / 100)
+
+    payroll.base_salary = base
+    payroll.bonus_amount = bonus
+    payroll.penalty_amount = penalty
+    payroll.kpi_percent = kpi_percent
+    payroll.kpi_rule_id = kpi_rule_id
+    payroll.total_paid = base + bonus - penalty
+
+    await db.commit()
+    await db.refresh(payroll)
+    return payroll
 
 
 async def get_cashflow_type_id(db: AsyncSession, name: str) -> int:

@@ -2,7 +2,6 @@ from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
-
 class Payroll(Base):
     __tablename__ = "payrolls"
 
@@ -17,4 +16,8 @@ class Payroll(Base):
     comment = Column(String, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"))
 
+    kpi_percent = Column(Integer, nullable=True)
+    kpi_rule_id = Column(Integer, ForeignKey("kpi_rules.id", ondelete="SET NULL"), nullable=True)
+
     user = relationship("User", back_populates="payrolls", foreign_keys=[user_id])
+    kpi_rule = relationship("KpiRule", back_populates="payrolls", foreign_keys=[kpi_rule_id])

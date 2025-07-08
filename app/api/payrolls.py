@@ -9,6 +9,7 @@ from app.repositories.payroll import (
     generate_payrolls_for_month,
     get_payrolls,
     pay_salary,
+    recalculate_payroll,
     update_payroll_by_id,
     delete_payroll_by_id
 )
@@ -85,6 +86,25 @@ async def pay_salary_endpoint(
     current_user: User = Depends(is_admin),
 ):
     return await pay_salary(db, payroll_id)
+
+
+
+@router.post(
+    "/{payroll_id}/recalculate",
+    response_model=PayrollOut,
+    summary="Пересчитать зарплату по KPI",
+    description="""
+    Пересчитывает зарплату с учётом актуального выполнения плана продаж (KPI) и применяет правило бонуса/штрафа.
+
+    Нельзя пересчитать уже выплаченную зарплату.
+    """
+)
+async def recalculate_payroll_endpoint(
+    payroll_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(is_admin),
+):
+    return await recalculate_payroll(db, payroll_id)
 
 
 @router.patch(
