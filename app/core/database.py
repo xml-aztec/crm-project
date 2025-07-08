@@ -20,7 +20,7 @@ async def init_db():
         user, role, position, monthly_target, payment_method, warehouse, 
         product_stock, branch, supply, supply_item, supplier, payroll, 
         cashflow, cashflow_category, cashflow_type, kpi_rule, budget,
-        cash_gap_forecast
+        cash_gap_forecast, stock_log
     )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

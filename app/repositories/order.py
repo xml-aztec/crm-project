@@ -15,6 +15,8 @@ from app.models.user import User
 from app.models.warehouse import Warehouse
 from app.utils.orders import recalculate_order_total
 from app.utils.stock import check_stock_before_order_creation, deduct_stock_for_order, restore_stock_for_order
+from app.schemas.stock_log import StockLogCreate
+from app.repositories.stock_log import create_stock_log
 
 
 async def check_stock_before_confirmation(db: AsyncSession, order: Order):
@@ -230,9 +232,25 @@ async def confirm_order(
 
     if order.confirmed and not confirmed:
         await restore_stock_for_order(db, order.id)
+        for item in order.items:
+            await create_stock_log(db, StockLogCreate(
+                product_id=item.product_id,
+                warehouse_id=order.warehouse_id,
+                quantity=item.quantity,
+                type="return",
+                note=f"Отмена подтверждения заказа #{order.id}"
+            ))
 
     if confirmed and not order.confirmed:
         await deduct_stock_for_order(db, order)
+        for item in order.items:
+            await create_stock_log(db, StockLogCreate(
+                product_id=item.product_id,
+                warehouse_id=order.warehouse_id,
+                quantity=item.quantity,
+                type="outgoing",
+                note=f"Подтверждение заказа #{order.id}"
+            ))
 
     order.confirmed = confirmed
     order.confirmed_at = datetime.now(timezone.utc) if confirmed else None
@@ -309,6 +327,14 @@ async def delete_order(db: AsyncSession, order_id: int) -> None:
 
     if order.confirmed:
         await restore_stock_for_order(db, order)
+        for item in order.items:
+            await create_stock_log(db, StockLogCreate(
+                product_id=item.product_id,
+                warehouse_id=order.warehouse_id,
+                quantity=item.quantity,
+                type="return",
+                note=f"Удаление подтверждённого заказа #{order.id}"
+            ))
 
     await db.delete(order)
     await db.commit()
