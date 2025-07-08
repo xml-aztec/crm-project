@@ -23,6 +23,7 @@ from app.api import cashflow_meta
 from app.api import analytics
 from app.api import cashflows
 from app.api import budgets
+from app.api import cash_gaps
 from app.api import monthly_targets
 from app.api import payrolls
 from app.api import order_items
@@ -74,6 +75,7 @@ app.include_router(roles.router)
 app.include_router(positions.router)
 app.include_router(cashflow_meta.router)
 app.include_router(budgets.router)
+app.include_router(cash_gaps.router)
 app.include_router(analytics.router)
 app.include_router(cashflows.router)
 app.include_router(monthly_targets.router)
