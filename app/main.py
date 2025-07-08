@@ -21,6 +21,7 @@ from app.api import roles
 from app.api import positions
 from app.api import analytics
 from app.api import monthly_targets
+from app.api import payrolls
 from app.api import order_items
 from app.api import customers  
 from app.api import payment_methods
@@ -70,4 +71,5 @@ app.include_router(roles.router)
 app.include_router(positions.router)
 app.include_router(analytics.router)
 app.include_router(monthly_targets.router)
+app.include_router(payrolls.router)
 app.include_router(customers.router)
