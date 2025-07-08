@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 from datetime import date
 from decimal import Decimal
@@ -57,3 +57,23 @@ class MonthlySummaryResponse(BaseModel):
     average_order_value: float
     unique_customers: int
     status_counts: List[StatusCount]
+
+class ExtendedKPIItem(BaseModel):
+    manager_id: int
+    manager_name: str
+    target: float
+    revenue: float
+    progress_percent: float
+    orders_count: int
+    average_check: float
+
+class ExtendedKPIAnalytics(BaseModel):
+    avg_kpi: float
+    top_performer: Optional[ExtendedKPIItem]
+    worst_performer: Optional[ExtendedKPIItem]
+    managers: List[ExtendedKPIItem]
+
+class TopSuppliedProduct(BaseModel):
+    product_id: int
+    product_name: str
+    total_supplied: int

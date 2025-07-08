@@ -13,8 +13,10 @@ from app.schemas.analytics import (
     OrderStatusCount,
     OrderSummary,
     LeaderboardEntry, 
+    ExtendedKPIAnalytics,
+    TopSuppliedProduct
 )
-from app.core.dependencies import get_current_user, get_db
+from app.core.dependencies import get_current_user, get_db, is_admin
 from app.repositories import analytics as repo
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
@@ -86,3 +88,34 @@ async def get_leaderboard(
     _: User = Depends(get_current_user),
 ):
     return await repo.get_leaderboard_data(db)
+
+@router.get(
+    "/kpi/extended",
+    response_model=ExtendedKPIAnalytics,
+    summary="Расширенная KPI-аналитика по менеджерам",
+    description="""
+    Возвращает расширенную аналитику по KPI за текущий месяц:
+    - Доход, цель, прогресс
+    - Количество заказов, средний чек
+    - Средний KPI по всем менеджерам
+    - Топ и худший менеджеры по KPI
+    """
+)
+async def kpi_extended_analytics(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_admin),
+):
+    return await repo.get_kpi_extended_analytics(db)
+
+
+@router.get(
+    "/supply/top-products",
+    response_model=List[TopSuppliedProduct],
+    summary="Топ поставляемых товаров",
+    description="Возвращает топ товаров по объёму поставок (по умолчанию — топ-10)."
+)
+async def get_top_supplied_products(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_admin),
+):
+    return await repo.get_top_supplied_products(db)

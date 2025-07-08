@@ -21,6 +21,7 @@ from app.api import roles
 from app.api import positions
 from app.api import cashflow_meta
 from app.api import analytics
+from app.api import supply_analytics
 from app.api import stock_logs
 from app.api import cashflows
 from app.api import budgets
@@ -78,6 +79,7 @@ app.include_router(cashflow_meta.router)
 app.include_router(budgets.router)
 app.include_router(cash_gaps.router)
 app.include_router(analytics.router)
+app.include_router(supply_analytics.router)
 app.include_router(stock_logs.router)
 app.include_router(cashflows.router)
 app.include_router(monthly_targets.router)

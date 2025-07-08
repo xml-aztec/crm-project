@@ -7,6 +7,7 @@ from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.monthly_target import MonthlyTarget
 from app.models.product import Product
+from app.models.supply_item import SupplyItem
 from app.models.user import User
 from app.models.order_status import OrderStatus
 
@@ -262,4 +263,81 @@ async def get_leaderboard_data(db: AsyncSession):
             "progress_percent": round((row.revenue / row.target * 100) if row.target else 0, 2)
         }
         for row in rows
+    ]
+
+
+async def get_kpi_extended_analytics(db: AsyncSession):
+    today = date.today()
+    year, month = today.year, today.month
+    month_str = f"{year}-{month:02d}-01"
+
+    query = (
+        select(
+            User.id.label("manager_id"),
+            User.full_name,
+            func.coalesce(func.sum(OrderItem.final_price * OrderItem.quantity), 0).label("revenue"),
+            func.count(Order.id).label("orders_count"),
+            func.coalesce(func.avg(Order.total_price), 0).label("average_check"),
+            MonthlyTarget.target_amount.label("target")
+        )
+        .join(Order, User.id == Order.user_id)
+        .join(OrderItem, OrderItem.order_id == Order.id)
+        .join(MonthlyTarget, MonthlyTarget.manager_id == User.id)
+        .where(
+            extract("month", Order.created_at) == month,
+            extract("year", Order.created_at) == year,
+            MonthlyTarget.month == month_str
+        )
+        .group_by(User.id, User.full_name, MonthlyTarget.target_amount)
+    )
+
+    result = await db.execute(query)
+    rows = result.fetchall()
+
+    data = []
+    for row in rows:
+        progress = round((row.revenue / row.target * 100) if row.target else 0, 2)
+        data.append({
+            "manager_id": row.manager_id,
+            "manager_name": row.full_name,
+            "target": float(row.target),
+            "revenue": float(row.revenue),
+            "progress_percent": progress,
+            "orders_count": row.orders_count,
+            "average_check": float(row.average_check)
+        })
+
+    avg_kpi = round(sum([item["progress_percent"] for item in data]) / len(data), 2) if data else 0
+
+    top = max(data, key=lambda x: x["progress_percent"], default=None)
+    worst = min(data, key=lambda x: x["progress_percent"], default=None)
+
+    return {
+        "avg_kpi": avg_kpi,
+        "top_performer": top,
+        "worst_performer": worst,
+        "managers": data
+    }
+
+
+async def get_top_supplied_products(db: AsyncSession, limit: int = 10):
+    query = (
+        select(
+            SupplyItem.product_id,
+            Product.name,
+            func.sum(SupplyItem.quantity).label("total_supplied")
+        )
+        .join(Product, Product.id == SupplyItem.product_id)
+        .group_by(SupplyItem.product_id, Product.name)
+        .order_by(func.sum(SupplyItem.quantity).desc())
+        .limit(limit)
+    )
+    result = await db.execute(query)
+    return [
+        {
+            "product_id": row.product_id,
+            "product_name": row.name,
+            "total_supplied": row.total_supplied
+        }
+        for row in result.fetchall()
     ]
