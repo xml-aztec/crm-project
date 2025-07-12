@@ -15,7 +15,8 @@ from app.schemas.analytics import (
     OrderSummary,
     LeaderboardEntry, 
     ExtendedKPIAnalytics,
-    TopSuppliedProduct
+    TopSuppliedProduct,
+    XYZAnalysisResult
 )
 from app.core.dependencies import get_current_user, get_db, is_admin
 from app.repositories import analytics as repo
@@ -140,3 +141,18 @@ async def abc_analysis(
     _ = Depends(is_admin)
 ):
     return await repo.get_abc_analysis(db)
+
+
+@router.get("/xyz-analysis", response_model=List[XYZAnalysisResult], summary="XYZ-анализ продуктов")
+async def xyz_analysis(
+    db: AsyncSession = Depends(get_db),
+    _ = Depends(is_admin)
+):
+    """
+    Возвращает XYZ-анализ продуктов за **текущий месяц**:
+    - среднее количество продаж в день
+    - стандартное отклонение
+    - коэффициент вариации
+    - метка X/Y/Z по стабильности продаж
+    """
+    return await repo.get_xyz_analysis(db)

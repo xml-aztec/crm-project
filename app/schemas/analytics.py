@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Literal, Optional
 from pydantic import BaseModel
 from datetime import date
 from decimal import Decimal
@@ -90,3 +90,20 @@ class ABCAnalysisEntry(BaseModel):
     total_quantity: int
     total_revenue: float
     group: ABCGroup
+
+
+class XYZAnalysisEntry(BaseModel):
+    product_id: int
+    product_name: str
+    mean_quantity: float
+    stddev_quantity: float
+    variation_coefficient: float
+    label: Literal["X", "Y", "Z"]
+
+class XYZAnalysisResult(BaseModel):
+    product_id: int
+    product_name: str
+    mean_quantity: float
+    stddev_quantity: float
+    variation_coefficient: float
+    label: Literal["X", "Y", "Z"]

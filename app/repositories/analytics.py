@@ -2,6 +2,8 @@ from decimal import Decimal
 from sqlalchemy import and_, select, func, cast, Date, extract
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date, datetime, timezone
+from collections import defaultdict
+from statistics import mean, pstdev
 
 from app.models.order import Order
 from app.models.order_item import OrderItem
@@ -392,3 +394,60 @@ async def get_abc_analysis(db: AsyncSession):
         })
 
     return data
+
+
+async def get_xyz_analysis(db):
+    today = date.today()
+    year = today.year
+    month = today.month
+
+    query = (
+        select(
+            Product.id.label("product_id"),
+            Product.name.label("product_name"),
+            OrderItem.quantity,
+            func.date(Order.created_at).label("order_date")
+        )
+        .join(Order, Order.id == OrderItem.order_id)
+        .join(Product, Product.id == OrderItem.product_id)
+        .where(
+            extract("year", Order.created_at) == year,
+            extract("month", Order.created_at) == month,
+            Order.confirmed == True
+        )
+    )
+    result = await db.execute(query)
+
+    raw_data = defaultdict(lambda: defaultdict(int))
+    product_names = {}
+
+    for row in result.fetchall():
+        product_id = row.product_id
+        product_names[product_id] = row.product_name
+        order_date = row.order_date
+        raw_data[product_id][order_date] += row.quantity
+
+    response = []
+    for product_id, date_quantities in raw_data.items():
+        daily_values = list(date_quantities.values())
+        avg = mean(daily_values)
+        std = pstdev(daily_values) if len(daily_values) > 1 else 0.0
+        cv = std / avg if avg else 0.0
+
+        if cv <= 0.5:
+            label = "X"
+        elif cv <= 1.0:
+            label = "Y"
+        else:
+            label = "Z"
+
+        response.append({
+            "product_id": product_id,
+            "product_name": product_names[product_id],
+            "mean_quantity": round(avg, 2),
+            "stddev_quantity": round(std, 2),
+            "variation_coefficient": round(cv, 2),
+            "label": label
+        })
+
+    return response
