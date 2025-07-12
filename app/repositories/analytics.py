@@ -10,6 +10,7 @@ from app.models.product import Product
 from app.models.supply_item import SupplyItem
 from app.models.user import User
 from app.models.order_status import OrderStatus
+from app.schemas.analytics import ABCAnalysisEntry, ABCGroup
 
 
 async def get_daily_stats(db: AsyncSession):
@@ -341,3 +342,53 @@ async def get_top_supplied_products(db: AsyncSession, limit: int = 10):
         }
         for row in result.fetchall()
     ]
+
+
+async def get_abc_analysis(db: AsyncSession):
+    today = date.today()
+    year, month = today.year, today.month
+
+    query = (
+        select(
+            Product.id.label("product_id"),
+            Product.name.label("product_name"),
+            func.sum(OrderItem.final_price).label("revenue")
+        )
+        .join(OrderItem, OrderItem.product_id == Product.id)
+        .join(Order, Order.id == OrderItem.order_id)
+        .where(
+            Order.confirmed == True,
+            extract("year", Order.created_at) == year,
+            extract("month", Order.created_at) == month
+        )
+        .group_by(Product.id, Product.name)
+        .order_by(func.sum(OrderItem.final_price).desc())
+    )
+    result = await db.execute(query)
+    rows = result.fetchall()
+
+    total_revenue = sum(row.revenue or 0 for row in rows)
+    accumulated = 0
+    data = []
+
+    for row in rows:
+        revenue = float(row.revenue or 0)
+        percentage = (revenue / total_revenue) * 100 if total_revenue else 0
+        accumulated += percentage
+
+        if accumulated <= 80:
+            group = "A"
+        elif accumulated <= 95:
+            group = "B"
+        else:
+            group = "C"
+
+        data.append({
+            "product_id": row.product_id,
+            "product_name": row.product_name,
+            "revenue": revenue,
+            "percentage": round(percentage, 2),
+            "group": group
+        })
+
+    return data

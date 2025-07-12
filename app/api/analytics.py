@@ -5,6 +5,7 @@ from datetime import datetime
 
 from app.models.user import User
 from app.schemas.analytics import (
+    ABCAnalysisEntry,
     DailyIncome,
     DailyOrders,
     ManagerIncome,
@@ -119,3 +120,23 @@ async def get_top_supplied_products(
     _: User = Depends(is_admin),
 ):
     return await repo.get_top_supplied_products(db)
+
+
+@router.get(
+    "/abc-analysis",
+    response_model=List[ABCAnalysisEntry],
+    summary="ABC-анализ по товарам",
+    description="""
+    Анализ продаж по методу ABC:
+    - Группа **A** — 80% выручки (топ‑товары)
+    - Группа **B** — следующие 15%
+    - Группа **C** — оставшиеся 5%
+    Вычисляется на основе выручки по каждому товару за текущий месяц.
+    """,
+    tags=["Analytics"]
+)
+async def abc_analysis(
+    db: AsyncSession = Depends(get_db),
+    _ = Depends(is_admin)
+):
+    return await repo.get_abc_analysis(db)

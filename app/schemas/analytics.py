@@ -2,6 +2,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 from datetime import date
 from decimal import Decimal
+from enum import Enum
 
 class DailyIncome(BaseModel):
     date: date
@@ -77,3 +78,15 @@ class TopSuppliedProduct(BaseModel):
     product_id: int
     product_name: str
     total_supplied: int
+
+class ABCGroup(str, Enum):
+    A = "A"
+    B = "B"
+    C = "C"
+
+class ABCAnalysisEntry(BaseModel):
+    product_id: int
+    product_name: str
+    total_quantity: int
+    total_revenue: float
+    group: ABCGroup
