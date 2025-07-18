@@ -113,7 +113,7 @@ async def confirm_order(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),  
 ):
-    order = await repo.get_order_by_id(db, order_id)
+    order = await repo.get_order_by_id(db, order_id, current_user)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 

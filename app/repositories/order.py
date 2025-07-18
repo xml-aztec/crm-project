@@ -92,7 +92,7 @@ async def create_order(
             raise HTTPException(400, detail="Статус 'Новый' не найден. Добавьте его в базу.")
         order_data["status_id"] = default_status_id
 
-    await check_stock_before_order_creation(db, order_data["warehouse_id"], items_data)
+    await check_stock_before_order_creation(db, items_data, order_data["warehouse_id"])
 
     order = Order(**order_data, user_id=current_user.id, created_at=datetime.now(timezone.utc))
     db.add(order)

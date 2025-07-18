@@ -18,6 +18,7 @@ class OrderBase(BaseModel):
     delivery_date: Optional[date] = None
 
 class OrderCreate(OrderBase):
+    warehouse_id: int
     total_price: Decimal
     items: List[OrderItemCreate]
 
@@ -30,6 +31,7 @@ class OrderUpdate(BaseModel):
 
 class OrderRead(OrderBase):
     id: int
+    warehouse_id: int
     total_price: Decimal
     finalized_total_price: Optional[Decimal] = None
     created_at: datetime
