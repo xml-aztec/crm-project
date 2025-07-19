@@ -1,12 +1,14 @@
 from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from app.models.cashflow import CashFlow
 from app.models.cashflow_category import CashFlowCategory
 from app.models.cashflow_type import CashFlowType
 from app.models.payroll import Payroll
 from datetime import date, datetime
 from fastapi import HTTPException
+
 
 
 async def get_cash_flows(
@@ -16,7 +18,12 @@ async def get_cash_flows(
     type_name: Optional[str] = None,
     category_name: Optional[str] = None,
 ) -> List[CashFlow]:
-    query = select(CashFlow).join(CashFlow.type).outerjoin(CashFlow.category)
+    query = (
+        select(CashFlow)
+        .options(selectinload(CashFlow.type), selectinload(CashFlow.category))
+        .join(CashFlow.type)
+        .outerjoin(CashFlow.category)
+    )
 
     if from_date:
         query = query.where(CashFlow.date >= from_date)
