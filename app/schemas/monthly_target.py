@@ -1,9 +1,9 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import date
 
 class MonthlyTargetCreate(BaseModel):
     manager_id: int
-    month: date  # формат YYYY-MM-01
+    month: date = Field(..., example="2025-07-01", description="Месяц в формате YYYY-MM-DD")
     target_amount: float
 
 class MonthlyTargetOut(BaseModel):

@@ -1,17 +1,16 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
-
 from app.models.monthly_target import MonthlyTarget
 from app.schemas.monthly_target import MonthlyTargetCreate
-from app.utils.dates import normalize_month_string  
+from datetime import date
 
 
 async def create_or_update_kpi(db: AsyncSession, data: MonthlyTargetCreate):
-    month_normalized = normalize_month_string(data.month)
+    month_date = data.month.replace(day=1)
 
     stmt = select(MonthlyTarget).where(
         MonthlyTarget.manager_id == data.manager_id,
-        MonthlyTarget.month == month_normalized
+        MonthlyTarget.month == month_date
     )
     result = await db.execute(stmt)
     existing = result.scalar_one_or_none()
@@ -21,7 +20,7 @@ async def create_or_update_kpi(db: AsyncSession, data: MonthlyTargetCreate):
     else:
         new_kpi = MonthlyTarget(
             manager_id=data.manager_id,
-            month=month_normalized,
+            month=month_date,
             target_amount=data.target_amount
         )
         db.add(new_kpi)
@@ -30,12 +29,14 @@ async def create_or_update_kpi(db: AsyncSession, data: MonthlyTargetCreate):
 
 
 async def get_manager_kpi(db: AsyncSession, manager_id: int, month: str):
-    month_normalized = normalize_month_string(month)
+    from app.utils.dates import normalize_month_string
+    normalized = normalize_month_string(month)  # -> str: "YYYY-MM-01"
+    month_date = date.fromisoformat(normalized)
 
     result = await db.execute(
         select(MonthlyTarget).where(
             MonthlyTarget.manager_id == manager_id,
-            MonthlyTarget.month == month_normalized
+            MonthlyTarget.month == month_date
         )
     )
     return result.scalar_one_or_none()
