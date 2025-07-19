@@ -3,10 +3,12 @@ from sqlalchemy import select, delete
 from app.models.monthly_target import MonthlyTarget
 from app.schemas.monthly_target import MonthlyTargetCreate
 from datetime import date
+from app.utils.dates import normalize_month_string
 
 
 async def create_or_update_kpi(db: AsyncSession, data: MonthlyTargetCreate):
-    month_date = data.month.replace(day=1)
+    """Создание или обновление KPI по менеджеру и месяцу."""
+    month_date = data.month.replace(day=1)  # Гарантируем "YYYY-MM-01"
 
     stmt = select(MonthlyTarget).where(
         MonthlyTarget.manager_id == data.manager_id,
@@ -29,9 +31,12 @@ async def create_or_update_kpi(db: AsyncSession, data: MonthlyTargetCreate):
 
 
 async def get_manager_kpi(db: AsyncSession, manager_id: int, month: str):
-    from app.utils.dates import normalize_month_string
-    normalized = normalize_month_string(month)  # -> str: "YYYY-MM-01"
-    month_date = date.fromisoformat(normalized)
+    """Получить KPI менеджера за конкретный месяц (строка 'YYYY-MM' или 'YYYY-MM-DD')."""
+    try:
+        normalized = normalize_month_string(month)  # -> "YYYY-MM-01"
+        month_date = date.fromisoformat(normalized)
+    except Exception:
+        return None 
 
     result = await db.execute(
         select(MonthlyTarget).where(
@@ -43,11 +48,13 @@ async def get_manager_kpi(db: AsyncSession, manager_id: int, month: str):
 
 
 async def get_all_kpis(db: AsyncSession):
+    """Получить список всех KPI."""
     result = await db.execute(select(MonthlyTarget))
     return result.scalars().all()
 
 
 async def delete_kpi_by_id(db: AsyncSession, kpi_id: int) -> bool:
+    """Удалить KPI по ID."""
     result = await db.execute(
         select(MonthlyTarget).where(MonthlyTarget.id == kpi_id)
     )

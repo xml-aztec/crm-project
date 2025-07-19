@@ -27,6 +27,7 @@ from app.api import cashflows
 from app.api import budgets
 from app.api import cash_gaps
 from app.api import monthly_targets
+from app.api import kpi_rules
 from app.api import payrolls
 from app.api import order_items
 from app.api import customers  
@@ -83,5 +84,6 @@ app.include_router(supply_analytics.router)
 app.include_router(stock_logs.router)
 app.include_router(cashflows.router)
 app.include_router(monthly_targets.router)
+app.include_router(kpi_rules.router)
 app.include_router(payrolls.router)
 app.include_router(customers.router)
