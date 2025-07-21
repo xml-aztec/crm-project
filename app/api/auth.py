@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.exc import IntegrityError
@@ -43,15 +43,13 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     summary="Вход пользователя (авторизация)",
     description="""
     Аутентифицирует пользователя по email и паролю. \
-    Возвращает JWT токен, если пользователь подтверждён.
-
-    Формат запроса: `application/x-www-form-urlencoded` с полями `username` (email) и `password`.
+    Устанавливает JWT access token в HTTP-only куки.
     """,
-    response_description="JWT access token"
 )
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    response: Response = None
 ):
     user = await user_repo.get_by_email(db, form_data.username)
     if not user or not security.verify_password(form_data.password, user.hashed_password):
@@ -60,4 +58,20 @@ async def login(
         raise HTTPException(status_code=403, detail="User is not approved")
 
     token = security.create_access_token({"sub": user.email})
-    return {"access_token": token, "token_type": "bearer"}
+
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=False,  # True на проде
+        samesite="lax",
+        max_age=60 * 60,
+        expires=60 * 60,
+    )
+
+    return {"message": "Login successful"}
+
+@router.post("/logout", summary="Выход пользователя")
+def logout(response: Response):
+    response.delete_cookie("access_token")
+    return {"message": "Logged out"}

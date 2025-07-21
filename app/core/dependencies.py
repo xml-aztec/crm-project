@@ -1,12 +1,13 @@
-from fastapi import Depends, HTTPException, Path, status
+from fastapi import Depends, HTTPException, Path, Request, status, Cookie
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional
+
 from app.core.database import SessionLocal
 from app.core import security
 from app.models.user import User
 from app.repositories import user as user_repo
-from app.models.user import User
 from app.repositories import order as order_repo
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -16,26 +17,28 @@ async def get_db():
         yield session
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    access_token: str = Cookie(None),
     db: AsyncSession = Depends(get_db)
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Не удалось проверить учетные данные",
+        detail="Не авторизован",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    if not access_token:
+        raise HTTPException(status_code=401, detail="Не авторизован")
 
     try:
-        payload = jwt.decode(token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
+        payload = jwt.decode(access_token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
         email: str = payload.get("sub")
-        if email is None:
+        if not email:
             raise credentials_exception
     except JWTError:
-        raise credentials_exception
+        raise HTTPException(status_code=401, detail="Неверный токен")
 
     user = await user_repo.get_by_email(db, email)
-    if user is None or not user.is_approved or not user.is_active:
-        raise credentials_exception
+    if not user or not user.is_active or not user.is_approved:
+        raise HTTPException(status_code=401, detail="Пользователь недоступен")
 
     return user
 
