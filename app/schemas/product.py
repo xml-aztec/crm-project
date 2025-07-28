@@ -64,3 +64,11 @@ class ProductUpdate(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class ProductShortOut(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        orm_mode = True

@@ -13,8 +13,8 @@ class OrderItem(Base):
     final_price = Column(Numeric(10, 2), nullable=False)
 
     order = relationship("Order", back_populates="items")
-    product = relationship("Product")
+    product = relationship("Product", lazy="selectin")
 
-    @property
-    def product_name(self) -> str:
-        return self.product.name if self.product else ""
+    # @property
+    # def product_name(self) -> str:
+    #     return self.product.name if self.product else ""

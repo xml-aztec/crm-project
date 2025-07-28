@@ -37,7 +37,7 @@ async def check_stock_before_confirmation(db: AsyncSession, order: Order):
                 status_code=400,
                 detail=f"Недостаточно товара '{product_name}' на складе '{warehouse_name}'."
             )
-        
+
 
 async def get_order_by_id(db: AsyncSession, order_id: int, current_user: User) -> Optional[Order]:
     result = await db.execute(
@@ -48,6 +48,7 @@ async def get_order_by_id(db: AsyncSession, order_id: int, current_user: User) -
             joinedload(Order.user),
             selectinload(Order.payment_method),
             joinedload(Order.status),
+            joinedload(Order.warehouse),
         )
         .where(Order.id == order_id)
     )
@@ -56,7 +57,7 @@ async def get_order_by_id(db: AsyncSession, order_id: int, current_user: User) -
         return None
 
     if current_user.role.name != "admin":
-        if order.status and order.status.name == "Отменён" and order.user_id == current_user.id:
+        if order.status and order.status.name == "Отменен" and order.user_id == current_user.id:
             raise HTTPException(403, detail="Вы не можете просматривать отменённый заказ")
 
     return order
@@ -71,7 +72,7 @@ async def create_order(
     if current_user.role.name.lower() != "admin":
         if order_data.get("warehouse_id") is None:
             raise HTTPException(400, detail="Склад должен быть указан")
-        
+
         result = await db.execute(
             select(Warehouse.branch_id).where(Warehouse.id == order_data["warehouse_id"])
         )
@@ -128,6 +129,7 @@ async def create_order(
             joinedload(Order.user),
             selectinload(Order.payment_method),
             joinedload(Order.status),
+            joinedload(Order.warehouse)
         )
         .where(Order.id == order.id)
     )
@@ -153,6 +155,7 @@ async def get_orders(
             joinedload(Order.user),
             selectinload(Order.payment_method),
             joinedload(Order.status),
+            joinedload(Order.warehouse),
         )
         .order_by(Order.id.desc())
         .offset(skip)
@@ -219,7 +222,7 @@ async def confirm_order(
     order = result.scalar_one_or_none()
     if not order:
         return None
-
+    
     if (
         current_user.role.name.lower() != "admin"
         and order.warehouse
@@ -257,13 +260,24 @@ async def confirm_order(
 
     if confirmed and order.finalized_total_price is None:
         order.finalized_total_price = order.total_price
-
     if not confirmed:
         order.finalized_total_price = None
 
     await db.commit()
-    await db.refresh(order)
-    return order
+
+    result = await db.execute(
+        select(Order)
+        .options(
+            selectinload(Order.items).selectinload(OrderItem.product),
+            joinedload(Order.customer),
+            joinedload(Order.user),
+            selectinload(Order.payment_method),
+            joinedload(Order.status),
+            joinedload(Order.warehouse).joinedload(Warehouse.branch),
+        )
+        .where(Order.id == order_id)
+    )
+    return result.scalar_one()
 
 
 async def update_order_status(
