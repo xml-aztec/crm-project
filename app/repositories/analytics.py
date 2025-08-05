@@ -72,6 +72,7 @@ async def get_order_summary(db: AsyncSession):
         "unique_customers": unique_customers,
         "status_counts": status_counts,
     }
+
 async def get_monthly_summary(db: AsyncSession, current_user: User):
     today = date.today()
     year, month = today.year, today.month
