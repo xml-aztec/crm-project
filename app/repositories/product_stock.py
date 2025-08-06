@@ -14,7 +14,9 @@ async def get_filtered_with_stats(
     sku: Optional[str] = None,
     barcode: Optional[str] = None,
     name: Optional[str] = None,
-    stock_level: str = "all"  # all, in_stock, low_stock, out_of_stock
+    stock_level: str = "all",
+    skip: int = 0,
+    limit: int = 100
 ) -> Tuple[List[ProductStock], dict]:
     stmt = select(ProductStock).join(Product, ProductStock.product_id == Product.id)
 
@@ -36,9 +38,11 @@ async def get_filtered_with_stats(
     elif stock_level == "out_of_stock":
         stmt = stmt.where(ProductStock.quantity == 0)
 
+    stmt = stmt.offset(skip).limit(limit)
     result = await db.execute(stmt)
     stocks = result.scalars().all()
 
+    # статистика отдельно (без limit/offset)
     stat_stmt = select(
         func.count(ProductStock.id),
         func.sum(case((ProductStock.quantity > LOW_STOCK_THRESHOLD, 1), else_=0)),

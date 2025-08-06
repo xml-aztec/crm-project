@@ -33,9 +33,21 @@ async def get_stock_list(
     barcode: Optional[str] = Query(None, description="Поиск по штрихкоду товара"),
     name: Optional[str] = Query(None, description="Поиск по названию товара"),
     stock_level: Optional[Literal["all", "in_stock", "low_stock", "out_of_stock"]] = Query("all", description="Фильтрация по уровню запасов"),
+    skip: int = Query(0, ge=0, description="Сколько записей пропустить"),
+    limit: int = Query(100, ge=1, le=500, description="Сколько записей вернуть"),
     db: AsyncSession = Depends(get_db),
 ) -> StockListResponse:
-    stocks, stats = await repo.get_filtered_with_stats(db, product_id, warehouse_id, sku, barcode, name, stock_level)
+    stocks, stats = await repo.get_filtered_with_stats(
+        db=db,
+        product_id=product_id,
+        warehouse_id=warehouse_id,
+        sku=sku,
+        barcode=barcode,
+        name=name,
+        stock_level=stock_level,
+        skip=skip,
+        limit=limit
+    )
     return StockListResponse(stocks=stocks, stats=stats)
 
 @router.get(
