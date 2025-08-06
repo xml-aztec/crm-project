@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.product import Product
 from app.models.product_stock import ProductStock
 from app.schemas.product_stock import ProductStockCreate
+from datetime import datetime, timezone
 
 LOW_STOCK_THRESHOLD = 10
 
@@ -110,8 +111,12 @@ async def update(db: AsyncSession, stock_id: int, data: dict):
     stock = await db.get(ProductStock, stock_id)
     if not stock:
         return None
+
     for key, value in data.items():
         setattr(stock, key, value)
+
+    stock.updated_at = datetime.now(timezone.utc)  
+
     await db.commit()
     await db.refresh(stock)
     return stock
