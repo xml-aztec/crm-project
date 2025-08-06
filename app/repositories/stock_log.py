@@ -15,6 +15,8 @@ async def get_stock_logs(
     type: Optional[StockLogType] = None,
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
+    skip: int = 0,
+    limit: int = 20,
 ) -> List[StockLog]:
     stmt = (
         select(StockLog)
@@ -35,6 +37,8 @@ async def get_stock_logs(
         stmt = stmt.where(StockLog.created_at >= date_from)
     if date_to:
         stmt = stmt.where(StockLog.created_at <= date_to)
+
+    stmt = stmt.offset(skip).limit(limit)
 
     result = await db.execute(stmt)
     return result.scalars().all()

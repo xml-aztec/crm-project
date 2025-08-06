@@ -17,14 +17,18 @@ async def list_stock_logs(
     type: Optional[str] = Query(None, description="Тип движения: incoming, outgoing, return, adjust"),
     date_from: Optional[datetime] = Query(None, description="Дата от (формат ISO)"),
     date_to: Optional[datetime] = Query(None, description="Дата до (формат ISO)"),
+    skip: int = Query(0, ge=0, description="Сколько записей пропустить"),
+    limit: int = Query(20, ge=1, le=1000, description="Сколько записей вернуть"),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(is_admin)
 ):
     return await get_stock_logs(
-        db,
+        db=db,
         product_id=product_id,
         warehouse_id=warehouse_id,
         type=type,
         date_from=date_from,
-        date_to=date_to
+        date_to=date_to,
+        skip=skip,
+        limit=limit
     )
