@@ -29,7 +29,7 @@ export interface CashflowEntry {
 
 export interface CreateCashflowCategoryRequest {
   name: string;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense'; // Это поле обязательное
   description?: string;
 }
 
@@ -41,7 +41,7 @@ export interface UpdateCashflowCategoryRequest {
 
 export interface CreateCashflowTypeRequest {
   name: string;
-  category_id: number;
+  category_id: number; // Это поле обязательное
   description?: string;
 }
 

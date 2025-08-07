@@ -2,45 +2,39 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 export interface MonthlyTarget {
   id: number;
-  month: string; // YYYY-MM format
-  target_revenue: number;
-  target_orders: number;
-  target_customers: number;
-  actual_revenue?: number;
-  actual_orders?: number;
-  actual_customers?: number;
-  revenue_achievement?: number; // percentage
-  orders_achievement?: number; // percentage
-  customers_achievement?: number; // percentage
+  manager_id: number;
+  month: string; // YYYY-MM-DD format
+  target_amount: number;
+  actual_amount?: number;
+  achievement_percentage?: number;
   created_at: string;
   updated_at: string;
 }
 
 export interface CreateMonthlyTargetRequest {
+  manager_id: number;
   month: string;
-  target_revenue: number;
-  target_orders: number;
-  target_customers: number;
+  target_amount: number;
 }
 
 export interface UpdateMonthlyTargetRequest {
-  target_revenue?: number;
-  target_orders?: number;
-  target_customers?: number;
+  target_amount?: number;
 }
 
 export interface MonthlyTargetFilters {
-  month?: string; // YYYY-MM format
-  year?: number;
+  month?: string;
+  manager_id?: number;
 }
 
 export const monthlyTargetsApi = createApi({
   reducerPath: 'monthlyTargetsApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    credentials: 'include', // Используем cookies вместо токенов
-    prepareHeaders: (headers) => {
-      headers.set('Content-Type', 'application/json');
+    baseUrl: '/api/monthly-targets',
+    prepareHeaders: (headers, { getState }) => {
+      const token = (getState() as any).auth.token;
+      if (token) {
+        headers.set('authorization', `Bearer ${token}`);
+      }
       return headers;
     },
   }),
@@ -50,31 +44,23 @@ export const monthlyTargetsApi = createApi({
     getMonthlyTargets: builder.query<MonthlyTarget[], MonthlyTargetFilters>({
       query: (filters = {}) => {
         const params = new URLSearchParams();
-        
-        if (filters.month) {
-          params.append('month', filters.month);
-        }
-        if (filters.year) {
-          params.append('year', filters.year.toString());
-        }
-        
-        const queryString = params.toString();
-        return queryString ? `monthly-targets/?${queryString}` : 'monthly-targets/';
+        if (filters.month) params.append('month', filters.month);
+        if (filters.manager_id) params.append('manager_id', filters.manager_id.toString());
+        return `/?${params.toString()}`;
       },
       providesTags: ['MonthlyTarget'],
-      keepUnusedDataFor: 300, // 5 минут
     }),
 
     // Получить месячную цель по ID
     getMonthlyTargetById: builder.query<MonthlyTarget, number>({
-      query: (id) => `monthly-targets/${id}`,
-      providesTags: (_, __, id) => [{ type: 'MonthlyTarget', id }],
+      query: (id) => `/${id}`,
+      providesTags: ['MonthlyTarget'],
     }),
 
     // Создать новую месячную цель
     createMonthlyTarget: builder.mutation<MonthlyTarget, CreateMonthlyTargetRequest>({
       query: (data) => ({
-        url: 'monthly-targets/',
+        url: '/',
         method: 'POST',
         body: data,
       }),
@@ -84,30 +70,30 @@ export const monthlyTargetsApi = createApi({
     // Обновить месячную цель
     updateMonthlyTarget: builder.mutation<MonthlyTarget, { id: number; data: UpdateMonthlyTargetRequest }>({
       query: ({ id, data }) => ({
-        url: `monthly-targets/${id}`,
-        method: 'PATCH',
+        url: `/${id}`,
+        method: 'PUT',
         body: data,
       }),
-      invalidatesTags: (_, __, { id }) => [{ type: 'MonthlyTarget', id }, 'MonthlyTarget'],
+      invalidatesTags: ['MonthlyTarget'],
     }),
 
     // Удалить месячную цель
     deleteMonthlyTarget: builder.mutation<void, number>({
       query: (id) => ({
-        url: `monthly-targets/${id}`,
+        url: `/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['MonthlyTarget'],
     }),
 
-    // Получить достижения за текущий месяц
-    getCurrentMonthAchievements: builder.query<MonthlyTarget, void>({
-      query: () => {
-        const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
-        return `monthly-targets/current?month=${currentMonth}`;
-      },
-      providesTags: ['MonthlyTarget'],
-      keepUnusedDataFor: 60, // 1 минута для актуальных данных
+    // Добавляем новую мутацию для создания/обновления
+    createOrUpdateMonthlyTarget: builder.mutation<MonthlyTarget, CreateMonthlyTargetRequest>({
+      query: (data) => ({
+        url: '/create-or-update',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['MonthlyTarget'],
     }),
   }),
 });
@@ -118,5 +104,5 @@ export const {
   useCreateMonthlyTargetMutation,
   useUpdateMonthlyTargetMutation,
   useDeleteMonthlyTargetMutation,
-  useGetCurrentMonthAchievementsQuery,
+  useCreateOrUpdateMonthlyTargetMutation,
 } = monthlyTargetsApi;

@@ -37,3 +37,7 @@ export interface ProductFilters {
   price_min: string;
   price_max: string;
 }
+
+export interface CategoryFilters {
+  search: string;
+}

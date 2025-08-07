@@ -24,12 +24,18 @@ const CashflowMetaManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('types');
   
   // Состояние для типов
-  const [typeFormData, setTypeFormData] = useState({ name: '' });
+  const [typeFormData, setTypeFormData] = useState({ 
+    name: '',
+    category_id: 0 // Добавить поле для категории
+  });
   const [editingType, setEditingType] = useState<CashflowType | null>(null);
   const [deleteTypeConfirm, setDeleteTypeConfirm] = useState<CashflowType | null>(null);
 
   // Состояние для категорий
-  const [categoryFormData, setCategoryFormData] = useState({ name: '' });
+  const [categoryFormData, setCategoryFormData] = useState({ 
+    name: '',
+    type: 'income' as 'income' | 'expense' // Добавить обязательное поле type
+  });
   const [editingCategory, setEditingCategory] = useState<CashflowCategory | null>(null);
   const [deleteCategoryConfirm, setDeleteCategoryConfirm] = useState<CashflowCategory | null>(null);
 
@@ -51,16 +57,22 @@ const CashflowMetaManagement: React.FC = () => {
   // Обработчики для типов
   const handleTypeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!typeFormData.name.trim()) return;
+    if (!typeFormData.name.trim() || (!editingType && typeFormData.category_id === 0)) return;
 
     try {
       if (editingType) {
-        await updateType({ id: editingType.id, data: { name: typeFormData.name.trim() } }).unwrap();
+        await updateType({ 
+          id: editingType.id, 
+          data: { name: typeFormData.name.trim() } 
+        }).unwrap();
       } else {
-        await createType({ name: typeFormData.name.trim() }).unwrap();
+        await createType({ 
+          name: typeFormData.name.trim(),
+          category_id: typeFormData.category_id
+        }).unwrap();
       }
       
-      setTypeFormData({ name: '' });
+      setTypeFormData({ name: '', category_id: 0 });
       setEditingType(null);
     } catch (error) {
       // Обработка ошибки без алерта
@@ -69,12 +81,15 @@ const CashflowMetaManagement: React.FC = () => {
 
   const handleEditType = (type: CashflowType) => {
     setEditingType(type);
-    setTypeFormData({ name: type.name });
+    setTypeFormData({ 
+      name: type.name,
+      category_id: type.category_id
+    });
   };
 
   const handleCancelEditType = () => {
     setEditingType(null);
-    setTypeFormData({ name: '' });
+    setTypeFormData({ name: '', category_id: 0 });
   };
 
   const handleDeleteType = async () => {
@@ -95,12 +110,21 @@ const CashflowMetaManagement: React.FC = () => {
 
     try {
       if (editingCategory) {
-        await updateCategory({ id: editingCategory.id, data: { name: categoryFormData.name.trim() } }).unwrap();
+        await updateCategory({ 
+          id: editingCategory.id, 
+          data: { 
+            name: categoryFormData.name.trim(),
+            type: categoryFormData.type
+          } 
+        }).unwrap();
       } else {
-        await createCategory({ name: categoryFormData.name.trim() }).unwrap();
+        await createCategory({ 
+          name: categoryFormData.name.trim(),
+          type: categoryFormData.type
+        }).unwrap();
       }
       
-      setCategoryFormData({ name: '' });
+      setCategoryFormData({ name: '', type: 'income' });
       setEditingCategory(null);
     } catch (error) {
       // Обработка ошибки без алерта
@@ -109,12 +133,15 @@ const CashflowMetaManagement: React.FC = () => {
 
   const handleEditCategory = (category: CashflowCategory) => {
     setEditingCategory(category);
-    setCategoryFormData({ name: category.name });
+    setCategoryFormData({ 
+      name: category.name,
+      type: category.type
+    });
   };
 
   const handleCancelEditCategory = () => {
     setEditingCategory(null);
-    setCategoryFormData({ name: '' });
+    setCategoryFormData({ name: '', type: 'income' });
   };
 
   const handleDeleteCategory = async () => {
@@ -134,21 +161,17 @@ const CashflowMetaManagement: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            💰 Управление денежными потоками
+            Настройка денежных потоков
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Настройка типов и категорий для классификации финансовых операций
+            Управление типами и категориями финансовых операций
           </p>
         </div>
-        
         <Button
           variant="outline"
           onClick={() => navigate('/finance')}
         >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Назад к финансам
+          ← Назад к финансам
         </Button>
       </div>
 
@@ -217,7 +240,6 @@ const CashflowMetaManagement: React.FC = () => {
           >
             <div className="flex items-center justify-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
               Типы денежных потоков ({types.length})
@@ -235,23 +257,25 @@ const CashflowMetaManagement: React.FC = () => {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
               </svg>
-              Категории денежных потоков ({categories.length})
+              Категории потоков ({categories.length})
             </div>
           </button>
         </div>
 
-        {/* Content */}
+        {/* Содержимое табов */}
         <div className="p-6">
           {activeTab === 'types' ? (
             <div className="space-y-6">
               {/* Описание типов */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <div className="flex items-start">
-                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div className="text-sm text-blue-800 dark:text-blue-200">
-                    <p className="font-medium mb-1">Типы денежных потоков</p>
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                    <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">О типах денежных потоков</h4>
                     <p>Основные категории финансовых операций: доходы, расходы, инвестиции и т.д. Используются для верхнеуровневой классификации финансовых операций в системе.</p>
                   </div>
                 </div>
@@ -263,23 +287,47 @@ const CashflowMetaManagement: React.FC = () => {
                   {editingType ? '✏️ Редактировать тип' : '➕ Добавить новый тип'}
                 </h3>
                 
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="flex-1">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
                     <Label>Название типа</Label>
                     <Input
                       type="text"
                       value={typeFormData.name}
-                      onChange={(e) => setTypeFormData({ name: e.target.value })}
-                      placeholder="Введите название типа (например: Доходы, Расходы)"
+                      onChange={(e) => setTypeFormData(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="Введите название типа (например: Продажи, Закупки)"
                       disabled={isSubmittingType}
                       className="w-full"
                     />
                   </div>
-                  <div className="flex gap-2 sm:pt-6">
+                  
+                  {!editingType && (
+                    <div>
+                      <Label>Категория</Label>
+                      <select
+                        value={typeFormData.category_id}
+                        onChange={(e) => setTypeFormData(prev => ({ ...prev, category_id: parseInt(e.target.value) }))}
+                        disabled={isSubmittingType || categoriesLoading}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                      >
+                        <option value={0}>Выберите категорию</option>
+                        {categories.map(category => (
+                          <option key={category.id} value={category.id}>
+                            {category.name} ({category.type === 'income' ? 'Доходы' : 'Расходы'})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2 items-end">
                     <Button
                       type="submit"
                       size="sm"
-                      disabled={!typeFormData.name.trim() || isSubmittingType}
+                      disabled={
+                        !typeFormData.name.trim() || 
+                        isSubmittingType ||
+                        (!editingType && typeFormData.category_id === 0)
+                      }
                       className="w-full sm:w-auto"
                     >
                       {isSubmittingType ? (
@@ -322,8 +370,8 @@ const CashflowMetaManagement: React.FC = () => {
                     <svg className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                     </svg>
-                    <p className="font-medium text-gray-900 dark:text-white">Типы денежных потоков не найдены</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Создайте первый тип для начала работы с финансовой отчетностью</p>
+                    <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Пока нет типов</h4>
+                    <p className="text-gray-600 dark:text-gray-400">Создайте первый тип для начала работы с финансовыми операциями</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -338,9 +386,16 @@ const CashflowMetaManagement: React.FC = () => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                             </svg>
                           </div>
-                          <span className="text-gray-900 dark:text-white font-medium text-sm">
-                            {type.name}
-                          </span>
+                          <div>
+                            <span className="text-gray-900 dark:text-white font-medium text-sm block">
+                              {type.name}
+                            </span>
+                            {type.category && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {type.category.name} ({type.category.type === 'income' ? 'Доходы' : 'Расходы'})
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex gap-1 ml-2">
                           <button
@@ -373,14 +428,16 @@ const CashflowMetaManagement: React.FC = () => {
           ) : (
             <div className="space-y-6">
               {/* Описание категорий */}
-              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                <div className="flex items-start">
-                  <svg className="w-5 h-5 text-green-600 dark:text-green-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div className="text-sm text-green-800 dark:text-green-200">
-                    <p className="font-medium mb-1">Категории денежных потоков</p>
-                    <p>Детальная классификация финансовых операций: зарплаты, аренда, продажи, закупки и т.д. Используются для подробного учета и анализа финансовых потоков.</p>
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                    <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">О категориях денежных потоков</h4>
+                    <p>Основные группы финансовых операций: доходы и расходы. Каждая категория может содержать множество типов денежных потоков.</p>
                   </div>
                 </div>
               </div>
@@ -391,19 +448,33 @@ const CashflowMetaManagement: React.FC = () => {
                   {editingCategory ? '✏️ Редактировать категорию' : '➕ Добавить новую категорию'}
                 </h3>
                 
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="flex-1">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
                     <Label>Название категории</Label>
                     <Input
                       type="text"
                       value={categoryFormData.name}
-                      onChange={(e) => setCategoryFormData({ name: e.target.value })}
-                      placeholder="Введите название категории (например: Зарплаты, Аренда)"
+                      onChange={(e) => setCategoryFormData(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="Введите название категории (например: Операционные доходы)"
                       disabled={isSubmittingCategory}
                       className="w-full"
                     />
                   </div>
-                  <div className="flex gap-2 sm:pt-6">
+                  
+                  <div>
+                    <Label>Тип категории</Label>
+                    <select
+                      value={categoryFormData.type}
+                      onChange={(e) => setCategoryFormData(prev => ({ ...prev, type: e.target.value as 'income' | 'expense' }))}
+                      disabled={isSubmittingCategory}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                    >
+                      <option value="income">Доходы</option>
+                      <option value="expense">Расходы</option>
+                    </select>
+                  </div>
+                  
+                  <div className="flex gap-2 items-end">
                     <Button
                       type="submit"
                       size="sm"
@@ -438,7 +509,7 @@ const CashflowMetaManagement: React.FC = () => {
               {/* Список категорий */}
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                  🏷️ Список категорий денежных потоков
+                  📁 Список категорий денежных потоков
                 </h3>
                 
                 {categoriesLoading ? (
@@ -448,10 +519,10 @@ const CashflowMetaManagement: React.FC = () => {
                 ) : categories.length === 0 ? (
                   <div className="text-center py-12 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
                     <svg className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                     </svg>
-                    <p className="font-medium text-gray-900 dark:text-white">Категории денежных потоков не найдены</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Создайте первую категорию для детального учета финансов</p>
+                    <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Пока нет категорий</h4>
+                    <p className="text-gray-600 dark:text-gray-400">Создайте первую категорию для детального учета финансов</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -466,9 +537,18 @@ const CashflowMetaManagement: React.FC = () => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                             </svg>
                           </div>
-                          <span className="text-gray-900 dark:text-white font-medium text-sm">
-                            {category.name}
-                          </span>
+                          <div>
+                            <span className="text-gray-900 dark:text-white font-medium text-sm block">
+                              {category.name}
+                            </span>
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              category.type === 'income' 
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                                : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                            }`}>
+                              {category.type === 'income' ? 'Доходы' : 'Расходы'}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex gap-1 ml-2">
                           <button
@@ -502,13 +582,14 @@ const CashflowMetaManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Модальные окна подтверждения удаления */}
+      {/* Модальные окна удаления */}
       <DeleteConfirmModal
         isOpen={!!deleteTypeConfirm}
         onClose={() => setDeleteTypeConfirm(null)}
         onConfirm={handleDeleteType}
-        title="Удалить тип денежного потока?"
+        title="Удалить тип денежного потока"
         itemName={deleteTypeConfirm?.name || ''}
+        confirmText="Удалить"
         isLoading={isDeletingType}
       />
 
@@ -516,8 +597,9 @@ const CashflowMetaManagement: React.FC = () => {
         isOpen={!!deleteCategoryConfirm}
         onClose={() => setDeleteCategoryConfirm(null)}
         onConfirm={handleDeleteCategory}
-        title="Удалить категорию денежного потока?"
+        title="Удалить категорию денежного потока"
         itemName={deleteCategoryConfirm?.name || ''}
+        confirmText="Удалить"
         isLoading={isDeletingCategory}
       />
     </div>

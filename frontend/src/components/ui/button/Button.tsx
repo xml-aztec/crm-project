@@ -3,12 +3,22 @@ import React from "react";
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "outline" | "ghost" | "destructive";
   size?: "sm" | "md" | "lg";
+  startIcon?: React.ReactElement; // Добавить
+  endIcon?: React.ReactElement;   // Добавить
   children: React.ReactNode;
   className?: string;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = "primary", size = "md", className = "", children, ...props }, ref) => {
+  ({ 
+    variant = "primary", 
+    size = "md", 
+    startIcon,        // Добавить
+    endIcon,          // Добавить
+    className = "", 
+    children, 
+    ...props 
+  }, ref) => {
     const baseClasses =
       "inline-flex items-center justify-center font-medium rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed";
 
@@ -32,7 +42,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     return (
       <button ref={ref} className={classes} {...props}>
+        {startIcon && <span className="mr-2">{startIcon}</span>}
         {children}
+        {endIcon && <span className="ml-2">{endIcon}</span>}
       </button>
     );
   }

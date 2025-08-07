@@ -61,6 +61,7 @@ export interface Order {
   delivery_address?: string | null;
   delivery_date?: string | null;
   total_price: string | number;
+  total_amount: number; // Добавить эту строку
   finalized_total_price?: string | number | null;
   cancelled_at?: string | null;
   cancellation_reason?: string | null;
