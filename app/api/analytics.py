@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from datetime import datetime
@@ -47,6 +47,29 @@ async def revenue_profit_chart(
     user=Depends(is_admin)
 ):
     return await repo.get_kpi_monthly_revenue_profit(db)
+
+@router.get(
+    "/recent-orders",
+    summary="Последние заказы",
+    description="Возвращает список последних подтверждённых заказов.",
+)
+async def recent_orders(
+    limit: int = Query(5, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_admin)
+):
+    return await repo.get_recent_orders(db, limit=limit)
+
+@router.get(
+    "/order-status-summary",
+    summary="Сводка по статусам заказов",
+    description="Возвращает количество подтверждённых заказов по статусам и их долю в процентах.",
+)
+async def order_status_summary(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_admin)
+):
+    return await repo.get_order_status_summary(db)
 
 @router.get("/daily", response_model=List[DailyIncome], summary="Доход по дням")
 async def get_daily_analytics(db: AsyncSession = Depends(get_db)):

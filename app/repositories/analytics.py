@@ -2,6 +2,7 @@ from calendar import month_abbr
 from decimal import Decimal
 from sqlalchemy import and_, select, func, cast, Date, extract
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from datetime import date, datetime, timezone
 from collections import defaultdict
 from statistics import mean, pstdev
@@ -123,6 +124,62 @@ async def get_kpi_monthly_revenue_profit(db: AsyncSession):
             full_year_data.append({"month": m, "revenue": 0.0, "profit": 0.0})
 
     return full_year_data
+
+async def get_recent_orders(db: AsyncSession, limit: int = 5):
+    query = (
+        select(Order)
+        .options(
+            selectinload(Order.customer),
+            selectinload(Order.status),
+            selectinload(Order.items).selectinload(OrderItem.product)
+        )
+        .where(Order.confirmed == True)
+        .order_by(Order.created_at.desc())
+        .limit(limit)
+    )
+
+    result = await db.execute(query)
+    orders = result.scalars().all()
+
+    return [
+        {
+            "id": order.id,
+            "created_at": order.created_at.isoformat(),
+            "customer_name": order.customer.name if order.customer else "—",
+            "status": order.status.name if order.status else "—",
+            "total_price": float(order.total_price),
+            "items_count": sum(item.quantity for item in order.items),
+        }
+        for order in orders
+    ]
+
+async def get_order_status_summary(db: AsyncSession):
+    total_query = await db.execute(
+        select(func.count()).select_from(Order).where(Order.confirmed == True)
+    )
+    total_orders = total_query.scalar() or 1  # чтобы не делить на 0
+
+    query = (
+        select(
+            OrderStatus.name.label("status"),
+            func.count(Order.id).label("count")
+        )
+        .join(Order, Order.status_id == OrderStatus.id)
+        .where(Order.confirmed == True)
+        .group_by(OrderStatus.name)
+        .order_by(func.count(Order.id).desc())
+    )
+    result = await db.execute(query)
+    rows = result.fetchall()
+
+    return [
+        {
+            "status": row.status,
+            "count": row.count,
+            "percentage": round((row.count / total_orders) * 100, 2)
+        }
+        for row in rows
+    ]
 
 async def get_daily_stats(db: AsyncSession):
     query = (
