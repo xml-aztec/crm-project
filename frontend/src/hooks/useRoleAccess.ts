@@ -1,0 +1,43 @@
+import { useMemo } from 'react';
+import { useAppSelector } from './reduxHooks';
+import { UserRole, PermissionCheck } from '../types/auth';
+
+/**
+ * Хук для проверки прав доступа пользователя
+ */
+export const useRoleAccess = (): PermissionCheck & {
+  user: any;
+  isAuthenticated: boolean;
+} => {
+  const { user, isAuthenticated } = useAppSelector(state => state.auth);
+
+  return useMemo(() => {
+    const currentRole = user?.role?.name as UserRole;
+    
+    const hasRole = (role: UserRole): boolean => {
+      return currentRole === role;
+    };
+
+    const hasAnyRole = (roles: UserRole[]): boolean => {
+      return roles.includes(currentRole);
+    };
+
+    const isAdmin = currentRole === 'admin' || user?.role_id === 1;
+    const isManager = currentRole === 'manager' || isAdmin;
+    const canEdit = isManager || currentRole === 'employee';
+    const canDelete = isAdmin;
+    const canView = isAuthenticated;
+
+    return {
+      user,
+      isAuthenticated,
+      hasRole,
+      hasAnyRole,
+      isAdmin,
+      isManager,
+      canEdit,
+      canDelete,
+      canView
+    };
+  }, [user, isAuthenticated]);
+};
