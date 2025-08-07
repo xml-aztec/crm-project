@@ -1,5 +1,6 @@
 import asyncio
 from logging.config import fileConfig
+import os
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
@@ -8,12 +9,15 @@ from app.core.config import settings
 from app.core.database import Base
 from app.models import *
 
+from dotenv import load_dotenv
+load_dotenv()
+
 config = context.config
 fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
 
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
 
 
 def run_migrations_offline():
