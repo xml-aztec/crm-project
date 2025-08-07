@@ -2,6 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.core.database import init_db, SessionLocal
+from app.utils.init_admin_user import init_admin_user
+from app.utils.init_cashflow_types import init_cash_flow_types
+from app.utils.init_order_statuses import init_order_statuses
 from app.utils.init_roles import init_roles
 
 from app.api import auth
@@ -40,6 +43,9 @@ async def lifespan(app: FastAPI):
 
     async with SessionLocal() as session:
         await init_roles(session)
+        await init_admin_user(session)
+        await init_order_statuses(session)
+        await init_cash_flow_types(session)
 
     yield
 
