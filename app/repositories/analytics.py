@@ -1,3 +1,4 @@
+from calendar import month_abbr
 from decimal import Decimal
 from sqlalchemy import and_, select, func, cast, Date, extract
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +15,114 @@ from app.models.user import User
 from app.models.order_status import OrderStatus
 from app.schemas.analytics import ABCAnalysisEntry, ABCGroup
 
+
+async def get_kpi_summary(db: AsyncSession, current_user: User):
+    today = date.today()
+    year, month = today.year, today.month
+
+    prev_month = month - 1 or 12
+    prev_year = year - 1 if prev_month == 12 else year
+
+    def base_filter(y, m):
+        conditions = [
+            extract("year", Order.created_at) == y,
+            extract("month", Order.created_at) == m
+        ]
+        if current_user.role.name != "admin":
+            conditions.append(Order.user_id == current_user.id)
+        return conditions
+
+    orders_curr = await db.scalar(select(func.count(Order.id)).where(*base_filter(year, month)))
+    customers_curr = await db.scalar(select(func.count(func.distinct(Order.customer_id))).where(*base_filter(year, month)))
+
+    orders_prev = await db.scalar(select(func.count(Order.id)).where(*base_filter(prev_year, prev_month)))
+    customers_prev = await db.scalar(select(func.count(func.distinct(Order.customer_id))).where(*base_filter(prev_year, prev_month)))
+
+    def calc_change(curr, prev):
+        if prev == 0:
+            return 100.0 if curr > 0 else 0.0
+        return round(((curr - prev) / prev) * 100, 2)
+
+    return {
+        "orders": {
+            "count": orders_curr or 0,
+            "change_percent": calc_change(orders_curr or 0, orders_prev or 0)
+        },
+        "customers": {
+            "count": customers_curr or 0,
+            "change_percent": calc_change(customers_curr or 0, customers_prev or 0)
+        }
+    }
+
+async def get_sales_by_month(db: AsyncSession):
+    current_year = date.today().year
+
+    result = await db.execute(
+        select(
+            extract("month", Order.created_at).label("month"),
+            func.coalesce(func.sum(OrderItem.final_price), 0).label("total")
+        )
+        .join(OrderItem, OrderItem.order_id == Order.id)
+        .where(
+            extract("year", Order.created_at) == current_year,
+            Order.confirmed == True
+        )
+        .group_by(extract("month", Order.created_at))
+        .order_by(extract("month", Order.created_at))
+    )
+
+    rows = result.fetchall()
+
+    # Формируем результат на каждый месяц
+    data = []
+    monthly_totals = {int(row.month): float(row.total) for row in rows}
+    for month in range(1, 13):
+        data.append({
+            "month": month_abbr[month],  # Jan, Feb, etc.
+            "total": round(monthly_totals.get(month, 0), 2)
+        })
+    
+    return data
+
+async def get_kpi_monthly_revenue_profit(db: AsyncSession):
+    current_year = datetime.now(timezone.utc).year
+
+    query = (
+        select(
+            extract("month", Order.created_at).label("month"),
+            func.coalesce(func.sum(OrderItem.final_price), 0).label("revenue"),
+            func.coalesce(
+                func.sum(OrderItem.final_price - (OrderItem.quantity * Product.cost_price)), 0
+            ).label("profit")
+        )
+        .join(OrderItem, Order.id == OrderItem.order_id)
+        .join(Product, Product.id == OrderItem.product_id)
+        .where(
+            Order.confirmed == True,
+            extract("year", Order.created_at) == current_year
+        )
+        .group_by("month")
+        .order_by("month")
+    )
+
+    result = await db.execute(query)
+    rows = result.fetchall()
+
+    monthly_data = [
+        {"month": int(row.month), "revenue": float(row.revenue), "profit": float(row.profit)}
+        for row in rows
+    ]
+
+    # Заполнить отсутствующие месяцы нулями
+    full_year_data = []
+    for m in range(1, 13):
+        match = next((r for r in monthly_data if r["month"] == m), None)
+        if match:
+            full_year_data.append(match)
+        else:
+            full_year_data.append({"month": m, "revenue": 0.0, "profit": 0.0})
+
+    return full_year_data
 
 async def get_daily_stats(db: AsyncSession):
     query = (

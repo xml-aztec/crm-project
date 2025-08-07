@@ -23,6 +23,31 @@ from app.repositories import analytics as repo
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
+@router.get("/kpi-summary", summary="KPI по заказам и клиентам за месяц")
+async def kpi_summary(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return await repo.get_kpi_summary(db, current_user)
+
+@router.get("/analytics/sales-by-month", summary="Статистика продаж по месяцам")
+async def sales_by_month(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_admin)
+):
+    return await repo.get_sales_by_month(db)
+
+@router.get(
+    "/kpi/revenue-profit",
+    summary="Выручка и прибыль по месяцам (текущий год)",
+    description="Возвращает выручку и прибыль по каждому месяцу текущего года. Доступно только администраторам."
+)
+async def revenue_profit_chart(
+    db: AsyncSession = Depends(get_db),
+    user=Depends(is_admin)
+):
+    return await repo.get_kpi_monthly_revenue_profit(db)
+
 @router.get("/daily", response_model=List[DailyIncome], summary="Доход по дням")
 async def get_daily_analytics(db: AsyncSession = Depends(get_db)):
     return await repo.get_daily_stats(db)
