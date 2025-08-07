@@ -5,6 +5,10 @@ description = ""
 authors = ["xml-aztec <asankozhoevn@gmail.com>"]
 readme = "README.md"
 
+packages = [
+  { include = "app" }
+]
+
 [tool.poetry.dependencies]
 python = "^3.12"
 fastapi = {extras = ["all"], version = "^0.115.12"}

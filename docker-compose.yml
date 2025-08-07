@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: crm_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: .
+    env_file: .env
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "
+      alembic upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    volumes:
+      - .:/app
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules 
+    working_dir: /app
+    command: npm run dev
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
