@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import List, Optional, Union
 from datetime import datetime
 
 class UserBase(BaseModel):
@@ -42,6 +42,21 @@ class UserOut(BaseModel):
 class UserStatsOut(BaseModel):
     orders_count: int
     total_income: float
+
+class TopProductOut(BaseModel):
+    name: str
+    total_sold: int
+
+
+class UserDetailedStats(BaseModel):
+    orders_count: int
+    total_income: float
+    avg_check: float
+    avg_items_per_order: float
+    orders_by_clients: List[List[Union[int, int]]]  # [ [count, customer_id], ... ]
+    top_products: List[TopProductOut]
+    canceled_orders: int
+    canceled_share: float
 
 class UserUpdateAdmin(BaseModel):
     full_name: Optional[str] = None

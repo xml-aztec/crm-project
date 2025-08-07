@@ -67,7 +67,20 @@ async def get_user_stats(
 def safe_div(a: float, b: int) -> float:
     return round(a / b, 2) if b else 0
 
-async def get_detailed_user_stats(db: AsyncSession, user_id: int) -> Optional[dict]:
+async def get_detailed_user_stats(db: AsyncSession, user_id: int, year: Optional[int] = None, month: Optional[int] = None) -> Optional[dict]:
+    from datetime import date, datetime, timezone
+
+    # По умолчанию: текущий месяц
+    today = date.today()
+    year = year or today.year
+    month = month or today.month
+
+    start_date = datetime(year, month, 1, tzinfo=timezone.utc)
+    if month == 12:
+        end_date = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
+    else:
+        end_date = datetime(year, month + 1, 1, tzinfo=timezone.utc)
+
     user_result = await db.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one_or_none()
     if not user:
@@ -80,6 +93,7 @@ async def get_detailed_user_stats(db: AsyncSession, user_id: int) -> Optional[di
             func.coalesce(func.avg(Order.total_price), 0)
         )
         .where(Order.user_id == user_id)
+        .where(Order.created_at >= start_date, Order.created_at < end_date)
     )
     res = await db.execute(query)
     orders_count, total_income, avg_check = res.one()
@@ -88,6 +102,7 @@ async def get_detailed_user_stats(db: AsyncSession, user_id: int) -> Optional[di
         select(OrderItem.order_id, func.sum(OrderItem.quantity).label("total_items"))
         .join(Order, Order.id == OrderItem.order_id)
         .where(Order.user_id == user_id)
+        .where(Order.created_at >= start_date, Order.created_at < end_date)
         .group_by(OrderItem.order_id)
         .subquery()
     )
@@ -98,16 +113,20 @@ async def get_detailed_user_stats(db: AsyncSession, user_id: int) -> Optional[di
         select(func.count(), Order.customer_id)
         .select_from(Order)
         .where(Order.user_id == user_id)
+        .where(Order.created_at >= start_date, Order.created_at < end_date)
         .group_by(Order.customer_id)
     )
     res3 = await db.execute(client_type_query)
-    orders_by_clients = res3.fetchall()
+    orders_by_clients = [
+        {"customer_id": row[1], "orders": row[0]} for row in res3.fetchall()
+    ]
 
     top_products_query = (
         select(Product.name, func.sum(OrderItem.quantity).label("total_sold"))
         .join(OrderItem, Product.id == OrderItem.product_id)
         .join(Order, Order.id == OrderItem.order_id)
         .where(Order.user_id == user_id)
+        .where(Order.created_at >= start_date, Order.created_at < end_date)
         .group_by(Product.name)
         .order_by(func.sum(OrderItem.quantity).desc())
         .limit(5)
@@ -118,7 +137,9 @@ async def get_detailed_user_stats(db: AsyncSession, user_id: int) -> Optional[di
     canceled_query = (
         select(func.count())
         .select_from(Order)
-        .where(Order.user_id == user_id, Order.status_id == 5)
+        .where(Order.user_id == user_id)
+        .where(Order.status_id == 4)
+        .where(Order.created_at >= start_date, Order.created_at < end_date)
     )
     canceled_count = (await db.execute(canceled_query)).scalar() or 0
 

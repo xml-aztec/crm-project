@@ -6,6 +6,7 @@ from sqlalchemy import select
 from app.core.database import SessionLocal
 from app.repositories import user as user_repo
 from app.schemas.user import (
+    UserDetailedStats,
     UserOut,
     UserRead,
     UserStatsOut,
@@ -92,17 +93,20 @@ async def get_user_by_id(
     return user
 
 
+
 @router.get(
     "/{user_id}/stats",
     summary="Статистика сотрудника",
-    description="Возвращает статистику по заказам указанного сотрудника."
+    description="Возвращает статистику по заказам указанного сотрудника за указанный месяц. По умолчанию — текущий месяц."
 )
 async def get_user_statistics(
     user_id: int,
+    year: Optional[int] = Query(None, description="Год (например, 2025)"),
+    month: Optional[int] = Query(None, ge=1, le=12, description="Месяц (1-12)"),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(is_admin)
 ):
-    stats = await user_repo.get_detailed_user_stats(db, user_id)
+    stats = await user_repo.get_detailed_user_stats(db, user_id, year=year, month=month)
     if stats is None:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
     return stats
