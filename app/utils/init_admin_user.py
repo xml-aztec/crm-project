@@ -21,6 +21,7 @@ async def init_admin_user(db):
         full_name=settings.ADMIN_FULL_NAME,
         email=settings.ADMIN_EMAIL,
         hashed_password=get_password_hash(settings.ADMIN_PASSWORD),
+        is_active=True,
         is_approved=True,
         role_id=admin_role.id
     )

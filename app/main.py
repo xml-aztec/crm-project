@@ -51,7 +51,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="CRM System",
-    description="Backend API for managing a tech store CRM",
+    description="Backend API for CRM",
     version="0.1.0",
     lifespan=lifespan
 )
