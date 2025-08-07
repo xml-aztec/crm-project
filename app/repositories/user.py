@@ -8,6 +8,8 @@ from app.models.product import Product
 from app.models.order_item import OrderItem
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdateAdmin
+from datetime import datetime, timezone
+from sqlalchemy import extract
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -27,25 +29,39 @@ async def get_by_email(db: AsyncSession, email: str) -> User | None:
     )
     return result.scalar_one_or_none()
 
-async def get_user_stats(db: AsyncSession, user_id: int):
+async def get_user_stats(
+    db: AsyncSession,
+    user_id: int,
+    year: Optional[int] = None,
+    month: Optional[int] = None
+):
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         return None
+
+    # По умолчанию — текущий месяц и год
+    now = datetime.now(timezone.utc)
+    year = year or now.year
+    month = month or now.month
 
     query = (
         select(
             func.count(Order.id).label("orders_count"),
             func.coalesce(func.sum(Order.total_price), 0).label("total_income")
         )
-        .where(Order.user_id == user_id)
+        .where(
+            Order.user_id == user_id,
+            extract("year", Order.created_at) == year,
+            extract("month", Order.created_at) == month
+        )
     )
     result = await db.execute(query)
     stats = result.one()
 
     return {
-        "orders_count": stats.orders_count,
-        "total_income": stats.total_income
+        "orders_count": int(stats.orders_count),
+        "total_income": float(stats.total_income)
     }
 
 def safe_div(a: float, b: int) -> float:

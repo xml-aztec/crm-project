@@ -1,5 +1,5 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -8,6 +8,7 @@ from app.repositories import user as user_repo
 from app.schemas.user import (
     UserOut,
     UserRead,
+    UserStatsOut,
     UserUpdate,
     UserUpdateAdmin,
     UserUpdateSelf
@@ -63,14 +64,17 @@ async def get_current_user_profile(
 
 @router.get(
     "/me/stats",
+    response_model=UserStatsOut,
     summary="Моя статистика по заказам",
-    description="Возвращает детализированную статистику заказов текущего пользователя (менеджера)."
+    description="Возвращает статистику заказов за указанный месяц (по умолчанию текущий)."
 )
 async def get_my_statistics(
+    year: Optional[int] = Query(None, description="Год статистики (по умолчанию текущий)"),
+    month: Optional[int] = Query(None, ge=1, le=12, description="Месяц статистики (по умолчанию текущий)"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    stats = await user_repo.get_detailed_user_stats(db, current_user.id)
+    stats = await user_repo.get_user_stats(db, current_user.id, year, month)
     if stats is None:
         raise HTTPException(status_code=404, detail="Статистика не найдена")
     return stats

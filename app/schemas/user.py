@@ -39,6 +39,10 @@ class UserOut(BaseModel):
     is_active: Optional[bool] = None
     salary_base: Optional[int] = None
 
+class UserStatsOut(BaseModel):
+    orders_count: int
+    total_income: float
+
 class UserUpdateAdmin(BaseModel):
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
