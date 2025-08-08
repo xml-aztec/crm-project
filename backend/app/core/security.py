@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from app.core.dependencies import get_current_user
 from app.models.user import User
 
-SECRET_KEY = "your_super_secret_key"  # нужно хранить в .env
+SECRET_KEY = "TESTENVCRMPROD"  # нужно хранить в .env
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
