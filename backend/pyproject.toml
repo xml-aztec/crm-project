@@ -6,7 +6,7 @@ authors = ["xml-aztec <asankozhoevn@gmail.com>"]
 readme = "README.md"
 
 packages = [
-  { include = "app" }
+  { include = "backend" }
 ]
 
 [tool.poetry.dependencies]
