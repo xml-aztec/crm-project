@@ -58,9 +58,9 @@ app = FastAPI(
 
 origins = [
     "https://leadflow-beta.fly.dev",
-    "http://localhost",
-    "http://localhost:5173",
-    "http://localhost:3000",          
+    # "http://localhost",
+    # "http://localhost:5173",
+    # "http://localhost:3000",          
 ]
 
 app.add_middleware(
