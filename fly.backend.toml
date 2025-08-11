@@ -1,0 +1,7 @@
+app = "leadflow-backend"
+
+[build]
+  dockerfile = "Dockerfile-backend"
+
+[env]
+  PORT = "8080"

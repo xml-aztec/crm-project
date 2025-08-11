@@ -1,0 +1,7 @@
+app = "leadflow-frontend"
+
+[build]
+  dockerfile = "Dockerfile-frontend"
+
+[env]
+  VITE_API_URL = "https://leadflow-frontend.fly.dev/api"
