@@ -1,15 +1,13 @@
 FROM python:3.12-slim
 
-WORKDIR /app/backend
+WORKDIR /app
 
-COPY backend/pyproject.toml backend/poetry.lock ./
+COPY backend/ ./
 
 RUN pip install --upgrade pip \
  && pip install poetry \
  && poetry config virtualenvs.create false \
  && poetry install --without dev --no-root
-
-COPY backend/ ./backend
 
 ENV PORT=8080
 
