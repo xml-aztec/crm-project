@@ -3,8 +3,8 @@ from sqlalchemy import select
 from app.models.customer import Customer
 from app.schemas.customer import CustomerCreate, CustomerUpdate
 
-async def get_all(db: AsyncSession):
-    result = await db.execute(select(Customer))
+async def get_all(db: AsyncSession, skip: int = 0, limit: int = 100):
+    result = await db.execute(select(Customer).offset(skip).limit(limit))
     return result.scalars().all()
 
 async def get_by_id(db: AsyncSession, customer_id: int):

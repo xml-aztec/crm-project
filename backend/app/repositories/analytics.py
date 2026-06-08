@@ -10,6 +10,7 @@ from statistics import mean, pstdev
 from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.monthly_target import MonthlyTarget
+from app.models.payroll import Payroll
 from app.models.product import Product
 from app.models.supply_item import SupplyItem
 from app.models.user import User
@@ -398,6 +399,50 @@ async def get_monthly_target_data(db: AsyncSession, manager_id: int):
     }
 
 
+async def get_monthly_target_summary(db: AsyncSession):
+    """Агрегированный KPI за текущий месяц по всем менеджерам."""
+    today = date.today()
+    year, month = today.year, today.month
+    month_str = f"{year}-{month:02d}-01"
+
+    target_result = await db.execute(
+        select(func.coalesce(func.sum(MonthlyTarget.target_amount), 0)).where(
+            MonthlyTarget.month == month_str
+        )
+    )
+    total_target = float(target_result.scalar() or 0)
+
+    revenue_result = await db.execute(
+        select(func.coalesce(func.sum(OrderItem.final_price * OrderItem.quantity), 0))
+        .join(Order)
+        .where(
+            extract("month", Order.created_at) == month,
+            extract("year", Order.created_at) == year,
+            Order.confirmed == True,
+        )
+    )
+    total_revenue = float(revenue_result.scalar() or 0)
+
+    today_result = await db.execute(
+        select(func.coalesce(func.sum(OrderItem.final_price * OrderItem.quantity), 0))
+        .join(Order)
+        .where(
+            func.date(Order.created_at) == today,
+            Order.confirmed == True,
+        )
+    )
+    today_revenue = float(today_result.scalar() or 0)
+
+    progress = (total_revenue / total_target * 100) if total_target else 0
+
+    return {
+        "target": total_target,
+        "revenue": total_revenue,
+        "today_revenue": today_revenue,
+        "progress_percent": round(min(progress, 100), 2),
+    }
+
+
 async def get_leaderboard_data(db: AsyncSession):
     today = date.today()
     year, month = today.year, today.month
@@ -618,3 +663,87 @@ async def get_xyz_analysis(db):
         })
 
     return response
+
+
+async def get_pnl_report(db: AsyncSession, year: int, month: int) -> dict:
+    revenue = float(await db.scalar(
+        select(func.coalesce(func.sum(OrderItem.final_price), 0))
+        .join(Order, Order.id == OrderItem.order_id)
+        .where(
+            Order.confirmed == True,
+            extract("year", Order.created_at) == year,
+            extract("month", Order.created_at) == month,
+        )
+    ) or 0)
+
+    cogs = float(await db.scalar(
+        select(func.coalesce(func.sum(OrderItem.quantity * Product.cost_price), 0))
+        .join(Order, Order.id == OrderItem.order_id)
+        .join(Product, Product.id == OrderItem.product_id)
+        .where(
+            Order.confirmed == True,
+            extract("year", Order.created_at) == year,
+            extract("month", Order.created_at) == month,
+        )
+    ) or 0)
+
+    month_str = f"{year}-{month:02d}"
+    payroll_total = float(await db.scalar(
+        select(func.coalesce(func.sum(Payroll.total_paid), 0))
+        .where(Payroll.month == month_str)
+    ) or 0)
+
+    gross_profit = revenue - cogs
+    net_profit = gross_profit - payroll_total
+
+    return {
+        "year": year,
+        "month": month,
+        "revenue": revenue,
+        "cogs": cogs,
+        "gross_profit": gross_profit,
+        "payroll_total": payroll_total,
+        "net_profit": net_profit,
+        "gross_margin_percent": round((gross_profit / revenue * 100) if revenue else 0, 2),
+        "net_margin_percent": round((net_profit / revenue * 100) if revenue else 0, 2),
+    }
+
+
+async def get_pnl_yearly(db: AsyncSession, year: int) -> list:
+    result = await db.execute(
+        select(
+            extract("month", Order.created_at).label("month"),
+            func.coalesce(func.sum(OrderItem.final_price), 0).label("revenue"),
+            func.coalesce(func.sum(OrderItem.quantity * Product.cost_price), 0).label("cogs"),
+        )
+        .join(OrderItem, Order.id == OrderItem.order_id)
+        .join(Product, Product.id == OrderItem.product_id)
+        .where(Order.confirmed == True, extract("year", Order.created_at) == year)
+        .group_by(extract("month", Order.created_at))
+        .order_by(extract("month", Order.created_at))
+    )
+    revenue_cogs = {int(row.month): (float(row.revenue), float(row.cogs)) for row in result.fetchall()}
+
+    payroll_result = await db.execute(
+        select(Payroll.month, func.coalesce(func.sum(Payroll.total_paid), 0).label("total"))
+        .where(Payroll.month.like(f"{year}-%"))
+        .group_by(Payroll.month)
+    )
+    payroll_by_month = {int(row.month.split("-")[1]): float(row.total) for row in payroll_result.fetchall()}
+
+    data = []
+    for m in range(1, 13):
+        revenue, cogs = revenue_cogs.get(m, (0.0, 0.0))
+        payroll = payroll_by_month.get(m, 0.0)
+        gross_profit = revenue - cogs
+        net_profit = gross_profit - payroll
+        data.append({
+            "month": m,
+            "revenue": revenue,
+            "cogs": cogs,
+            "gross_profit": gross_profit,
+            "payroll_total": payroll,
+            "net_profit": net_profit,
+        })
+
+    return data

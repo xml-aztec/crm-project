@@ -1,9 +1,8 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.core.database import SessionLocal
 from app.repositories import user as user_repo
 from app.schemas.user import (
     UserDetailedStats,
@@ -12,17 +11,15 @@ from app.schemas.user import (
     UserStatsOut,
     UserUpdate,
     UserUpdateAdmin,
-    UserUpdateSelf
+    UserUpdateSelf,
+    PasswordChange,
 )
-from app.core.dependencies import get_current_user, is_admin
+from app.core.dependencies import get_current_user, get_db, is_admin
 from app.models.user import User
+from app.utils.email import send_approval_email
+from app.repositories import notification as notif_repo
 
 router = APIRouter(prefix="/users", tags=["Users"])
-
-
-async def get_db():
-    async with SessionLocal() as session:
-        yield session
 
 
 @router.get(
@@ -46,9 +43,11 @@ async def get_pending_users(
 )
 async def list_users(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(is_admin)
+    _: User = Depends(is_admin),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
 ):
-    return await user_repo.get_users(db)
+    return await user_repo.get_users(db, skip=skip, limit=limit)
 
 
 @router.get(
@@ -140,6 +139,27 @@ async def update_user_admin(
 
 
 @router.patch(
+    "/me/password",
+    status_code=200,
+    summary="Смена пароля",
+    description="Текущий пользователь меняет свой пароль. Требуется текущий пароль для подтверждения."
+)
+async def change_password(
+    data: PasswordChange,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.core import security as sec
+    if not sec.verify_password(data.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Неверный текущий пароль"
+        )
+    await user_repo.update_password(db, current_user.id, data.new_password)
+    return {"message": "Пароль успешно изменён"}
+
+
+@router.patch(
     "/me",
     response_model=UserRead,
     summary="Обновление собственного профиля",
@@ -191,12 +211,22 @@ async def delete_user(
 )
 async def approve_user(
     user_id: int,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-    
+    _: User = Depends(is_admin),
 ):
     user = await user_repo.approve_user(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
+    await send_approval_email(background_tasks, user.email, user.full_name)
+    await notif_repo.create_notification(
+        db,
+        user_id=user.id,
+        title="Аккаунт одобрен",
+        message="Ваша заявка на регистрацию одобрена. Добро пожаловать!",
+        type="user",
+        entity_id=user.id,
+    )
     return user
 
 

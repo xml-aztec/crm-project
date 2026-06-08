@@ -13,9 +13,19 @@ from sqlalchemy import extract
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-async def get_users(db: AsyncSession) -> list[User]:
-    result = await db.execute(select(User).where(User.is_approved == True))
+async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100) -> list[User]:
+    result = await db.execute(
+        select(User).where(User.is_approved == True).offset(skip).limit(limit)
+    )
     return result.scalars().all()
+
+
+async def update_password(db: AsyncSession, user_id: int, new_password: str) -> None:
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user:
+        user.hashed_password = get_password_hash(new_password)
+        await db.commit()
 
 async def get_user_by_id(db: AsyncSession, user_id: int):
     result = await db.execute(select(User).where(User.id == user_id))

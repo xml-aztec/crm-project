@@ -36,6 +36,11 @@ export interface UserUpdate {
   phone?: string;
 }
 
+export interface PasswordChangeRequest {
+  current_password: string;
+  new_password: string;
+}
+
 export const userApi = createApi({
   reducerPath: 'userApi',
   baseQuery: baseQueryWithReauth,
@@ -56,10 +61,20 @@ export const userApi = createApi({
       }),
       invalidatesTags: ['CurrentUser'],
     }),
+
+    // Смена пароля
+    changePassword: builder.mutation<{ message: string }, PasswordChangeRequest>({
+      query: (data) => ({
+        url: '/users/me/password',
+        method: 'PATCH',
+        body: data,
+      }),
+    }),
   }),
 });
 
 export const {
   useGetCurrentUserQuery,
   useUpdateCurrentUserMutation,
+  useChangePasswordMutation,
 } = userApi;

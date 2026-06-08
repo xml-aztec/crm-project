@@ -1,10 +1,13 @@
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.database import SessionLocal
 from app.core.dependencies import get_current_user, get_db, is_admin, is_order_owner_or_admin
 from app.models.user import User
 from app.repositories import order as repo
+from app.repositories import notification as notif_repo
+from app.repositories import order_history as history_repo
 from app.schemas.order import (
     OrderConfirmUpdate,
     OrderCreate,
@@ -12,7 +15,19 @@ from app.schemas.order import (
     OrderStatusUpdate,
     OrderUpdate,
 )
+from app.schemas.order_history import OrderHistoryOut
 from app.utils.stock import update_stock_on_order_confirmed
+
+
+async def _notify_admins_new_order(order_id: int, manager_name: str) -> None:
+    async with SessionLocal() as db:
+        await notif_repo.notify_admins(
+            db,
+            title=f"Новый заказ #{order_id}",
+            message=f"Создан менеджером {manager_name}",
+            type="order",
+            entity_id=order_id,
+        )
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
@@ -27,15 +42,18 @@ router = APIRouter(prefix="/orders", tags=["Orders"])
 )
 async def create_order(
     data: OrderCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await repo.create_order(
+    order = await repo.create_order(
         db,
         data.model_dump(exclude={"items"}),
         data.items,
-        current_user
+        current_user,
     )
+    background_tasks.add_task(_notify_admins_new_order, order.id, current_user.full_name or current_user.email)
+    return order
 
 
 @router.patch(
@@ -148,6 +166,20 @@ async def change_order_status(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     return order
+
+@router.get(
+    "/{order_id}/history",
+    response_model=list[OrderHistoryOut],
+    summary="История изменений заказа",
+    description="Возвращает хронологический лог всех изменений заказа: создание, смена статуса, подтверждение, отмена."
+)
+async def get_order_history(
+    order_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return await history_repo.get_order_history(db, order_id)
+
 
 @router.delete(
     "/{order_id}",

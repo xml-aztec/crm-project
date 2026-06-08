@@ -83,7 +83,7 @@ const CashflowMetaManagement: React.FC = () => {
     setEditingType(type);
     setTypeFormData({ 
       name: type.name,
-      category_id: type.category_id
+      category_id: type.category_id ?? 0
     });
   };
 
@@ -135,7 +135,7 @@ const CashflowMetaManagement: React.FC = () => {
     setEditingCategory(category);
     setCategoryFormData({ 
       name: category.name,
-      type: category.type
+      type: category.type ?? 'income'
     });
   };
 

@@ -86,6 +86,12 @@ export interface UpdateSubcategoryRequest {
   category_id?: number;
 }
 
+export interface ImportCsvResult {
+  created: number;
+  updated: number;
+  errors: string[];
+}
+
 export interface PaginationParams {
   page?: number;
   page_size?: number;
@@ -283,6 +289,28 @@ export const catalogApi = createApi({
       }),
       invalidatesTags: ['Subcategory'],
     }),
+
+    importProductsCsv: builder.mutation<ImportCsvResult, FormData>({
+      queryFn: async (formData) => {
+        try {
+          const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+          const response = await fetch(`${baseUrl}/products/import-csv`, {
+            method: 'POST',
+            credentials: 'include',
+            body: formData,
+          });
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({ detail: 'Ошибка загрузки' }));
+            return { error: { status: response.status, data: err } };
+          }
+          const data: ImportCsvResult = await response.json();
+          return { data };
+        } catch (e) {
+          return { error: { status: 'FETCH_ERROR', error: String(e) } };
+        }
+      },
+      invalidatesTags: ['Product'],
+    }),
   }),
 });
 
@@ -306,4 +334,5 @@ export const {
   useCreateSubcategoryMutation,
   useUpdateSubcategoryMutation,
   useDeleteSubcategoryMutation,
+  useImportProductsCsvMutation,
 } = catalogApi;

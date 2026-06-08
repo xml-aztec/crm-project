@@ -333,7 +333,58 @@ export default function OrdersTable({ filters, onEdit, onViewDetails }: OrdersTa
           </div>
         )}
 
-        <div className="overflow-x-auto">
+        {/* Mobile card view */}
+        <div className="sm:hidden divide-y divide-gray-200 dark:divide-gray-700">
+          {currentOrders.map((order: Order) => {
+            const canEdit = canEditOrder(order, isAdmin);
+            return (
+              <div
+                key={order.id}
+                onClick={() => onViewDetails(order)}
+                className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${order.status_id === 4 ? 'opacity-75' : ''}`}
+              >
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${order.status_id === 4 ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}>
+                        #{order.id}
+                      </span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        {order.customer?.name || `Клиент #${order.customer_id}`}
+                      </span>
+                    </div>
+                    {order.customer?.phone && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{order.customer.phone}</p>
+                    )}
+                  </div>
+                  <div className="text-sm font-semibold text-blue-600 dark:text-blue-400 shrink-0">
+                    {formatPrice(getFinalPrice(order))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                  <StatusDropdown order={order} onStatusUpdate={handleStatusUpdate} disabled={!canEdit} />
+                  <ConfirmationBadge order={order} onConfirmationChange={handleConfirmationChange} size="sm" showDetails={false} />
+                  <OrderActionsMenu
+                    order={order}
+                    onEdit={canEdit && onEdit ? onEdit : undefined}
+                    onViewDetails={onViewDetails}
+                    onConfirm={handleConfirmOrder}
+                    onDelete={handleDeleteClick}
+                    onPrint={handlePrintOrder}
+                    onExport={handleExportOrder}
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-xs text-gray-400 dark:text-gray-500">{formatOrderDate(order.created_at)}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{getPaymentMethodName(order)}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop table view */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
               <tr>
@@ -552,6 +603,7 @@ export default function OrdersTable({ filters, onEdit, onViewDetails }: OrdersTa
             </tbody>
           </table>
         </div>
+        </div>{/* end desktop table wrapper */}
 
         {/* Пагинация */}
         {(pagination.hasPrevious || hasNext) && (
@@ -608,9 +660,8 @@ export default function OrdersTable({ filters, onEdit, onViewDetails }: OrdersTa
             </div>
           </div>
         )}
-      </div>
 
-      {/* ✅ ИСПРАВЛЯЕМ: Модальное окно подтверждения удаления */}
+      {/* Модальное окно подтверждения удаления */}
       <DeleteConfirmModal
         title="Удалить заказ"
         itemName={orderToDelete?.id ? `#${orderToDelete.id}` : ''}

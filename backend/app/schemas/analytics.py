@@ -107,3 +107,24 @@ class XYZAnalysisResult(BaseModel):
     stddev_quantity: float
     variation_coefficient: float
     label: Literal["X", "Y", "Z"]
+
+
+class PnLReport(BaseModel):
+    year: int
+    month: int
+    revenue: float
+    cogs: float
+    gross_profit: float
+    payroll_total: float
+    net_profit: float
+    gross_margin_percent: float
+    net_margin_percent: float
+
+
+class PnLMonthly(BaseModel):
+    month: int
+    revenue: float
+    cogs: float
+    gross_profit: float
+    payroll_total: float
+    net_profit: float

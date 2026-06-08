@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react';
+
+const PAGE_SIZE = 20;
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import PageMeta from '../../components/common/PageMeta';
 import Button from '../../components/ui/button/Button';
@@ -39,8 +41,8 @@ export default function Customers() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
 
-  // Состояние для подтверждения удаления (как в UsersTable)
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
 
   // Фильтры и поиск
   const [searchTerm, setSearchTerm] = useState('');
@@ -116,6 +118,9 @@ export default function Customers() {
 
     return filtered;
   }, [customers, searchTerm, typeFilter, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedCustomers.length / PAGE_SIZE));
+  const pagedCustomers = filteredAndSortedCustomers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const handleCreateCustomer = async (data: any) => {
     try {
@@ -222,6 +227,7 @@ export default function Customers() {
           <div className="flex items-center gap-4">
             <div className="text-sm text-gray-500 dark:text-gray-400">
               Найдено: <span className="font-medium text-gray-900 dark:text-white">{filteredAndSortedCustomers.length}</span> из {customers.length}
+              {totalPages > 1 && <span className="ml-2">(стр. {page} из {totalPages})</span>}
             </div>
             {(isLoading || isLoadingTypes) && (
               <div className="flex items-center gap-2">
@@ -372,7 +378,7 @@ export default function Customers() {
 
               {/* Table Body */}
               <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                {filteredAndSortedCustomers.map((customer) => (
+                {pagedCustomers.map((customer) => (
                   <TableRow key={customer.id}>
                     {/* Клиент */}
                     <TableCell className="px-5 py-4 sm:px-6 text-start">
@@ -505,6 +511,51 @@ export default function Customers() {
             )}
           </div>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4 px-1">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Показано {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredAndSortedCustomers.length)} из {filteredAndSortedCustomers.length}
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage(1)}
+                disabled={page === 1}
+                className="px-2 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >«</button>
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >‹</button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const start = Math.max(1, Math.min(page - 2, totalPages - 4));
+                return start + i;
+              }).map(n => (
+                <button
+                  key={n}
+                  onClick={() => setPage(n)}
+                  className={`px-3 py-1 text-sm rounded border ${
+                    n === page
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >{n}</button>
+              ))}
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >›</button>
+              <button
+                onClick={() => setPage(totalPages)}
+                disabled={page === totalPages}
+                className="px-2 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >»</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Customer Modal */}

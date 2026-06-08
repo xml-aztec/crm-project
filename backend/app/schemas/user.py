@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr
-from typing import List, Optional, Union
+from pydantic import BaseModel, EmailStr, Field
+from typing import Annotated, List, Optional, Union
 from datetime import datetime
 
 class UserBase(BaseModel):
@@ -71,6 +71,11 @@ class UserUpdateSelf(BaseModel):
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: Annotated[str, Field(min_length=8)]
+
 
 class UserOutOrder(BaseModel):
     id: int

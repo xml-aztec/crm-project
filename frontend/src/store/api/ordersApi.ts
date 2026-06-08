@@ -215,6 +215,20 @@ export interface OrderStatusSummaryItem {
   percentage: number;
 }
 
+export interface OrderHistoryUser {
+  id: number;
+  full_name: string;
+}
+
+export interface OrderHistoryEntry {
+  id: number;
+  order_id: number;
+  action: string;
+  description: string | null;
+  created_at: string;
+  user: OrderHistoryUser | null;
+}
+
 export const ordersApi = createApi({
   reducerPath: 'ordersApi',
   baseQuery: fetchBaseQuery({
@@ -424,7 +438,7 @@ export const ordersApi = createApi({
     // ✅ ДОБАВЛЯЕМ: Новый эндпоинт для статистики продаж по месяцам
     getSalesByMonth: builder.query<MonthlySalesData[], void>({
       query: () => ({
-        url: '/analytics/analytics/sales-by-month',
+        url: '/analytics/sales-by-month',
         method: 'GET',
       }),
       providesTags: ['Analytics'],
@@ -468,7 +482,12 @@ export const ordersApi = createApi({
         method: 'GET',
       }),
       providesTags: ['Analytics', 'Order'],
-      keepUnusedDataFor: 300, // 5 минут кеширования
+      keepUnusedDataFor: 300,
+    }),
+
+    getOrderHistory: builder.query<OrderHistoryEntry[], number>({
+      query: (orderId) => `/orders/${orderId}/history`,
+      providesTags: (_, __, orderId) => [{ type: 'Order', id: orderId }],
     }),
   }),
 });
@@ -490,5 +509,6 @@ export const {
   useGetKPISummaryQuery,
   useGetRevenueProfitDataQuery,
   useGetRecentOrdersQuery,
-  useGetOrderStatusSummaryQuery, // ✅ Экспортируем новый hook
+  useGetOrderStatusSummaryQuery,
+  useGetOrderHistoryQuery,
 } = ordersApi;

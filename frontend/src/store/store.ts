@@ -43,6 +43,8 @@ import { kpiRulesApi } from './api/kpiRulesApi';
 import { payrollApi } from './api/payrollApi';
 import { usersApi } from './api/usersApi'; 
 import { userStatsApi } from './api/userStatsApi';
+import { analyticsApi } from './api/analyticsApi';
+import { notificationsApi } from './api/notificationsApi';
 
 const persistConfig = {
   key: 'techstore',
@@ -79,6 +81,8 @@ const rootReducer = combineReducers({
   [kpiRulesApi.reducerPath]: kpiRulesApi.reducer,
   [payrollApi.reducerPath]: payrollApi.reducer,
   [userStatsApi.reducerPath]: userStatsApi.reducer,
+  [analyticsApi.reducerPath]: analyticsApi.reducer,
+  [notificationsApi.reducerPath]: notificationsApi.reducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
@@ -168,6 +172,8 @@ export const store = configureStore({
       kpiRulesApi.middleware,
       payrollApi.middleware,
       userStatsApi.middleware,
+      analyticsApi.middleware,
+      notificationsApi.middleware,
     ),
   devTools: import.meta.env.DEV,
 });

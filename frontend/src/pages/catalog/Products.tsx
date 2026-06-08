@@ -1,10 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { useGetProductsQuery } from '../../store/api/catalogApi';
+import { useGetProductsQuery, useImportProductsCsvMutation, ImportCsvResult } from '../../store/api/catalogApi';
 import { ProductFilters } from '../../types/catalog';
 import ProductsTable from '../../components/catalog/ProductsTable';
 import ProductFiltersComponent from '../../components/catalog/ProductsFilters';
 import Button from '../../components/ui/button/Button';
+
+const PAGE_SIZE = 20;
 
 export default function Products() {
   const navigate = useNavigate();
@@ -18,9 +20,45 @@ export default function Products() {
     price_max: '',
   });
 
-  const { data: products = [], isLoading, error } = useGetProductsQuery();
+  const [page, setPage] = useState(1);
+  const [exporting, setExporting] = useState(false);
+  const [importResult, setImportResult] = useState<ImportCsvResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ✅ Фильтрация товаров
+  const { data: products = [], isLoading, error } = useGetProductsQuery();
+  const [importCsv, { isLoading: importing }] = useImportProductsCsvMutation();
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${baseUrl}/products/export-csv`, { credentials: 'include' });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'products_export.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    const formData = new FormData();
+    formData.append('file', file);
+    const result = await importCsv(formData);
+    if ('data' in result && result.data) {
+      setImportResult(result.data);
+    }
+  };
+
+  // Фильтрация товаров
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
       // Поиск по названию и описанию
@@ -73,6 +111,9 @@ export default function Products() {
     });
   }, [products, filters]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const pagedProducts = filteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   const handleCreateProduct = () => {
     navigate('/catalog/products/create');
   };
@@ -87,6 +128,7 @@ export default function Products() {
       price_min: '',
       price_max: '',
     });
+    setPage(1);
   };
 
   if (error) {
@@ -138,6 +180,37 @@ export default function Products() {
             </Button>
           )}
 
+          <Button
+            onClick={handleExport}
+            variant="outline"
+            size="sm"
+            disabled={exporting}
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            {exporting ? 'Экспорт...' : 'Экспорт CSV'}
+          </Button>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={handleImportFile}
+          />
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            variant="outline"
+            size="sm"
+            disabled={importing}
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12" />
+            </svg>
+            {importing ? 'Импорт...' : 'Импорт CSV'}
+          </Button>
+
           <Button onClick={handleCreateProduct}>
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -147,18 +220,50 @@ export default function Products() {
         </div>
       </div>
 
-      <ProductFiltersComponent 
-        filters={filters} 
-        onFiltersChange={setFilters} 
+      {importResult && (
+        <div className={`rounded-xl border p-4 flex items-start gap-3 ${
+          importResult.errors.length > 0
+            ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700'
+            : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700'
+        }`}>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+              Импорт завершён: создано {importResult.created}, обновлено {importResult.updated}
+            </p>
+            {importResult.errors.length > 0 && (
+              <ul className="mt-2 space-y-0.5">
+                {importResult.errors.slice(0, 5).map((e, i) => (
+                  <li key={i} className="text-xs text-red-600 dark:text-red-400">{e}</li>
+                ))}
+                {importResult.errors.length > 5 && (
+                  <li className="text-xs text-gray-500">...ещё {importResult.errors.length - 5} ошибок</li>
+                )}
+              </ul>
+            )}
+          </div>
+          <button
+            onClick={() => setImportResult(null)}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 shrink-0"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      <ProductFiltersComponent
+        filters={filters}
+        onFiltersChange={setFilters}
       />
 
       {/* Results Summary */}
       {!isLoading && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            {filteredProducts.length === 0 
+            {filteredProducts.length === 0
               ? 'Товары не найдены'
-              : `Найдено товаров: ${filteredProducts.length}`
+              : `Найдено: ${filteredProducts.length} (стр. ${page} из ${totalPages})`
             }
           </p>
           
@@ -173,11 +278,65 @@ export default function Products() {
         </div>
       )}
 
-      {/* ✅ УБИРАЕМ: onEdit пропс, так как теперь переход происходит внутри таблицы */}
-      <ProductsTable 
-        products={filteredProducts} 
+      <ProductsTable
+        products={pagedProducts}
         isLoading={isLoading}
       />
+
+      {/* Pagination */}
+      {!isLoading && totalPages > 1 && (
+        <div className="flex items-center justify-between px-2">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Показано {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredProducts.length)} из {filteredProducts.length}
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage(1)}
+              disabled={page === 1}
+              className="px-2 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              «
+            </button>
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-3 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              ‹
+            </button>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const start = Math.max(1, Math.min(page - 2, totalPages - 4));
+              return start + i;
+            }).map(n => (
+              <button
+                key={n}
+                onClick={() => setPage(n)}
+                className={`px-3 py-1 text-sm rounded border ${
+                  n === page
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-3 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              ›
+            </button>
+            <button
+              onClick={() => setPage(totalPages)}
+              disabled={page === totalPages}
+              className="px-2 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              »
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

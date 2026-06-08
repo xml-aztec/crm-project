@@ -53,7 +53,7 @@ export default function AllOrders() {
   return (
     <div className="space-y-6">
       {/* Заголовок */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Заказы
@@ -62,7 +62,7 @@ export default function AllOrders() {
             Управление заказами и их статусами
           </p>
         </div>
-        <Button onClick={() => navigate('/orders/create')}>
+        <Button onClick={() => navigate('/orders/create')} className="sm:shrink-0 w-full sm:w-auto">
           Создать заказ
         </Button>
       </div>

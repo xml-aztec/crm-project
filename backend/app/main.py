@@ -1,44 +1,60 @@
-from fastapi import FastAPI
+import time
+import uuid
+import sentry_sdk
+import structlog
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from contextlib import asynccontextmanager
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from app.core.limiter import limiter
 from app.core.database import init_db, SessionLocal
+from app.core.config import settings
+from app.core.logging_config import configure_logging
 from app.utils.init_admin_user import init_admin_user
 from app.utils.init_cashflow_types import init_cash_flow_types
 from app.utils.init_order_statuses import init_order_statuses
 from app.utils.init_roles import init_roles
+from app.utils.init_positions import init_positions
 
-from app.api import auth
-from app.api import users
-from app.api import categories
-from app.api import subcategories
-from app.api import brands
-from app.api import branches
-from app.api import warehouses
-from app.api import products
-from app.api import product_stocks
-from app.api import customer_types, order_statuses
-from app.api import orders
-from app.api import suppliers
-from app.api import supplies
-from app.api import roles
-from app.api import positions
-from app.api import cashflow_meta
-from app.api import analytics
-from app.api import supply_analytics
-from app.api import stock_logs
-from app.api import cashflows
-from app.api import budgets
-from app.api import cash_gaps
-from app.api import monthly_targets
-from app.api import kpi_rules
-from app.api import payrolls
-from app.api import order_items
-from app.api import customers  
-from app.api import payment_methods
+from app.api import (
+    health, auth, users, categories, subcategories, brands, branches,
+    warehouses, products, product_stocks, customer_types, order_statuses,
+    orders, order_items, suppliers, supplies, payment_methods,
+    roles, positions, cashflow_meta, budgets, cash_gaps,
+    analytics, supply_analytics, stock_logs, cashflows,
+    monthly_targets, kpi_rules, payrolls, customers, notifications,
+)
+
+configure_logging()
+logger = structlog.get_logger()
+
+
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        request_id = str(uuid.uuid4())[:8]
+        structlog.contextvars.clear_contextvars()
+        structlog.contextvars.bind_contextvars(request_id=request_id)
+        start = time.perf_counter()
+        response = await call_next(request)
+        duration_ms = round((time.perf_counter() - start) * 1000)
+        logger.info(
+            "request",
+            method=request.method,
+            path=request.url.path,
+            status_code=response.status_code,
+            duration_ms=duration_ms,
+        )
+        return response
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if settings.SENTRY_DSN:
+        sentry_sdk.init(dsn=settings.SENTRY_DSN, traces_sample_rate=0.2)
+        logger.info("sentry_initialized")
+
     await init_db()
 
     async with SessionLocal() as session:
@@ -46,6 +62,7 @@ async def lifespan(app: FastAPI):
         await init_admin_user(session)
         await init_order_statuses(session)
         await init_cash_flow_types(session)
+        await init_positions(session)
 
     yield
 
@@ -56,13 +73,19 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 origins = [
     "https://leadflow-beta.fly.dev",
-    # "http://localhost",
-    # "http://localhost:5173",
-    # "http://localhost:3000",          
+    "http://localhost",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:3000",
 ]
 
+app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -71,6 +94,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(categories.router)
@@ -100,3 +124,4 @@ app.include_router(monthly_targets.router)
 app.include_router(kpi_rules.router)
 app.include_router(payrolls.router)
 app.include_router(customers.router)
+app.include_router(notifications.router)

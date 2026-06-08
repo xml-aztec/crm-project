@@ -1,0 +1,137 @@
+# LeadFlow CRM
+
+Full-stack CRM/ERP for retail and wholesale businesses. FastAPI + PostgreSQL backend, React 19 + Redux Toolkit frontend. Deployed on Fly.io.
+
+## Quick Start (local)
+
+### Prerequisites
+
+- Docker & Docker Compose
+- Node.js 20+
+- Python 3.12+ with [Poetry](https://python-poetry.org/)
+
+### 1. Clone and configure
+
+```bash
+git clone https://github.com/xml-aztec/crm-project.git
+cd crm-project
+```
+
+Create `backend/.env`:
+
+```env
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5434/crm_db
+SECRET_KEY=$(openssl rand -hex 32)
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=your_password
+ADMIN_FULL_NAME=Administrator
+BASE_URL=http://localhost:8000
+```
+
+### 2. Run with Docker Compose
+
+```bash
+# Start PostgreSQL + backend + frontend
+docker compose up --build
+
+# Backend only (for development with hot-reload)
+docker compose up db backend
+```
+
+### 3. Run frontend separately (hot-reload)
+
+```bash
+cd frontend
+npm install
+npm run dev        # http://localhost:5173
+```
+
+Backend dev server:
+
+```bash
+cd backend
+poetry install
+uvicorn app.main:app --reload --port 8000
+```
+
+## Architecture
+
+| Layer | Stack |
+|---|---|
+| Backend | FastAPI, async SQLAlchemy 2.0, PostgreSQL 15, asyncpg |
+| Frontend | React 19, Redux Toolkit (RTK Query), Tailwind CSS |
+| Auth | httpOnly JWT cookie, bcrypt passwords |
+| Deploy | Fly.io (backend + frontend as separate apps) |
+
+### Backend structure (`backend/app/`)
+
+```
+api/           — FastAPI routers, one file per domain
+repositories/  — All DB queries (business logic lives here)
+models/        — SQLAlchemy ORM models
+schemas/       — Pydantic v2 request/response schemas
+core/          — config, database, dependencies, security
+utils/         — PDF generation, barcode, stock helpers, seed scripts
+```
+
+### Frontend structure (`frontend/src/`)
+
+```
+store/api/     — 22 RTK Query slices
+pages/         — Route-level components
+components/    — Reusable UI components
+hooks/         — useRoleAccess, reduxHooks
+layout/        — AppLayout, AppSidebar, AppHeader
+```
+
+## Running tests
+
+```bash
+cd backend
+poetry install --with dev
+pytest -v
+```
+
+Tests require a running PostgreSQL instance at `DATABASE_URL`. Minimum required env vars:
+
+```env
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/crm_db
+SECRET_KEY=any_32_char_string
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=testpassword123
+ADMIN_FULL_NAME=Test Admin
+```
+
+## Database migrations
+
+```bash
+cd backend
+
+# Apply all pending migrations
+alembic upgrade head
+
+# Generate a new migration after model changes
+alembic revision --autogenerate -m "describe change"
+```
+
+## Deployment (Fly.io)
+
+```bash
+# Deploy backend
+fly deploy --config fly.backend.toml
+
+# Deploy frontend
+fly deploy --config fly.frontend.toml
+
+# Set secrets (first time or when rotating)
+fly secrets set SECRET_KEY="..." --app leadflow-backend
+fly secrets set DATABASE_URL="postgresql+asyncpg://..." --app leadflow-backend
+```
+
+CI/CD auto-deploys both apps on every push to `main` via GitHub Actions (requires `FLY_API_TOKEN` and `SECRET_KEY` in GitHub repository secrets).
+
+## Health check
+
+```
+GET /health → {"status": "ok", "db": "ok", "version": "0.1.0"}
+```

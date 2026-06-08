@@ -1,8 +1,11 @@
+import io
+import csv
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.dependencies import get_db
+from app.core.dependencies import get_current_user, get_db, is_admin
+from app.models.user import User
 from app.repositories import product as repo
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
 from app.utils.barcode_utils import generate_qr_image
@@ -27,6 +30,8 @@ async def list_products(
     max_price: Optional[float] = Query(None),
     min_cost_price: Optional[float] = Query(None),
     max_cost_price: Optional[float] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
 ):
     return await repo.get_filtered(
         db=db,
@@ -40,7 +45,52 @@ async def list_products(
         max_price=max_price,
         min_cost_price=min_cost_price,
         max_cost_price=max_cost_price,
+        skip=skip,
+        limit=limit,
     )
+
+@router.get(
+    "/export-csv",
+    summary="Экспорт каталога в CSV",
+    description="Скачивает все товары в формате CSV. Кодировка UTF-8 BOM для корректного открытия в Excel."
+)
+async def export_products_csv(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    products = await repo.get_all_for_export(db)
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["id", "name", "description", "detail", "cost_price", "price", "sku", "barcode", "category_id", "subcategory_id", "brand_id"])
+    for p in products:
+        writer.writerow([
+            p.id, p.name, p.description or "", p.detail or "",
+            p.cost_price, p.price, p.sku or "", p.barcode or "",
+            p.category_id or "", p.subcategory_id or "", p.brand_id or "",
+        ])
+    content = "﻿" + output.getvalue()
+    return StreamingResponse(
+        iter([content]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=products_export.csv"},
+    )
+
+
+@router.post(
+    "/import-csv",
+    summary="Импорт каталога из CSV",
+    description="Загружает CSV-файл и массово создаёт/обновляет товары. Если SKU совпадает — обновляет запись, иначе создаёт новую. Только для администраторов."
+)
+async def import_products_csv(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_admin),
+):
+    if not (file.filename or "").lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Загрузите CSV-файл (.csv)")
+    content = await file.read()
+    return await repo.import_from_csv(db, content)
+
 
 @router.get(
     "/{product_id}",

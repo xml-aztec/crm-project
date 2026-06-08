@@ -1,3 +1,5 @@
+import csv
+import io
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import and_, exists, select, func
@@ -23,6 +25,8 @@ async def get_filtered(
     max_price: Optional[float] = None,
     min_cost_price: Optional[float] = None,
     max_cost_price: Optional[float] = None,
+    skip: int = 0,
+    limit: int = 100,
 ) -> list[Product]:
     query = select(Product).options(
         selectinload(Product.category),
@@ -74,7 +78,7 @@ async def get_filtered(
 
         filtered_products.append(product)
 
-    return filtered_products
+    return filtered_products[skip : skip + limit]
 
 
 async def get_by_id(db: AsyncSession, product_id: int) -> Optional[Product]:
@@ -137,3 +141,73 @@ async def delete(db: AsyncSession, product_id: int):
     if product:
         await db.delete(product)
         await db.commit()
+
+
+async def get_all_for_export(db: AsyncSession) -> list[Product]:
+    result = await db.execute(select(Product).order_by(Product.name))
+    return result.scalars().all()
+
+
+async def import_from_csv(db: AsyncSession, content: bytes) -> dict:
+    text = content.decode("utf-8-sig")
+    reader = csv.DictReader(io.StringIO(text))
+    created = updated = 0
+    errors: list[str] = []
+
+    for i, row in enumerate(reader, start=2):
+        try:
+            name = (row.get("name") or "").strip()
+            if not name:
+                errors.append(f"Строка {i}: пустое поле name")
+                continue
+
+            def _float(v: str) -> float:
+                try:
+                    return float(v) if v and v.strip() else 0.0
+                except ValueError:
+                    return 0.0
+
+            def _int(v: str):
+                s = (v or "").strip()
+                return int(s) if s else None
+
+            sku = (row.get("sku") or "").strip() or None
+            cost_price = _float(row.get("cost_price", ""))
+            price = _float(row.get("price", ""))
+            barcode = (row.get("barcode") or "").strip() or None
+            description = (row.get("description") or "").strip() or None
+            detail = (row.get("detail") or "").strip() or None
+            category_id = _int(row.get("category_id", ""))
+            subcategory_id = _int(row.get("subcategory_id", ""))
+            brand_id = _int(row.get("brand_id", ""))
+
+            existing = None
+            if sku:
+                res = await db.execute(select(Product).where(Product.sku == sku))
+                existing = res.scalar_one_or_none()
+
+            if existing:
+                existing.name = name
+                existing.cost_price = cost_price
+                existing.price = price
+                existing.description = description
+                existing.detail = detail
+                existing.barcode = barcode
+                existing.category_id = category_id
+                existing.subcategory_id = subcategory_id
+                existing.brand_id = brand_id
+                updated += 1
+            else:
+                new_sku = sku or generate_sku()
+                db.add(Product(
+                    name=name, cost_price=cost_price, price=price,
+                    sku=new_sku, barcode=barcode, description=description,
+                    detail=detail, category_id=category_id,
+                    subcategory_id=subcategory_id, brand_id=brand_id,
+                ))
+                created += 1
+        except Exception as exc:
+            errors.append(f"Строка {i}: {exc}")
+
+    await db.commit()
+    return {"created": created, "updated": updated, "errors": errors}

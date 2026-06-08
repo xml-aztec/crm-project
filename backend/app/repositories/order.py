@@ -7,6 +7,7 @@ from fastapi import HTTPException
 
 from app.models.customer import Customer
 from app.models.order import Order
+from app.repositories import order_history as history_repo
 from app.models.order_status import OrderStatus
 from app.models.order_item import OrderItem
 from app.models.product import Product
@@ -119,6 +120,7 @@ async def create_order(
             final_price=item.final_price,
         ))
 
+    await history_repo.add_entry(db, order.id, "created", "Заказ создан", user_id=current_user.id)
     await db.commit()
 
     result = await db.execute(
@@ -263,6 +265,11 @@ async def confirm_order(
     if not confirmed:
         order.finalized_total_price = None
 
+    if confirmed:
+        await history_repo.add_entry(db, order_id, "confirmed", "Заказ подтверждён", user_id=current_user.id)
+    else:
+        await history_repo.add_entry(db, order_id, "unconfirmed", "Подтверждение снято", user_id=current_user.id)
+
     await db.commit()
 
     result = await db.execute(
@@ -326,7 +333,18 @@ async def update_order_status(
         if order.finalized_total_price is None:
             order.finalized_total_price = order.total_price
 
+    old_status_name = order.status.name if order.status else "—"
     order.status_id = status_id
+
+    new_status_result = await db.execute(select(OrderStatus.name).where(OrderStatus.id == status_id))
+    new_status_name = new_status_result.scalar_one_or_none() or str(status_id)
+
+    if status_id == cancelled_status_id:
+        desc = f"Заказ отменён. Причина: {cancellation_reason}"
+    else:
+        desc = f"Статус изменён: «{old_status_name}» → «{new_status_name}»"
+    await history_repo.add_entry(db, order_id, "status_changed", desc, user_id=current_user.id)
+
     await db.commit()
     await db.refresh(order)
     return order

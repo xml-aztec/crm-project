@@ -232,7 +232,8 @@ const navItems: NavItem[] = [
     icon: <FinanceIcon />,
     name: "Финансы",
     subItems: [
-      { name: "Финансовая отчетность", path: "/finance", pro: false, comingSoon: true },
+      { name: "Финансовая отчетность", path: "/finance", pro: false, comingSoon: false },
+      { name: "P&L отчёт", path: "/finance/pnl", pro: false, comingSoon: false },
     ],
   },
   {

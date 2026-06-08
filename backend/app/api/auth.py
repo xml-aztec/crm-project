@@ -1,17 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, Response, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.exc import IntegrityError
 from app.core import security
 from app.schemas.user import UserCreate, UserRead
 from app.repositories import user as user_repo
-from app.core.database import SessionLocal
+from app.core.dependencies import get_db
+from app.core.limiter import limiter
+from app.utils.email import send_registration_email
+from app.core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
-
-async def get_db():
-    async with SessionLocal() as session:
-        yield session
 
 @router.post(
     "/register",
@@ -25,7 +24,13 @@ async def get_db():
     Возвращает данные пользователя без пароля.
     """
 )
-async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+@limiter.limit("3/minute")
+async def register(
+    request: Request,
+    user_data: UserCreate,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
     existing = await user_repo.get_by_email(db, user_data.email)
     if existing:
         raise HTTPException(
@@ -34,6 +39,7 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         )
     try:
         user = await user_repo.create_user(db, user_data)
+        await send_registration_email(background_tasks, user.email, user.full_name)
         return user
     except IntegrityError:
         raise HTTPException(status_code=400, detail="Invalid data")
@@ -46,10 +52,12 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     Устанавливает JWT access token в HTTP-only куки.
     """,
 )
+@limiter.limit("5/minute")
 async def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db),
-    response: Response = None
+    response: Response = None,
 ):
     user = await user_repo.get_by_email(db, form_data.username)
     if not user or not security.verify_password(form_data.password, user.hashed_password):
@@ -59,11 +67,12 @@ async def login(
 
     token = security.create_access_token({"sub": user.email})
 
+    is_https = settings.BASE_URL.startswith("https://")
     response.set_cookie(
         key="access_token",
         value=token,
         httponly=True,
-        secure=False,  # True на проде
+        secure=is_https,
         samesite="lax",
         max_age=60 * 60,
         expires=60 * 60,

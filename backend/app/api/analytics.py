@@ -13,10 +13,12 @@ from app.schemas.analytics import (
     MonthlyTargetAnalytics,
     OrderStatusCount,
     OrderSummary,
-    LeaderboardEntry, 
+    LeaderboardEntry,
     ExtendedKPIAnalytics,
     TopSuppliedProduct,
-    XYZAnalysisResult
+    XYZAnalysisResult,
+    PnLReport,
+    PnLMonthly,
 )
 from app.core.dependencies import get_current_user, get_db, is_admin
 from app.repositories import analytics as repo
@@ -113,6 +115,17 @@ async def get_orders_by_status(db: AsyncSession = Depends(get_db)):
     return await repo.get_orders_by_status(db)
 
 @router.get(
+    "/monthly-target-summary",
+    summary="Аналитика: агрегированный KPI за текущий месяц"
+)
+async def monthly_target_summary(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return await repo.get_monthly_target_summary(db)
+
+
+@router.get(
     "/monthly-target/{manager_id}",
     response_model=MonthlyTargetAnalytics,
     summary="Аналитика: KPI менеджера за текущий месяц"
@@ -189,6 +202,35 @@ async def abc_analysis(
     _ = Depends(is_admin)
 ):
     return await repo.get_abc_analysis(db)
+
+
+@router.get(
+    "/pnl",
+    response_model=PnLReport,
+    summary="P&L отчёт за месяц",
+    description="Выручка, себестоимость, валовая прибыль, расходы на зарплату и чистая прибыль за указанный месяц.",
+)
+async def pnl_report(
+    year: int = Query(..., ge=2020, le=2100),
+    month: int = Query(..., ge=1, le=12),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_admin),
+):
+    return await repo.get_pnl_report(db, year, month)
+
+
+@router.get(
+    "/pnl/yearly",
+    response_model=List[PnLMonthly],
+    summary="P&L по месяцам за год",
+    description="12 месяцев P&L для графика (выручка, валовая прибыль, чистая прибыль).",
+)
+async def pnl_yearly(
+    year: int = Query(..., ge=2020, le=2100),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_admin),
+):
+    return await repo.get_pnl_yearly(db, year)
 
 
 @router.get("/xyz-analysis", response_model=List[XYZAnalysisResult], summary="XYZ-анализ продуктов")

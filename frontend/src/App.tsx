@@ -44,6 +44,7 @@ import Finance from './pages/finance/Finance';
 import PayrollManagement from './pages/payroll/PayrollManagement';
 import CashflowMetaManagement from './pages/finance/CashflowMetaManagement';
 import MonthlyTargetsManagement from './pages/finance/MonthlyTargetsManagement';
+import PnLReport from './pages/finance/PnLReport';
 import { useAppDispatch, useAppSelector } from './hooks/reduxHooks';
 import EditProduct from "./pages/catalog/EditProduct";
 
@@ -105,6 +106,7 @@ const AppWithRedux = () => {
           <Route path="/finance" element={<Finance />} />
           <Route path="/finance/cashflow-meta" element={<CashflowMetaManagement />} />
           <Route path="/finance/monthly-targets" element={<MonthlyTargetsManagement />} />
+          <Route path="/finance/pnl" element={<PnLReport />} />
           
           {/* Payroll Management Pages */}
           <Route path="/payroll" element={<PayrollManagement />} />

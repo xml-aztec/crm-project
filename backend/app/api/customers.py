@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
@@ -14,8 +14,12 @@ router = APIRouter(prefix="/customers", tags=["Customers"])
     summary="Список клиентов",
     description="Возвращает список всех клиентов с их данными: имя, телефон, email, адрес и тип клиента."
 )
-async def list_customers(db: AsyncSession = Depends(get_db)):
-    return await repo.get_all(db)
+async def list_customers(
+    db: AsyncSession = Depends(get_db),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+):
+    return await repo.get_all(db, skip=skip, limit=limit)
 
 @router.get(
     "/{customer_id}",

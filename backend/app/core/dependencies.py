@@ -6,6 +6,7 @@ from typing import Optional
 
 from app.core.database import SessionLocal
 from app.core import security
+from app.core.config import settings
 from app.models.user import User
 from app.repositories import user as user_repo
 from app.repositories import order as order_repo
@@ -29,7 +30,7 @@ async def get_current_user(
         raise HTTPException(status_code=401, detail="Не авторизован")
 
     try:
-        payload = jwt.decode(access_token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
+        payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=[security.ALGORITHM])
         email: str = payload.get("sub")
         if not email:
             raise credentials_exception

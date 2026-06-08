@@ -217,22 +217,24 @@ export default function OrderForm({ order, isOpen, onClose, onSuccess }: OrderFo
   const selectedCustomer = customers.find(c => c.id === parseInt(orderData.customer_id));
   const selectedWarehouse = warehouses.find(w => w.id === parseInt(orderData.warehouse_id));
 
+  const stepLabels = ['Клиент', 'Склад', 'Товары', 'Доставка', 'Подтверждение'];
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center sm:p-4 z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-lg w-full sm:max-w-6xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 shrink-0">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
               {isEditMode ? 'Редактировать заказ' : 'Создать заказ'}
             </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Шаг {currentStep} из 5
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+              Шаг {currentStep} из 5: {stepLabels[currentStep - 1]}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            className="p-2 -mr-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -241,25 +243,41 @@ export default function OrderForm({ order, isOpen, onClose, onSuccess }: OrderFo
         </div>
 
         {/* Progress Bar */}
-        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700">
-          <div className="flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 dark:bg-gray-700 shrink-0">
+          {/* Mobile: compact circles only */}
+          <div className="flex sm:hidden items-center justify-center gap-1">
+            {[1, 2, 3, 4, 5].map((step) => (
+              <div key={step} className="flex items-center">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium
+                  ${currentStep >= step ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
+                  {currentStep > step ? (
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : step}
+                </div>
+                {step < 5 && (
+                  <div className={`w-6 h-0.5 ${currentStep > step ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop: full labels */}
+          <div className="hidden sm:flex items-center justify-between">
             {[1, 2, 3, 4, 5].map((step) => (
               <div key={step} className="flex items-center">
                 <div className={`
                   w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium
-                  ${currentStep >= step 
-                    ? 'bg-blue-600 text-white' 
+                  ${currentStep >= step
+                    ? 'bg-blue-600 text-white'
                     : 'bg-gray-300 text-gray-600 dark:bg-gray-600 dark:text-gray-300'
                   }
                 `}>
                   {step}
                 </div>
                 <div className="ml-2 text-sm">
-                  {step === 1 && 'Клиент'}
-                  {step === 2 && 'Склад'}
-                  {step === 3 && 'Товары'}
-                  {step === 4 && 'Доставка'}
-                  {step === 5 && 'Подтверждение'}
+                  {stepLabels[step - 1]}
                 </div>
                 {step < 5 && (
                   <div className={`
@@ -273,7 +291,7 @@ export default function OrderForm({ order, isOpen, onClose, onSuccess }: OrderFo
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
           {/* Step 1 - Customer Selection */}
           {currentStep === 1 && (
             <div className="space-y-6">
@@ -376,7 +394,7 @@ export default function OrderForm({ order, isOpen, onClose, onSuccess }: OrderFo
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                 {/* Products List */}
                 <div className="lg:col-span-2">
                   <div className="mb-4">
@@ -389,7 +407,7 @@ export default function OrderForm({ order, isOpen, onClose, onSuccess }: OrderFo
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 max-h-64 sm:max-h-96 overflow-y-auto">
                     {filteredProducts.map((product) => (
                       <div key={product.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                         <h4 className="font-medium text-gray-900 dark:text-white">{product.name}</h4>
@@ -637,11 +655,12 @@ export default function OrderForm({ order, isOpen, onClose, onSuccess }: OrderFo
         </div>
 
         {/* Footer */}
-        <div className="flex justify-between p-6 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex gap-3">
+        <div className="flex justify-between p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 shrink-0">
+          <div className="flex gap-2 sm:gap-3">
             <Button
               onClick={onClose}
               variant="outline"
+              size="sm"
             >
               Отмена
             </Button>
@@ -649,17 +668,19 @@ export default function OrderForm({ order, isOpen, onClose, onSuccess }: OrderFo
               <Button
                 onClick={prevStep}
                 variant="outline"
+                size="sm"
               >
                 Назад
               </Button>
             )}
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             {currentStep < 5 ? (
               <Button
                 onClick={nextStep}
                 disabled={!canProceedToNextStep()}
+                size="sm"
               >
                 Далее
               </Button>
@@ -667,6 +688,7 @@ export default function OrderForm({ order, isOpen, onClose, onSuccess }: OrderFo
               <Button
                 onClick={handleSubmit}
                 disabled={isLoading}
+                size="sm"
                 className="bg-green-600 hover:bg-green-700"
               >
                 {isLoading ? 'Создание...' : 'Создать заказ'}

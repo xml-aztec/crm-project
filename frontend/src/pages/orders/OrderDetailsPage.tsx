@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router';
 import { useMemo, useState } from 'react';
-import { useGetOrderQuery } from '../../store/api/ordersApi';
+import { useGetOrderQuery, useGetOrderHistoryQuery } from '../../store/api/ordersApi';
 import { useGetProductsQuery } from '../../store/api/catalogApi';
 import { useGetCustomerTypesQuery } from '../../store/api/customerTypesApi';
 import { useRoleAccess } from '../../hooks/useRoleAccess'; 
@@ -213,6 +213,13 @@ const InfoItem = ({ icon, label, value, className = '' }: {
   );
 };
 
+const ACTION_META: Record<string, { label: string; icon: string; color: string }> = {
+  created:       { label: 'Создан',              icon: '➕', color: 'text-blue-600 dark:text-blue-400' },
+  confirmed:     { label: 'Подтверждён',         icon: '✅', color: 'text-green-600 dark:text-green-400' },
+  unconfirmed:   { label: 'Подтверждение снято', icon: '🔄', color: 'text-orange-600 dark:text-orange-400' },
+  status_changed:{ label: 'Статус изменён',      icon: '📋', color: 'text-purple-600 dark:text-purple-400' },
+};
+
 export default function OrderDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -221,6 +228,7 @@ export default function OrderDetailsPage() {
   const orderId = parseInt(id || '0');
 
   const { data: order, isLoading, error, refetch } = useGetOrderQuery(orderId);
+  const { data: history = [] } = useGetOrderHistoryQuery(orderId);
   const { data: products = [] } = useGetProductsQuery();
   const { data: customerTypes = [] } = useGetCustomerTypesQuery();
 
@@ -274,7 +282,7 @@ export default function OrderDetailsPage() {
   if (error || !order) return <ErrorState id={id || '0'} navigate={navigate} />;
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
+    <div className="max-w-7xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800 p-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div className="flex items-start lg:items-center gap-4">
@@ -564,6 +572,52 @@ export default function OrderDetailsPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* История изменений */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="flex items-center mb-6">
+          <div className="w-10 h-10 bg-purple-50 dark:bg-purple-900/20 rounded-lg flex items-center justify-center mr-3">
+            <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">История изменений</h3>
+          <span className="ml-3 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+            {history.length} событий
+          </span>
+        </div>
+
+        {history.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">Нет записей</p>
+        ) : (
+          <ol className="relative border-l border-gray-200 dark:border-gray-700 ml-3 space-y-6">
+            {history.map((entry) => {
+              const meta = ACTION_META[entry.action] ?? { label: entry.action, icon: '📌', color: 'text-gray-700 dark:text-gray-300' };
+              return (
+                <li key={entry.id} className="ml-6">
+                  <span className="absolute -left-3 flex h-6 w-6 items-center justify-center text-sm rounded-full bg-white dark:bg-gray-800 ring-4 ring-white dark:ring-gray-800">
+                    {meta.icon}
+                  </span>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className={`text-sm font-semibold ${meta.color}`}>{meta.label}</p>
+                      {entry.description && (
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{entry.description}</p>
+                      )}
+                      {entry.user && (
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">👤 {entry.user.full_name}</p>
+                      )}
+                    </div>
+                    <time className="shrink-0 text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                      {formatDateTime(entry.created_at)}
+                    </time>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        )}
       </div>
     </div>
   );
