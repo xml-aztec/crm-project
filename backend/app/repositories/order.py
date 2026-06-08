@@ -358,7 +358,7 @@ async def delete_order(db: AsyncSession, order_id: int) -> None:
         raise HTTPException(status_code=404, detail="Заказ не найден")
 
     if order.confirmed:
-        await restore_stock_for_order(db, order)
+        await restore_stock_for_order(db, order.id)
         for item in order.items:
             await create_stock_log(db, StockLogCreate(
                 product_id=item.product_id,

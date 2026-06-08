@@ -149,12 +149,16 @@ All `ondelete` on foreign keys is `"SET NULL"` (not `CASCADE`) — deletions lea
 
 ## Critical Known Issues
 
-1. **`SECRET_KEY` is hardcoded** in `backend/app/core/security.py:9` — must be moved to `.env` before any production use.
-2. **`/users/{id}/approve` has no auth guard** (`backend/app/api/users.py:192`) — missing `Depends(is_admin)`.
-3. **`secure=False` on JWT cookie** (`backend/app/api/auth.py:67`) — must be `True` on HTTPS.
-4. **`echo=True` in the SQLAlchemy engine** (`backend/app/core/database.py:5`) — logs every SQL query; disable in production.
-5. **`restore_stock_for_order`** (`utils/stock.py:57`) accesses `item.order.warehouse_id` — lazy relationship that will raise `MissingGreenlet` in async context; needs explicit `selectinload`.
-6. **`get_db()` is duplicated** in `api/auth.py` and `api/users.py` — should use `from app.core.dependencies import get_db`.
+The following issues from earlier audits have been **fixed**:
+- ~~`SECRET_KEY` hardcoded~~ — now read from `settings.SECRET_KEY` (`.env`-backed via `pydantic_settings`).
+- ~~`/users/{id}/approve` missing auth guard~~ — now guarded by `Depends(is_admin)`.
+- ~~`secure=False` on JWT cookie~~ — now `secure=is_https`, computed from `settings.BASE_URL.startswith("https://")`.
+- ~~`echo=True` in the SQLAlchemy engine~~ — now `echo=False`.
+- ~~`get_db()` duplicated~~ — both `api/auth.py` and `api/users.py` import it from `core/dependencies`.
+
+Remaining / newly found:
+
+1. **The DB schema is created via `Base.metadata.create_all`**, not Alembic — the single `baseline` migration is empty, so there is no safe migration path against a live database. This is the highest-risk gap; write a real baseline migration (`alembic revision --autogenerate`) before relying on Alembic for schema changes.
 
 ---
 

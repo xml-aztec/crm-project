@@ -41,9 +41,16 @@ async def update_stock_on_order_confirmed(db: AsyncSession, order: Order):
     await db.commit()
 
 async def restore_stock_for_order(db: AsyncSession, order_id: int):
-    """ 
+    """
     Восстанавливает остатки товаров на складе при отмене заказа.
     """
+    warehouse_result = await db.execute(
+        select(Order.warehouse_id).where(Order.id == order_id)
+    )
+    warehouse_id = warehouse_result.scalar_one_or_none()
+    if warehouse_id is None:
+        return
+
     result = await db.execute(
         select(OrderItem).where(OrderItem.order_id == order_id)
     )
@@ -54,7 +61,7 @@ async def restore_stock_for_order(db: AsyncSession, order_id: int):
             update(ProductStock)
             .where(
                 ProductStock.product_id == item.product_id,
-                ProductStock.warehouse_id == item.order.warehouse_id  
+                ProductStock.warehouse_id == warehouse_id
             )
             .values(quantity=ProductStock.quantity + item.quantity)
         )
