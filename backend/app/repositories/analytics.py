@@ -358,12 +358,12 @@ async def get_orders_by_status(db: AsyncSession):
 async def get_monthly_target_data(db: AsyncSession, manager_id: int):
     today = date.today()
     year, month = today.year, today.month
-    month_str = f"{year}-{month:02d}-01"
+    month_start = date(year, month, 1)
 
     kpi_result = await db.execute(
         select(MonthlyTarget.target_amount).where(
             MonthlyTarget.manager_id == manager_id,
-            MonthlyTarget.month == month_str
+            MonthlyTarget.month == month_start
         )
     )
     target_amount = kpi_result.scalar() or 0
@@ -403,11 +403,11 @@ async def get_monthly_target_summary(db: AsyncSession):
     """Агрегированный KPI за текущий месяц по всем менеджерам."""
     today = date.today()
     year, month = today.year, today.month
-    month_str = f"{year}-{month:02d}-01"
+    month_start = date(year, month, 1)
 
     target_result = await db.execute(
         select(func.coalesce(func.sum(MonthlyTarget.target_amount), 0)).where(
-            MonthlyTarget.month == month_str
+            MonthlyTarget.month == month_start
         )
     )
     total_target = float(target_result.scalar() or 0)
@@ -446,7 +446,7 @@ async def get_monthly_target_summary(db: AsyncSession):
 async def get_leaderboard_data(db: AsyncSession):
     today = date.today()
     year, month = today.year, today.month
-    month_str = f"{year}-{month:02d}-01"
+    month_start = date(year, month, 1)
 
     query = (
         select(
@@ -461,7 +461,7 @@ async def get_leaderboard_data(db: AsyncSession):
         .where(
             extract("month", Order.created_at) == month,
             extract("year", Order.created_at) == year,
-            MonthlyTarget.month == month_str
+            MonthlyTarget.month == month_start
         )
         .group_by(User.id, User.full_name, MonthlyTarget.target_amount)
         .order_by(func.sum(OrderItem.final_price * OrderItem.quantity).desc())
@@ -484,7 +484,7 @@ async def get_leaderboard_data(db: AsyncSession):
 async def get_kpi_extended_analytics(db: AsyncSession):
     today = date.today()
     year, month = today.year, today.month
-    month_str = f"{year}-{month:02d}-01"
+    month_start = date(year, month, 1)
 
     query = (
         select(
@@ -501,7 +501,7 @@ async def get_kpi_extended_analytics(db: AsyncSession):
         .where(
             extract("month", Order.created_at) == month,
             extract("year", Order.created_at) == year,
-            MonthlyTarget.month == month_str
+            MonthlyTarget.month == month_start
         )
         .group_by(User.id, User.full_name, MonthlyTarget.target_amount)
     )

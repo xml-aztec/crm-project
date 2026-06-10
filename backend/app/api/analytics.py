@@ -32,7 +32,7 @@ async def kpi_summary(
 ):
     return await repo.get_kpi_summary(db, current_user)
 
-@router.get("/analytics/sales-by-month", summary="Статистика продаж по месяцам")
+@router.get("/sales-by-month", summary="Статистика продаж по месяцам")
 async def sales_by_month(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(is_admin)
