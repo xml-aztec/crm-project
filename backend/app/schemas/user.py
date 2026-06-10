@@ -10,7 +10,12 @@ class UserBase(BaseModel):
     position_id: Optional[int] = None
     salary_base: Optional[int] = None
 
-class UserCreate(UserBase):
+class UserRegister(BaseModel):
+    """Публичная регистрация: роль и зарплата не выбираются клиентом — назначаются сервером."""
+    email: EmailStr
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    position_id: Optional[int] = None
     password: str
 
 class UserRead(UserBase):

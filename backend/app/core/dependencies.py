@@ -61,7 +61,7 @@ async def is_order_owner_or_admin(
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")
 
-    if current_user.role.name != "Админ" and order.user_id != current_user.id:
+    if current_user.role.name.lower() != "admin" and order.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Нет доступа к заказу")
 
     return current_user

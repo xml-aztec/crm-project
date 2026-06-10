@@ -320,7 +320,7 @@ async def update_order_status(
     confirmed_status_id = confirmed_status_result.scalar_one_or_none()
 
     if status_id == cancelled_status_id:
-        if current_user.role.name != "Админ" and order.user_id != current_user.id:
+        if current_user.role.name.lower() != "admin" and order.user_id != current_user.id:
             raise HTTPException(status_code=403, detail="Нет доступа к отмене заказа")
         if not cancellation_reason:
             raise HTTPException(status_code=400, detail="Укажите причину отмены")

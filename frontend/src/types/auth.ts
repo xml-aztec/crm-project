@@ -113,7 +113,7 @@ export interface ApiError {
 }
 
 // Утилитарные типы для работы с правами доступа
-export type UserRole = 'admin' | 'manager' | 'employee' | 'viewer';
+export type UserRole = 'admin' | 'manager' | 'staff';
 
 export interface PermissionCheck {
   hasRole: (role: UserRole) => boolean;

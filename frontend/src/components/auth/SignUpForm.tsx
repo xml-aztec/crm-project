@@ -29,8 +29,6 @@ interface ValidationErrors {
   general?: string;
 }
 
-const MANAGER_ROLE_ID = 2;
-
 // Обновлено регулярное выражение для кыргызских номеров
 const VALIDATION_RULES = {
   PASSWORD_MIN_LENGTH: 6,
@@ -162,14 +160,8 @@ export default function SignUpForm() {
     setErrors({});
     
     try {
-      // Дополняем данные формы ролью "manager"
-      const registrationData = {
-        ...formData,
-        role_id: MANAGER_ROLE_ID // Автоматически устанавливаем роль manager
-      };
-      
-      // Отправляем запрос на регистрацию через RTK Query
-      await register(registrationData).unwrap();
+      // Роль назначается сервером при регистрации (всегда "manager") — клиент её не выбирает
+      await register(formData).unwrap();
     } catch (error: any) {
       // Обрабатываем ошибки API
       console.error("Ошибка регистрации:", error);

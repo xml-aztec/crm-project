@@ -24,7 +24,7 @@ export const useRoleAccess = (): PermissionCheck & {
 
     const isAdmin = currentRole === 'admin' || user?.role_id === 1;
     const isManager = currentRole === 'manager' || isAdmin;
-    const canEdit = isManager || currentRole === 'employee';
+    const canEdit = isManager || currentRole === 'staff';
     const canDelete = isAdmin;
     const canView = isAuthenticated;
 

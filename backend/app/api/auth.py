@@ -1,10 +1,12 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, Response, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.exc import IntegrityError
 from app.core import security
-from app.schemas.user import UserCreate, UserRead
+from app.schemas.user import UserRegister, UserRead
 from app.repositories import user as user_repo
+from app.models.role import Role
 from app.core.dependencies import get_db
 from app.core.limiter import limiter
 from app.utils.email import send_registration_email
@@ -27,7 +29,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 @limiter.limit("3/minute")
 async def register(
     request: Request,
-    user_data: UserCreate,
+    user_data: UserRegister,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
@@ -37,8 +39,16 @@ async def register(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
+
+    # Роль при публичной регистрации не выбирается клиентом — всегда "manager",
+    # чтобы исключить эскалацию привилегий через role_id (CWE-915).
+    role_result = await db.execute(select(Role).where(Role.name == "manager"))
+    default_role = role_result.scalar_one_or_none()
+    if not default_role:
+        raise HTTPException(status_code=500, detail="Роль 'manager' не найдена. Обратитесь к администратору.")
+
     try:
-        user = await user_repo.create_user(db, user_data)
+        user = await user_repo.create_user(db, user_data, role_id=default_role.id)
         await send_registration_email(background_tasks, user.email, user.full_name)
         return user
     except IntegrityError:

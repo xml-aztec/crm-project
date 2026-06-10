@@ -7,7 +7,7 @@ from app.models.order import Order
 from app.models.product import Product
 from app.models.order_item import OrderItem
 from app.models.user import User
-from app.schemas.user import UserCreate, UserUpdateAdmin
+from app.schemas.user import UserRegister, UserUpdateAdmin
 from datetime import datetime, timezone
 from sqlalchemy import extract
 
@@ -164,16 +164,15 @@ async def get_detailed_user_stats(db: AsyncSession, user_id: int, year: Optional
         "canceled_share": round(canceled_count / orders_count, 2) if orders_count else 0
     }
 
-async def create_user(db: AsyncSession, user_data: UserCreate):
+async def create_user(db: AsyncSession, user_data: UserRegister, role_id: int):
     hashed_password = pwd_context.hash(user_data.password)
     db_user = User(
         email=user_data.email,
         hashed_password=hashed_password,
         full_name=user_data.full_name,
         phone=user_data.phone,
-        role_id=user_data.role_id,
+        role_id=role_id,
         position_id=user_data.position_id,
-        salary_base=user_data.salary_base  
     )
     db.add(db_user)
     await db.commit()
