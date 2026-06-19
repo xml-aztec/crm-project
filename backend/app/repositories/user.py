@@ -2,7 +2,6 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select, delete, func
-from passlib.context import CryptContext
 from app.models.order import Order
 from app.models.product import Product
 from app.models.order_item import OrderItem
@@ -10,8 +9,6 @@ from app.models.user import User
 from app.schemas.user import UserRegister, UserUpdateAdmin
 from datetime import datetime, timezone
 from sqlalchemy import extract
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100) -> list[User]:
     result = await db.execute(
@@ -21,6 +18,8 @@ async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100) -> list[U
 
 
 async def update_password(db: AsyncSession, user_id: int, new_password: str) -> None:
+    from app.core.security import get_password_hash
+
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user:
@@ -165,7 +164,9 @@ async def get_detailed_user_stats(db: AsyncSession, user_id: int, year: Optional
     }
 
 async def create_user(db: AsyncSession, user_data: UserRegister, role_id: int):
-    hashed_password = pwd_context.hash(user_data.password)
+    from app.core.security import get_password_hash
+
+    hashed_password = get_password_hash(user_data.password)
     db_user = User(
         email=user_data.email,
         hashed_password=hashed_password,
