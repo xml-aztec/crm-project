@@ -2,6 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.repositories import user as user_repo
 from app.schemas.user import (
@@ -129,10 +130,18 @@ async def update_user_admin(
             detail="Нельзя менять самому себе роль, статус или должность через этот эндпоинт. Используйте /users/me."
         )
 
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(
+        select(User).options(selectinload(User.role)).where(User.id == user_id)
+    )
     target = result.scalar_one_or_none()
     if not target:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
+
+    if target.role and target.role.name == "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Нельзя изменять данные другого администратора."
+        )
 
     updated = await user_repo.update_user_admin(db, user_id, data)
     return updated
@@ -193,10 +202,18 @@ async def delete_user(
             detail="Нельзя удалить собственную учётную запись."
         )
 
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(
+        select(User).options(selectinload(User.role)).where(User.id == user_id)
+    )
     target = result.scalar_one_or_none()
     if not target:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
+
+    if target.role and target.role.name == "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Нельзя удалить учётную запись администратора."
+        )
 
     await db.delete(target)
     await db.commit()
