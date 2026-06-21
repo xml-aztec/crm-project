@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_db
-from app.repositories import subcategory as repo
+from app.repositories.subcategory import repo
 from app.schemas.subcategory import SubcategoryCreate, SubcategoryRead, SubcategoryUpdate
 
 router = APIRouter(prefix="/subcategories", tags=["Subcategories"])
