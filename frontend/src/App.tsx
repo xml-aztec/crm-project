@@ -47,6 +47,7 @@ import MonthlyTargetsManagement from './pages/finance/MonthlyTargetsManagement';
 import PnLReport from './pages/finance/PnLReport';
 import { useAppDispatch, useAppSelector } from './hooks/reduxHooks';
 import EditProduct from "./pages/catalog/EditProduct";
+import SettingsHub from './pages/settings/SettingsHub';
 
 const AppWithRedux = () => {
   const dispatch = useAppDispatch();
@@ -114,6 +115,9 @@ const AppWithRedux = () => {
           {/* Branches Management Pages */}
           <Route path="/branches" element={<Branches />} />
           
+          {/* Settings Hub */}
+          <Route path="/settings" element={<SettingsHub />} />
+
           {/* Configuration Pages */}
           <Route path="/config/general" element={<General />} />
           <Route path="/config/payment-methods" element={<PaymentMethods />} />

@@ -4,7 +4,6 @@ import { useGetCurrentUserQuery, useChangePasswordMutation } from "../store/api/
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import UserMetaCard from "../components/UserProfile/UserMetaCard";
 import UserInfoCard from "../components/UserProfile/UserInfoCard";
-import UserAddressCard from "../components/UserProfile/UserAddressCard";
 import UserStatsMetrics from "../components/users/UserStatsMetrics";
 
 export default function UserProfiles() {
@@ -96,7 +95,6 @@ export default function UserProfiles() {
           <div className="space-y-6">
             <UserMetaCard />
             <UserInfoCard />
-            <UserAddressCard />
           </div>
         ) : activeTab === 'stats' ? (
           <div>

@@ -8,7 +8,6 @@ import {
   GridIcon,
   HorizontaLDots,
   PlugInIcon,
-  UserCircleIcon,
 } from "../icons";
 
 const OrdersIcon = () => (
@@ -55,22 +54,6 @@ const ClientsIcon = () => (
       strokeLinejoin="round"
       strokeWidth={2}
       d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-    />
-  </svg>
-);
-
-const BranchesIcon = () => (
-  <svg
-    className="w-5 h-5"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
     />
   </svg>
 );
@@ -145,22 +128,6 @@ const SettingsIcon = () => (
   </svg>
 );
 
-const ConfigIcon = () => (
-  <svg
-    className="w-5 h-5"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"
-    />
-  </svg>
-);
-
 import { useSidebar } from "../context/SidebarContext";
 
 type NavItem = {
@@ -183,20 +150,10 @@ const navItems: NavItem[] = [
     path: "/calendar",
   },
   {
-    icon: <UserCircleIcon />,
-    name: "Пользователи",
-    adminOnly: true,
-    subItems: [
-      { name: "Все пользователи", path: "/users", pro: false },
-      { name: "Запросы регистрации", path: "/registration-requests", pro: false },
-    ],
-  },
-  {
     icon: <ClientsIcon />,
     name: "Клиенты",
     subItems: [
       { name: "Все клиенты", path: "/customers", pro: false },
-      { name: "Типы клиентов", path: "/customer-types", pro: false },
     ],
   },
   {
@@ -204,7 +161,6 @@ const navItems: NavItem[] = [
     name: "Каталог товаров",
     subItems: [
       { name: "Товары", path: "/products", pro: false },
-      { name: "Категории", path: "/categories", pro: false },
     ],
   },
   {
@@ -241,35 +197,14 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    icon: <BranchesIcon />,
-    name: "Филиалы",
-    subItems: [
-      { name: "Управление филиалами", path: "/branches", pro: false },
-    ],
-  },
-  {
-    icon: <ConfigIcon />,
-    name: "Конфигурация",
+    icon: <SettingsIcon />,
+    name: "Настройки",
+    path: "/settings",
     adminOnly: true,
-    subItems: [
-      { name: "Общие", path: "/config/general", pro: false },
-      { name: "Способы оплаты", path: "/config/payment-methods", pro: false },
-      { name: "Должности", path: "/config/positions", pro: false },
-      { name: "Уведомления", path: "/config/notifications", pro: false, comingSoon: true },
-    ],
   },
 ];
 
 const othersItems: NavItem[] = [
-  {
-    icon: <SettingsIcon />,
-    name: "Настройки",
-    subItems: [
-      { name: "Общие настройки", path: "/settings/general", pro: false },
-      { name: "Настройки сайта", path: "/settings/site", pro: false },
-      { name: "Уведомления", path: "/settings/notifications", pro: false },
-    ],
-  },
   {
     icon: <PlugInIcon />,
     name: "Аутентификация",
