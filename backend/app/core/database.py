@@ -30,5 +30,6 @@ async def init_db():
         cashflow, cashflow_category, cashflow_type, kpi_rule, budget,
         cash_gap_forecast, stock_log, notification, order_history
     )
+    from app.rbac import models as rbac_models  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

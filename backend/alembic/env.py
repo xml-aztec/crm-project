@@ -8,6 +8,7 @@ from alembic import context
 from app.core.config import settings
 from app.core.database import Base
 from app.models import *
+from app.rbac import models as rbac_models  # noqa: F401
 
 from dotenv import load_dotenv
 load_dotenv()

@@ -4,6 +4,13 @@ import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 
 from app.main import app
+from app.core.database import SessionLocal
+
+
+@pytest_asyncio.fixture
+async def db_session():
+    async with SessionLocal() as session:
+        yield session
 
 
 @pytest_asyncio.fixture

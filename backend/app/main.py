@@ -17,6 +17,7 @@ from app.utils.init_cashflow_types import init_cash_flow_types
 from app.utils.init_order_statuses import init_order_statuses
 from app.utils.init_roles import init_roles
 from app.utils.init_positions import init_positions
+from app.rbac.seed import migrate_users_to_rbac_roles
 
 from app.api import (
     health, auth, users, categories, subcategories, brands, branches,
@@ -63,6 +64,7 @@ async def lifespan(app: FastAPI):
         await init_order_statuses(session)
         await init_cash_flow_types(session)
         await init_positions(session)
+        await migrate_users_to_rbac_roles(session)
 
     yield
 
