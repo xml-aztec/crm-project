@@ -9,6 +9,7 @@ from app.models.user import User
 from app.schemas.user import UserRegister, UserUpdateAdmin
 from datetime import datetime, timezone
 from sqlalchemy import extract
+from app.rbac.service import sync_rbac_role_for_user
 
 async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100) -> list[User]:
     result = await db.execute(
@@ -176,6 +177,8 @@ async def create_user(db: AsyncSession, user_data: UserRegister, role_id: int):
         position_id=user_data.position_id,
     )
     db.add(db_user)
+    await db.flush()
+    await sync_rbac_role_for_user(db_user.id, db)
     await db.commit()
     await db.refresh(db_user)
     return db_user
@@ -187,6 +190,8 @@ async def update_user_admin(db: AsyncSession, user_id: int, data: UserUpdateAdmi
         return None
     for key, value in data.model_dump(exclude_unset=True).items():
         setattr(user, key, value)
+    await db.flush()
+    await sync_rbac_role_for_user(user.id, db)
     await db.commit()
     await db.refresh(user)
     return user

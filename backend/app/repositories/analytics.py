@@ -16,6 +16,7 @@ from app.models.supply_item import SupplyItem
 from app.models.user import User
 from app.models.order_status import OrderStatus
 from app.schemas.analytics import ABCAnalysisEntry, ABCGroup
+from app.rbac.service import user_is_admin
 
 
 async def get_kpi_summary(db: AsyncSession, current_user: User):
@@ -25,12 +26,14 @@ async def get_kpi_summary(db: AsyncSession, current_user: User):
     prev_month = month - 1 or 12
     prev_year = year - 1 if prev_month == 12 else year
 
+    is_admin = await user_is_admin(current_user, db)
+
     def base_filter(y, m):
         conditions = [
             extract("year", Order.created_at) == y,
             extract("month", Order.created_at) == m
         ]
-        if current_user.role.name != "admin":
+        if not is_admin:
             conditions.append(Order.user_id == current_user.id)
         return conditions
 
@@ -257,7 +260,7 @@ async def get_monthly_summary(db: AsyncSession, current_user: User):
     base_filter = and_(Order.created_at >= start_date, Order.created_at < end_date)
     completed_filter = and_(base_filter, Order.status_id == completed_status_id)
 
-    if current_user.role.name != "admin":
+    if not await user_is_admin(current_user, db):
         base_filter = and_(base_filter, Order.user_id == current_user.id)
         completed_filter = and_(completed_filter, Order.user_id == current_user.id)
 

@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.models.user import User
 from app.repositories import user as user_repo
 from app.repositories import order as order_repo
+from app.rbac.service import user_is_admin
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -43,8 +44,11 @@ async def get_current_user(
 
     return user
 
-async def is_admin(current_user: User = Depends(get_current_user)):
-    if not current_user.role or current_user.role.name != "admin":
+async def is_admin(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not await user_is_admin(current_user, db):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Доступ разрешен только администраторам."
@@ -61,7 +65,7 @@ async def is_order_owner_or_admin(
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")
 
-    if current_user.role.name.lower() != "admin" and order.user_id != current_user.id:
+    if not await user_is_admin(current_user, db) and order.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Нет доступа к заказу")
 
     return current_user

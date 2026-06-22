@@ -18,6 +18,7 @@ from app.utils.orders import recalculate_order_total
 from app.utils.stock import check_stock_before_order_creation, deduct_stock_for_order, restore_stock_for_order
 from app.schemas.stock_log import StockLogCreate
 from app.repositories.stock_log import create_stock_log
+from app.rbac.service import user_is_admin
 
 
 async def check_stock_before_confirmation(db: AsyncSession, order: Order):
@@ -57,7 +58,7 @@ async def get_order_by_id(db: AsyncSession, order_id: int, current_user: User) -
     if not order:
         return None
 
-    if current_user.role.name != "admin":
+    if not await user_is_admin(current_user, db):
         if order.status and order.status.name == "Отменен" and order.user_id == current_user.id:
             raise HTTPException(403, detail="Вы не можете просматривать отменённый заказ")
 
@@ -70,7 +71,7 @@ async def create_order(
     items_data: list[OrderItem],
     current_user: User 
 ):
-    if current_user.role.name.lower() != "admin":
+    if not await user_is_admin(current_user, db):
         if order_data.get("warehouse_id") is None:
             raise HTTPException(400, detail="Склад должен быть указан")
 
@@ -166,7 +167,7 @@ async def get_orders(
 
     filters = []
 
-    if current_user.role.name != "admin":
+    if not await user_is_admin(current_user, db):
         filters.append(Order.user_id == current_user.id)
 
         cancelled_status_result = await db.execute(
@@ -226,7 +227,7 @@ async def confirm_order(
         return None
     
     if (
-        current_user.role.name.lower() != "admin"
+        not await user_is_admin(current_user, db)
         and order.warehouse
         and order.warehouse.branch_id != current_user.branch_id
     ):
@@ -320,7 +321,7 @@ async def update_order_status(
     confirmed_status_id = confirmed_status_result.scalar_one_or_none()
 
     if status_id == cancelled_status_id:
-        if current_user.role.name.lower() != "admin" and order.user_id != current_user.id:
+        if not await user_is_admin(current_user, db) and order.user_id != current_user.id:
             raise HTTPException(status_code=403, detail="Нет доступа к отмене заказа")
         if not cancellation_reason:
             raise HTTPException(status_code=400, detail="Укажите причину отмены")

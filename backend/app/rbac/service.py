@@ -1,7 +1,10 @@
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.role import Role as LegacyRole
+from app.models.user import User
 from app.rbac.models import Permission, RbacRole, RbacRolePermission, RbacUserRole
+from app.rbac.seed import LEGACY_ROLE_NAME_MAP
 
 
 async def get_user_permissions(user_id: int, db: AsyncSession) -> set[str]:
@@ -51,3 +54,83 @@ async def assign_role_to_user(user_id: int, role_id: int, db: AsyncSession) -> N
 
     db.add(RbacUserRole(user_id=user_id, role_id=role_id))
     await db.commit()
+
+
+async def sync_rbac_role_for_user(user_id: int, db: AsyncSession) -> None:
+    """Re-reads the user's current legacy `roles.name` (via User.role_id) and
+    reconciles their RBAC system-role assignment to match it: removes any
+    stale Admin/Manager/Staff assignment and adds the correct one. Call this
+    right after creating a user or changing their `role_id` (registration,
+    admin update) so RBAC access is correct immediately — without this, a user
+    would have no RBAC permissions until the next app restart's bulk
+    migration (`migrate_users_to_rbac_roles`), which only runs at lifespan
+    startup. Does not touch custom (non-system) role assignments."""
+    legacy_role_name = await db.scalar(
+        select(LegacyRole.name).join(User, User.role_id == LegacyRole.id).where(User.id == user_id)
+    )
+    target_role_name = LEGACY_ROLE_NAME_MAP.get((legacy_role_name or "").lower())
+
+    result = await db.execute(
+        select(RbacUserRole.role_id, RbacRole.name)
+        .join(RbacRole, RbacRole.id == RbacUserRole.role_id)
+        .where(
+            RbacUserRole.user_id == user_id,
+            RbacRole.is_system.is_(True),
+            RbacRole.branch_id.is_(None),
+        )
+    )
+    current_system_roles = {name: role_id for role_id, name in result.all()}
+
+    if target_role_name in current_system_roles:
+        stale_role_ids = [
+            role_id for name, role_id in current_system_roles.items() if name != target_role_name
+        ]
+        if stale_role_ids:
+            await db.execute(
+                delete(RbacUserRole).where(
+                    RbacUserRole.user_id == user_id, RbacUserRole.role_id.in_(stale_role_ids)
+                )
+            )
+        return
+
+    if current_system_roles:
+        await db.execute(
+            delete(RbacUserRole).where(
+                RbacUserRole.user_id == user_id,
+                RbacUserRole.role_id.in_(current_system_roles.values()),
+            )
+        )
+
+    if not target_role_name:
+        return
+
+    target_role_id = await db.scalar(
+        select(RbacRole.id).where(
+            RbacRole.name == target_role_name,
+            RbacRole.is_system.is_(True),
+            RbacRole.branch_id.is_(None),
+        )
+    )
+    if target_role_id:
+        db.add(RbacUserRole(user_id=user_id, role_id=target_role_id))
+
+
+async def is_rbac_admin(user_id: int, db: AsyncSession) -> bool:
+    result = await db.execute(
+        select(RbacUserRole.user_id)
+        .join(RbacRole, RbacRole.id == RbacUserRole.role_id)
+        .where(
+            RbacUserRole.user_id == user_id,
+            RbacRole.name == "Admin",
+            RbacRole.is_system.is_(True),
+        )
+    )
+    return result.first() is not None
+
+
+async def user_is_admin(user: User, db: AsyncSession) -> bool:
+    """Stage D: RBAC is now the sole source of truth for admin access. The
+    legacy `roles.name` fallback was removed once real-time sync
+    (`sync_rbac_role_for_user`, called from registration and admin updates)
+    guaranteed every user always has a matching RBAC assignment."""
+    return await is_rbac_admin(user.id, db)

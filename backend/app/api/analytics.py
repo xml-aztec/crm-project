@@ -22,6 +22,7 @@ from app.schemas.analytics import (
 )
 from app.core.dependencies import get_current_user, get_db, is_admin
 from app.repositories import analytics as repo
+from app.rbac.service import user_is_admin
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
@@ -135,7 +136,7 @@ async def monthly_target_analytics(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role.name != "admin" and current_user.id != manager_id:
+    if not await user_is_admin(current_user, db) and current_user.id != manager_id:
         raise HTTPException(status_code=403, detail="Недостаточно прав")
 
     return await repo.get_monthly_target_data(db, manager_id)

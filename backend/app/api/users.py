@@ -19,6 +19,7 @@ from app.core.dependencies import get_current_user, get_db, is_admin
 from app.models.user import User
 from app.utils.email import send_approval_email
 from app.repositories import notification as notif_repo
+from app.rbac.service import user_is_admin
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -137,7 +138,7 @@ async def update_user_admin(
     if not target:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
 
-    if target.role and target.role.name == "admin":
+    if await user_is_admin(target, db):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Нельзя изменять данные другого администратора."
@@ -209,7 +210,7 @@ async def delete_user(
     if not target:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
 
-    if target.role and target.role.name == "admin":
+    if await user_is_admin(target, db):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Нельзя удалить учётную запись администратора."
