@@ -74,15 +74,15 @@ async def order_status_summary(
 ):
     return await repo.get_order_status_summary(db)
 
-@router.get("/daily", response_model=List[DailyIncome], summary="Доход по дням")
+@router.get("/daily", response_model=List[DailyIncome], summary="Доход по дням", dependencies=[Depends(get_current_user)])
 async def get_daily_analytics(db: AsyncSession = Depends(get_db)):
     return await repo.get_daily_stats(db)
 
-@router.get("/daily-orders", response_model=List[DailyOrders], summary="Количество заказов по дням")
+@router.get("/daily-orders", response_model=List[DailyOrders], summary="Количество заказов по дням", dependencies=[Depends(get_current_user)])
 async def get_daily_orders(db: AsyncSession = Depends(get_db)):
     return await repo.get_daily_orders(db)
 
-@router.get("/summary", response_model=OrderSummary, summary="Общая аналитика по заказам")
+@router.get("/summary", response_model=OrderSummary, summary="Общая аналитика по заказам", dependencies=[Depends(get_current_user)])
 async def get_summary(db: AsyncSession = Depends(get_db)):
     return await repo.get_order_summary(db)
 
@@ -107,11 +107,11 @@ async def monthly_summary(db: AsyncSession = Depends(get_db),
     """
     return await repo.get_monthly_summary(db, current_user)
 
-@router.get("/orders-by-manager", response_model=List[ManagerIncome], summary="Доход по менеджерам")
+@router.get("/orders-by-manager", response_model=List[ManagerIncome], summary="Доход по менеджерам", dependencies=[Depends(get_current_user)])
 async def get_orders_by_manager(db: AsyncSession = Depends(get_db)):
     return await repo.get_orders_by_manager(db)
 
-@router.get("/orders-by-status", response_model=List[OrderStatusCount], summary="Распределение заказов по статусам")
+@router.get("/orders-by-status", response_model=List[OrderStatusCount], summary="Распределение заказов по статусам", dependencies=[Depends(get_current_user)])
 async def get_orders_by_status(db: AsyncSession = Depends(get_db)):
     return await repo.get_orders_by_status(db)
 

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.dependencies import get_db
+from app.core.dependencies import get_current_user, get_db
 from app.core.dependencies import is_admin
 from app.models.user import User
 from app.schemas.position import PositionBase, PositionRead, PositionCreate
@@ -11,6 +11,7 @@ router = APIRouter(prefix="/positions", tags=["Positions"])
 @router.get(
     "/",
     response_model=list[PositionRead],
+    dependencies=[Depends(get_current_user)],
     summary="Список должностей",
     description="Возвращает список всех должностей, доступных в системе."
 )

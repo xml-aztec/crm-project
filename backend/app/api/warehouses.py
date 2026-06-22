@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
-from app.core.dependencies import get_db
+from app.core.dependencies import get_current_user, get_db, is_admin
 from app.schemas.warehouse import WarehouseOut, WarehouseCreate, WarehouseUpdate
 from app.repositories import warehouse as repo
 
@@ -15,6 +15,7 @@ router = APIRouter(
 @router.get(
     "/",
     response_model=List[WarehouseOut],
+    dependencies=[Depends(get_current_user)],
     summary="Список всех складов",
     description="Возвращает список всех складов, включая их названия, местоположение и связанные филиалы."
 )
@@ -27,6 +28,7 @@ async def list_warehouses(db: AsyncSession = Depends(get_db)):
 @router.get(
     "/{warehouse_id}",
     response_model=WarehouseOut,
+    dependencies=[Depends(get_current_user)],
     summary="Получить склад по ID",
     description="Возвращает информацию о складе по его ID. В случае отсутствия — ошибка 404."
 )
@@ -42,6 +44,7 @@ async def get_warehouse(warehouse_id: int, db: AsyncSession = Depends(get_db)):
 @router.post(
     "/",
     response_model=WarehouseOut,
+    dependencies=[Depends(is_admin)],
     summary="Создать новый склад",
     description="Создает новый склад. Необходимы название и (опционально) местоположение и ID филиала."
 )
@@ -54,6 +57,7 @@ async def create_warehouse(data: WarehouseCreate, db: AsyncSession = Depends(get
 @router.patch(
     "/{warehouse_id}",
     response_model=WarehouseOut,
+    dependencies=[Depends(is_admin)],
     summary="Обновить склад",
     description="Позволяет изменить название, местоположение или привязку к филиалу по ID склада."
 )
@@ -68,6 +72,7 @@ async def update_warehouse(warehouse_id: int, data: WarehouseUpdate, db: AsyncSe
 
 @router.delete(
     "/{warehouse_id}",
+    dependencies=[Depends(is_admin)],
     summary="Удалить склад",
     description="Удаляет склад по ID. Если склад не найден — возвращает ошибку 404."
 )

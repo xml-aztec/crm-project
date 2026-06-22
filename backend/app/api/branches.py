@@ -4,7 +4,7 @@ from typing import List
 
 from app.schemas.branch import BranchCreate, BranchRead, BranchUpdate
 from app.repositories import branch as repo
-from app.core.dependencies import get_db, is_admin
+from app.core.dependencies import get_current_user, get_db, is_admin
 
 router = APIRouter(prefix="/branches", tags=["Branches"])
 
@@ -12,6 +12,7 @@ router = APIRouter(prefix="/branches", tags=["Branches"])
 @router.get(
     "/",
     response_model=List[BranchRead],
+    dependencies=[Depends(get_current_user)],
     summary="Получить список всех филиалов",
     description="Возвращает список всех филиалов компании."
 )
@@ -22,6 +23,7 @@ async def get_all_branches(db: AsyncSession = Depends(get_db)):
 @router.get(
     "/{branch_id}",
     response_model=BranchRead,
+    dependencies=[Depends(get_current_user)],
     summary="Получить филиал по ID",
     description="Возвращает информацию о конкретном филиале по его идентификатору.",
     responses={404: {"description": "Филиал не найден"}}

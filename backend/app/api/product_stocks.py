@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Literal, Optional
 
-from app.core.dependencies import get_db
+from app.core.dependencies import get_current_user, get_db
 from app.schemas.product_stock import ProductStockOut, ProductStockCreate, ProductStockUpdate, StockListResponse
 from app.repositories import product_stock as repo
 
@@ -12,7 +12,8 @@ router = APIRouter(prefix="/stock", tags=["Product Stock"])
     "/",
     response_model=ProductStockOut,
     summary="Создание или обновление остатка",
-    description="Добавляет новый остаток или обновляет существующий по паре (product_id, warehouse_id)."
+    description="Добавляет новый остаток или обновляет существующий по паре (product_id, warehouse_id).",
+    dependencies=[Depends(get_current_user)]
 )
 async def create_stock(
     data: ProductStockCreate,
@@ -24,7 +25,8 @@ async def create_stock(
     "/",
     response_model=StockListResponse,
     summary="Список остатков с фильтрацией и статистикой",
-    description="Возвращает список остатков товаров с возможностью фильтрации по товару, складу, уровню запасов, SKU, штрихкоду и названию."
+    description="Возвращает список остатков товаров с возможностью фильтрации по товару, складу, уровню запасов, SKU, штрихкоду и названию.",
+    dependencies=[Depends(get_current_user)]
 )
 async def get_stock_list(
     product_id: Optional[int] = Query(None, description="Фильтрация по ID товара"),
@@ -54,7 +56,8 @@ async def get_stock_list(
     "/{stock_id}",
     response_model=ProductStockOut,
     summary="Получить остаток по ID",
-    description="Возвращает запись об остатке товара по его ID в таблице product_stock."
+    description="Возвращает запись об остатке товара по его ID в таблице product_stock.",
+    dependencies=[Depends(get_current_user)]
 )
 async def get_stock_by_id(
     stock_id: int,
@@ -69,7 +72,8 @@ async def get_stock_by_id(
     "/{stock_id}",
     response_model=ProductStockOut,
     summary="Обновить остаток товара",
-    description="Изменяет количество товара на складе. Можно изменить только поле quantity."
+    description="Изменяет количество товара на складе. Можно изменить только поле quantity.",
+    dependencies=[Depends(get_current_user)]
 )
 async def update_stock(
     stock_id: int,
@@ -85,7 +89,8 @@ async def update_stock(
     "/{stock_id}",
     response_model=dict,
     summary="Удаление остатка",
-    description="Удаляет запись об остатке товара по ID. Возвращает сообщение об успешном удалении."
+    description="Удаляет запись об остатке товара по ID. Возвращает сообщение об успешном удалении.",
+    dependencies=[Depends(get_current_user)]
 )
 async def delete_stock(
     stock_id: int,

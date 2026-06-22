@@ -29,7 +29,8 @@ async def create_supply(
     "/",
     response_model=SupplyListResponse,
     summary="Список поставок с пагинацией",
-    description="Получить список всех поставок с фильтрами, пагинацией и общим количеством записей."
+    description="Получить список всех поставок с фильтрами, пагинацией и общим количеством записей.",
+    dependencies=[Depends(get_current_user)]
 )
 async def list_supplies(
     warehouse_id: Optional[int] = Query(None, description="Фильтр по складу"),
@@ -55,7 +56,8 @@ async def list_supplies(
     "/{supply_id}",
     response_model=SupplyOut,
     summary="Получить поставку по ID",
-    description="Получить подробную информацию о конкретной поставке и её позициях."
+    description="Получить подробную информацию о конкретной поставке и её позициях.",
+    dependencies=[Depends(get_current_user)]
 )
 async def get_supply(supply_id: int, db: AsyncSession = Depends(get_db)):
     supply = await repo.get_supply_by_id(db, supply_id)
@@ -67,7 +69,8 @@ async def get_supply(supply_id: int, db: AsyncSession = Depends(get_db)):
     "/{supply_id}/pdf",
     summary="Скачать PDF поставки",
     description="Генерация PDF-документа поставки.",
-    response_class=Response
+    response_class=Response,
+    dependencies=[Depends(get_current_user)]
 )
 async def download_supply_pdf(supply_id: int, db: AsyncSession = Depends(get_db)):
     supply = await repo.get_supply_by_id(db, supply_id)

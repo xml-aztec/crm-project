@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.dependencies import get_db
+from app.core.dependencies import get_current_user, get_db
 from app.schemas.order_item import OrderItemCreate, OrderItemUpdate, OrderItemRead
 from app.repositories import order_item as repo
 
@@ -11,7 +11,8 @@ router = APIRouter(prefix="/orders", tags=["Order Items"])
     response_model=OrderItemRead,
     status_code=201,
     summary="Добавить позицию в заказ",
-    description="Добавляет новый товар в указанный заказ. Требуется ID заказа и данные товара."
+    description="Добавляет новый товар в указанный заказ. Требуется ID заказа и данные товара.",
+    dependencies=[Depends(get_current_user)]
 )
 async def add_item_to_order(
     order_id: int,
@@ -26,7 +27,8 @@ async def add_item_to_order(
     response_model=OrderItemRead,
     status_code=200,
     summary="Обновить позицию заказа",
-    description="Обновляет количество, цену или заметку у товара в заказе. Все поля необязательны."
+    description="Обновляет количество, цену или заметку у товара в заказе. Все поля необязательны.",
+    dependencies=[Depends(get_current_user)]
 )
 async def update_order_item(
     order_id: int,
@@ -44,7 +46,8 @@ async def update_order_item(
     "/{order_id}/items/{item_id}",
     status_code=204,
     summary="Удалить позицию из заказа",
-    description="Удаляет товар из заказа по его ID. Если позиция не найдена, возвращает 404."
+    description="Удаляет товар из заказа по его ID. Если позиция не найдена, возвращает 404.",
+    dependencies=[Depends(get_current_user)]
 )
 async def delete_item_from_order(
     order_id: int,

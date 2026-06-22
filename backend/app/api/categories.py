@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.dependencies import get_db
+from app.core.dependencies import get_current_user, get_db, is_admin
 from app.repositories.category import repo
 from app.schemas.category import CategoryCreate, CategoryRead, CategoryUpdate
 
@@ -9,6 +9,7 @@ router = APIRouter(prefix="/categories", tags=["Categories"])
 @router.get(
     "/",
     response_model=list[CategoryRead],
+    dependencies=[Depends(get_current_user)],
     summary="Список всех категорий",
     description="Возвращает список всех доступных категорий товаров."
 )
@@ -19,13 +20,14 @@ async def list_categories(db: AsyncSession = Depends(get_db)):
     "/",
     response_model=CategoryRead,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(is_admin)],
     summary="Создать новую категорию",
     description="Создаёт новую категорию на основе переданного имени."
 )
 async def create_category(data: CategoryCreate, db: AsyncSession = Depends(get_db)):
     return await repo.create(db, name=data.name)
 
-@router.patch("/{category_id}", response_model=CategoryRead)
+@router.patch("/{category_id}", response_model=CategoryRead, dependencies=[Depends(is_admin)])
 async def update_category(
     category_id: int,
     data: CategoryUpdate,
@@ -39,6 +41,7 @@ async def update_category(
 @router.delete(
     "/{category_id}",
     status_code=status.HTTP_200_OK,
+    dependencies=[Depends(is_admin)],
     summary="Удалить категорию",
     description="Удаляет категорию по её ID. Если категория не найдена — возвращает ошибку 404."
 )

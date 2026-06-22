@@ -4,13 +4,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.supplier import SupplierOut, SupplierCreate, SupplierUpdate
 from app.repositories import supplier as repo
-from app.core.dependencies import get_db, is_admin
+from app.core.dependencies import get_current_user, get_db, is_admin
 
 router = APIRouter(prefix="/suppliers", tags=["Suppliers"])
 
 @router.get(
     "/",
     response_model=List[SupplierOut],
+    dependencies=[Depends(get_current_user)],
     summary="Получить список поставщиков",
     description="Возвращает список всех поставщиков, отсортированных по названию."
 )
@@ -20,6 +21,7 @@ async def list_suppliers(db: AsyncSession = Depends(get_db)):
 @router.get(
     "/{supplier_id}",
     response_model=SupplierOut,
+    dependencies=[Depends(get_current_user)],
     summary="Получить поставщика по ID",
     description="Возвращает поставщика по его ID.",
     responses={404: {"description": "Поставщик не найден"}}

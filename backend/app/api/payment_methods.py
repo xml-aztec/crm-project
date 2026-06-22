@@ -2,18 +2,19 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
-from app.core.dependencies import get_db, is_admin
+from app.core.dependencies import get_current_user, get_db, is_admin
 from app.schemas.payment_method import *
 from app.repositories import payment_method as repo
 
 router = APIRouter(
     prefix="/payment-methods",
-    tags=["Payment Methods"], 
+    tags=["Payment Methods"],
 )
 
 @router.get(
     "/",
     response_model=List[PaymentMethodOut],
+    dependencies=[Depends(get_current_user)],
     summary="Получить список способов оплаты",
     description="Возвращает список всех доступных способов оплаты, включая их наценку и срок рассрочки (если есть)."
 )

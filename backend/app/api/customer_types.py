@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_db
+from app.core.dependencies import get_current_user, get_db, is_admin
 from app.repositories import customer_type as repo
 from app.schemas.customer_type import CustomerTypeCreate, CustomerTypeRead, CustomerTypeUpdate
 
@@ -10,6 +10,7 @@ router = APIRouter(prefix="/customer-types", tags=["Customer Types"])
 @router.get(
     "/",
     response_model=list[CustomerTypeRead],
+    dependencies=[Depends(get_current_user)],
     summary="Список типов клиентов",
     description="Возвращает список всех типов клиентов (например, 'Физическое лицо', 'Юридическое лицо')."
 )
@@ -20,6 +21,7 @@ async def list_all(db: AsyncSession = Depends(get_db)):
     "/",
     response_model=CustomerTypeRead,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(is_admin)],
     summary="Создать тип клиента",
     description="Создаёт новый тип клиента, например 'B2B', 'B2C' и т.д."
 )
@@ -29,6 +31,7 @@ async def create(data: CustomerTypeCreate, db: AsyncSession = Depends(get_db)):
 @router.patch(
     "/{type_id}",
     response_model=CustomerTypeRead,
+    dependencies=[Depends(is_admin)],
     summary="Обновить тип клиента",
     description="Обновляет название существующего типа клиента по его ID."
 )
@@ -45,6 +48,7 @@ async def update_customer_type(
 @router.delete(
     "/{type_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(is_admin)],
     summary="Удалить тип клиента",
     description="Удаляет тип клиента по ID. Используется, если он больше не нужен."
 )
