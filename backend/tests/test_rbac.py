@@ -1,5 +1,6 @@
 import uuid
 
+import pytest
 from sqlalchemy import select
 
 from app.models.role import Role
@@ -13,6 +14,8 @@ from app.rbac.seed import (
     seed_system_roles,
 )
 from app.rbac.service import assign_role_to_user, create_role, get_user_permissions
+
+pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 TOTAL_PERMISSIONS = sum(len(actions) for actions in PERMISSIONS_MATRIX.values())
 

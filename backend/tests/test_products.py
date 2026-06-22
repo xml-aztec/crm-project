@@ -1,3 +1,8 @@
+import pytest
+
+pytestmark = pytest.mark.asyncio(loop_scope="session")
+
+
 async def test_products_requires_auth(client):
     resp = await client.get("/products/")
     assert resp.status_code == 401
