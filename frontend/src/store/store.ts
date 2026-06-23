@@ -45,6 +45,7 @@ import { usersApi } from './api/usersApi';
 import { userStatsApi } from './api/userStatsApi';
 import { analyticsApi } from './api/analyticsApi';
 import { notificationsApi } from './api/notificationsApi';
+import { rbacApi } from './api/rbacApi';
 
 const persistConfig = {
   key: 'techstore',
@@ -83,6 +84,7 @@ const rootReducer = combineReducers({
   [userStatsApi.reducerPath]: userStatsApi.reducer,
   [analyticsApi.reducerPath]: analyticsApi.reducer,
   [notificationsApi.reducerPath]: notificationsApi.reducer,
+  [rbacApi.reducerPath]: rbacApi.reducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
@@ -174,6 +176,7 @@ export const store = configureStore({
       userStatsApi.middleware,
       analyticsApi.middleware,
       notificationsApi.middleware,
+      rbacApi.middleware,
     ),
   devTools: import.meta.env.DEV,
 });

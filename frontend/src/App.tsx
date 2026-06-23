@@ -49,6 +49,7 @@ import PnLReport from './pages/finance/PnLReport';
 import { useAppDispatch, useAppSelector } from './hooks/reduxHooks';
 import EditProduct from "./pages/catalog/EditProduct";
 import SettingsHub from './pages/settings/SettingsHub';
+import RolesPermissions from './pages/settings/RolesPermissions';
 
 const AppWithRedux = () => {
   const dispatch = useAppDispatch();
@@ -119,6 +120,7 @@ const AppWithRedux = () => {
           
           {/* Settings Hub */}
           <Route path="/settings" element={<SettingsHub />} />
+          <Route path="/settings/roles" element={<RolesPermissions />} />
 
           {/* Configuration Pages */}
           <Route path="/config/general" element={<General />} />

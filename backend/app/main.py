@@ -25,7 +25,7 @@ from app.api import (
     orders, order_items, suppliers, supplies, payment_methods,
     roles, positions, cashflow_meta, budgets, cash_gaps,
     analytics, supply_analytics, stock_logs, cashflows,
-    monthly_targets, kpi_rules, payrolls, customers, notifications,
+    monthly_targets, kpi_rules, payrolls, customers, notifications, rbac,
 )
 
 configure_logging()
@@ -127,3 +127,4 @@ app.include_router(kpi_rules.router)
 app.include_router(payrolls.router)
 app.include_router(customers.router)
 app.include_router(notifications.router)
+app.include_router(rbac.router)

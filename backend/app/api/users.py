@@ -15,7 +15,7 @@ from app.schemas.user import (
     UserUpdateSelf,
     PasswordChange,
 )
-from app.core.dependencies import get_current_user, get_db, is_admin
+from app.core.dependencies import get_current_user, get_db, is_admin, is_self_or_admin
 from app.models.user import User
 from app.utils.email import send_approval_email
 from app.repositories import notification as notif_repo
@@ -98,14 +98,14 @@ async def get_user_by_id(
 @router.get(
     "/{user_id}/stats",
     summary="Статистика сотрудника",
-    description="Возвращает статистику по заказам указанного сотрудника за указанный месяц. По умолчанию — текущий месяц."
+    description="Возвращает статистику по заказам указанного сотрудника за указанный месяц. По умолчанию — текущий месяц. Доступно администраторам и самому пользователю."
 )
 async def get_user_statistics(
     user_id: int,
     year: Optional[int] = Query(None, description="Год (например, 2025)"),
     month: Optional[int] = Query(None, ge=1, le=12, description="Месяц (1-12)"),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(is_admin)
+    _: User = Depends(is_self_or_admin)
 ):
     stats = await user_repo.get_detailed_user_stats(db, user_id, year=year, month=month)
     if stats is None:

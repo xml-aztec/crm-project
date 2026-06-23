@@ -55,6 +55,16 @@ async def is_admin(
         )
     return current_user
 
+async def is_self_or_admin(
+    user_id: int = Path(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if user_id != current_user.id and not await user_is_admin(current_user, db):
+        raise HTTPException(status_code=403, detail="Нет доступа к данным другого пользователя")
+
+    return current_user
+
 async def is_order_owner_or_admin(
     order_id: int = Path(...),
     db: AsyncSession = Depends(get_db),

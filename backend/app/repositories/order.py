@@ -80,7 +80,7 @@ async def create_order(
         )
         branch_id = result.scalar_one_or_none()
 
-        if branch_id != current_user.branch_id:
+        if current_user.branch_id is not None and branch_id != current_user.branch_id:
             raise HTTPException(
                 status_code=403,
                 detail="Нельзя создать заказ на складе другого филиала"
@@ -227,6 +227,7 @@ async def confirm_order(
     if (
         not await user_is_admin(current_user, db)
         and order.warehouse
+        and current_user.branch_id is not None
         and order.warehouse.branch_id != current_user.branch_id
     ):
         raise HTTPException(

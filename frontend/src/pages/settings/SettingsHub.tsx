@@ -43,6 +43,12 @@ const categories: SettingsCategory[] = [
         path: "/config/positions",
         icon: icon("M20 13V7a2 2 0 00-2-2H6a2 2 0 00-2 2v6m16 0l-1.5 6.5a2 2 0 01-2 1.5H7.5a2 2 0 01-2-1.5L4 13m16 0H4m6-6V5a2 2 0 012-2h0a2 2 0 012 2v2"),
       },
+      {
+        name: "Роли и права",
+        description: "Настройка прав доступа ролей и кастомные роли",
+        path: "/settings/roles",
+        icon: icon("M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 10-8 0v2"),
+      },
     ],
   },
   {
