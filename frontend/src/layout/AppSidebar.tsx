@@ -142,7 +142,7 @@ const navItems: NavItem[] = [
   {
     icon: <GridIcon />,
     name: "Панель управления",
-    subItems: [{ name: "Аналитика", path: "/", pro: false }],
+    path: "/",
   },
   {
     icon: <CalenderIcon />,
@@ -152,23 +152,17 @@ const navItems: NavItem[] = [
   {
     icon: <ClientsIcon />,
     name: "Клиенты",
-    subItems: [
-      { name: "Все клиенты", path: "/customers", pro: false },
-    ],
+    path: "/customers",
   },
   {
     icon: <CatalogIcon />,
     name: "Каталог товаров",
-    subItems: [
-      { name: "Товары", path: "/products", pro: false },
-    ],
+    path: "/products",
   },
   {
     icon: <OrdersIcon />,
     name: "Заказы",
-    subItems: [
-      { name: "Управление заказами", path: "/orders", pro: false },
-    ],
+    path: "/orders",
   },
   {
     icon: <WarehouseIcon />,
