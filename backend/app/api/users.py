@@ -19,7 +19,7 @@ from app.core.dependencies import get_current_user, get_db, is_admin, is_self_or
 from app.models.user import User
 from app.utils.email import send_approval_email
 from app.repositories import notification as notif_repo
-from app.rbac.service import user_is_admin
+from app.rbac.service import user_is_admin, get_user_permissions
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -80,6 +80,19 @@ async def get_my_statistics(
     if stats is None:
         raise HTTPException(status_code=404, detail="Статистика не найдена")
     return stats
+
+
+@router.get(
+    "/me/permissions",
+    response_model=List[str],
+    summary="Мои права доступа",
+    description="Флэт-список кодов прав (resource.action) текущего пользователя — используется фронтендом для показа/скрытия разделов."
+)
+async def get_my_permissions(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return sorted(await get_user_permissions(current_user.id, db))
 
 
 @router.get("/{user_id}", response_model=UserOut, summary="Профиль пользователя (только для админов)")

@@ -70,6 +70,13 @@ export const userApi = createApi({
         body: data,
       }),
     }),
+
+    // Флэт-список кодов прав текущего пользователя (resource.action) — используется
+    // для показа/скрытия разделов в сайдбаре и защиты роутов на фронтенде
+    getMyPermissions: builder.query<string[], void>({
+      query: () => '/users/me/permissions',
+      providesTags: ['CurrentUser'],
+    }),
   }),
 });
 
@@ -77,4 +84,5 @@ export const {
   useGetCurrentUserQuery,
   useUpdateCurrentUserMutation,
   useChangePasswordMutation,
+  useGetMyPermissionsQuery,
 } = userApi;

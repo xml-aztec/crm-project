@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { useRoleAccess } from "../hooks/useRoleAccess";
+import { usePermissions } from "../hooks/usePermissions";
 
 import {
   CalenderIcon,
@@ -136,6 +137,7 @@ type NavItem = {
   path?: string;
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean; comingSoon?: boolean }[];
   adminOnly?: boolean;
+  requiredPermission?: string;
 };
 
 const navItems: NavItem[] = [
@@ -153,20 +155,24 @@ const navItems: NavItem[] = [
     icon: <ClientsIcon />,
     name: "Клиенты",
     path: "/customers",
+    requiredPermission: "customers.read",
   },
   {
     icon: <CatalogIcon />,
     name: "Каталог товаров",
     path: "/products",
+    requiredPermission: "products.read",
   },
   {
     icon: <OrdersIcon />,
     name: "Заказы",
     path: "/orders",
+    requiredPermission: "orders.read",
   },
   {
     icon: <WarehouseIcon />,
     name: "Склады",
+    requiredPermission: "stock.read",
     subItems: [
       { name: "Управление складами", path: "/warehouses", pro: false },
       { name: "Управление остатками", path: "/stock", pro: false },
@@ -176,6 +182,7 @@ const navItems: NavItem[] = [
   {
     icon: <SuppliesIcon />,
     name: "Поставки",
+    requiredPermission: "supplies.read",
     subItems: [
       { name: "Все поставщики", path: "/suppliers", pro: false},
       { name: "Управление поставками", path: "/supplies", pro: false },
@@ -184,7 +191,7 @@ const navItems: NavItem[] = [
   {
     icon: <FinanceIcon />,
     name: "Финансы",
-    adminOnly: true,
+    requiredPermission: "cashflow.read",
     subItems: [
       { name: "Финансовая отчетность", path: "/finance", pro: false, comingSoon: false },
       { name: "P&L отчёт", path: "/finance/pnl", pro: false, comingSoon: false },
@@ -213,10 +220,19 @@ const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
   const { isAdmin } = useRoleAccess();
+  const { hasPermission, isLoading: permissionsLoading } = usePermissions();
 
   const visibleNavItems = useMemo(
-    () => navItems.filter((item) => !item.adminOnly || isAdmin),
-    [isAdmin]
+    () =>
+      navItems.filter((item) => {
+        if (item.adminOnly && !isAdmin) return false;
+        if (item.requiredPermission) {
+          if (permissionsLoading) return false;
+          return hasPermission(item.requiredPermission);
+        }
+        return true;
+      }),
+    [isAdmin, permissionsLoading, hasPermission]
   );
 
   const [openSubmenu, setOpenSubmenu] = useState<{

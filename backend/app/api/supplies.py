@@ -4,6 +4,7 @@ from typing import Optional
 from datetime import date
 
 from app.core.dependencies import get_current_user, get_db, is_admin
+from app.rbac.dependencies import require_permission
 from app.models.user import User
 from app.schemas.supply import SupplyCreate, SupplyUpdate, SupplyOut, SupplyListResponse
 from app.repositories import supply as repo
@@ -30,7 +31,7 @@ async def create_supply(
     response_model=SupplyListResponse,
     summary="Список поставок с пагинацией",
     description="Получить список всех поставок с фильтрами, пагинацией и общим количеством записей.",
-    dependencies=[Depends(get_current_user)]
+    dependencies=[Depends(get_current_user), Depends(require_permission("supplies.read"))]
 )
 async def list_supplies(
     warehouse_id: Optional[int] = Query(None, description="Фильтр по складу"),

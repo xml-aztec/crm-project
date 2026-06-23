@@ -26,6 +26,7 @@ const RESOURCE_LABELS: Record<string, string> = {
   users: 'Пользователи',
   payroll: 'Зарплата',
   reports: 'Отчёты',
+  customers: 'Клиенты',
 };
 
 const ACTION_LABELS: Record<string, string> = {

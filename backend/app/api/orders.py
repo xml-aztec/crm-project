@@ -4,6 +4,7 @@ from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Pa
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import SessionLocal
 from app.core.dependencies import get_current_user, get_db, is_admin, is_order_owner_or_admin
+from app.rbac.dependencies import require_permission
 from app.models.user import User
 from app.repositories import order as repo
 from app.repositories import notification as notif_repo
@@ -89,6 +90,7 @@ async def list_orders(
     customer_name: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    __: User = Depends(require_permission("orders.read")),
 ):
     return await repo.get_orders(
         db=db,

@@ -23,6 +23,7 @@ PERMISSIONS_MATRIX: dict[str, list[str]] = {
     "users": ["invite", "read", "update", "delete", "manage_roles"],
     "payroll": ["create", "read", "update", "delete"],
     "reports": ["read", "export"],
+    "customers": ["create", "read", "update", "delete"],
 }
 
 SYSTEM_ROLE_EXCLUDED_PERMISSIONS: dict[str, set[str]] = {

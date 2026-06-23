@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from app.core.dependencies import get_current_user, get_db, is_admin
+from app.rbac.dependencies import require_permission
 from app.schemas.warehouse import WarehouseOut, WarehouseCreate, WarehouseUpdate
 from app.repositories import warehouse as repo
 
@@ -15,7 +16,7 @@ router = APIRouter(
 @router.get(
     "/",
     response_model=List[WarehouseOut],
-    dependencies=[Depends(get_current_user)],
+    dependencies=[Depends(get_current_user), Depends(require_permission("stock.read"))],
     summary="Список всех складов",
     description="Возвращает список всех складов, включая их названия, местоположение и связанные филиалы."
 )

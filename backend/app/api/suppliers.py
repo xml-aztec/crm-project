@@ -5,13 +5,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.supplier import SupplierOut, SupplierCreate, SupplierUpdate
 from app.repositories import supplier as repo
 from app.core.dependencies import get_current_user, get_db, is_admin
+from app.rbac.dependencies import require_permission
 
 router = APIRouter(prefix="/suppliers", tags=["Suppliers"])
 
 @router.get(
     "/",
     response_model=List[SupplierOut],
-    dependencies=[Depends(get_current_user)],
+    dependencies=[Depends(get_current_user), Depends(require_permission("supplies.read"))],
     summary="Получить список поставщиков",
     description="Возвращает список всех поставщиков, отсортированных по названию."
 )

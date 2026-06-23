@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from app.core.dependencies import get_current_user, get_db, is_admin
+from app.rbac.dependencies import require_permission
 from app.repositories import customer as repo
 from app.schemas.customer import CustomerCreate, CustomerRead, CustomerUpdate
 
@@ -11,7 +12,7 @@ router = APIRouter(prefix="/customers", tags=["Customers"])
 @router.get(
     "/",
     response_model=List[CustomerRead],
-    dependencies=[Depends(get_current_user)],
+    dependencies=[Depends(get_current_user), Depends(require_permission("customers.read"))],
     summary="Список клиентов",
     description="Возвращает список всех клиентов с их данными: имя, телефон, email, адрес и тип клиента."
 )

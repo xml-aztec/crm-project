@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user, get_db, is_admin
+from app.rbac.dependencies import require_permission
 from app.models.user import User
 from app.repositories import product as repo
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
@@ -21,6 +22,7 @@ router = APIRouter(prefix="/products", tags=["Products"])
 async def list_products(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
+    __: User = Depends(require_permission("products.read")),
     name: Optional[str] = Query(None),
     sku: Optional[str] = Query(None),
     barcode: Optional[str] = Query(None),

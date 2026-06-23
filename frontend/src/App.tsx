@@ -19,6 +19,7 @@ import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import Calendar from "./pages/Calendar";
 import RequireAuth from "./components/auth/RequireAuth";
+import RequirePermission from "./components/auth/RequirePermission";
 import AllOrders from './pages/orders/AllOrders';
 import CreateOrderPage from './pages/CreateOrderPage';
 import OrderDetailsPage from './pages/orders/OrderDetailsPage'; 
@@ -83,34 +84,34 @@ const AppWithRedux = () => {
           <Route path="/registration-requests" element={<RegistrationRequests />} />
           
           {/* Customer Management Pages */}
-          <Route path="/customers" element={<Customers />} />
-          <Route path="/customer-types" element={<CustomerTypes />} />
-          
+          <Route path="/customers" element={<RequirePermission permission="customers.read"><Customers /></RequirePermission>} />
+          <Route path="/customer-types" element={<RequirePermission permission="customers.read"><CustomerTypes /></RequirePermission>} />
+
           {/* Orders Management Pages */}
-          <Route path="/orders" element={<AllOrders />} />
-          <Route path="/orders/create" element={<CreateOrderPage />} />
-          <Route path="/orders/:id" element={<OrderDetailsPage />} />
-          
+          <Route path="/orders" element={<RequirePermission permission="orders.read"><AllOrders /></RequirePermission>} />
+          <Route path="/orders/create" element={<RequirePermission permission="orders.read"><CreateOrderPage /></RequirePermission>} />
+          <Route path="/orders/:id" element={<RequirePermission permission="orders.read"><OrderDetailsPage /></RequirePermission>} />
+
           {/* Warehouse Management Pages */}
-          <Route path="/warehouses" element={<Warehouses />} />
-          <Route path="/warehouses/:warehouseId/inventory" element={<WarehouseInventory />} />
-          <Route path="/stock" element={<StockManagement />} />
-          <Route path="/stock/logs" element={<StockLogsPage />} />
-          
+          <Route path="/warehouses" element={<RequirePermission permission="stock.read"><Warehouses /></RequirePermission>} />
+          <Route path="/warehouses/:warehouseId/inventory" element={<RequirePermission permission="stock.read"><WarehouseInventory /></RequirePermission>} />
+          <Route path="/stock" element={<RequirePermission permission="stock.read"><StockManagement /></RequirePermission>} />
+          <Route path="/stock/logs" element={<RequirePermission permission="stock.read"><StockLogsPage /></RequirePermission>} />
+
           {/* Supplies Management Pages */}
-          <Route path="/supplies" element={<SuppliesManagement />} />
-          <Route path="/supplies/create" element={<CreateSupply />} />
-          <Route path="/supplies/:id" element={<SupplyDetails />} />
-          <Route path="/supplies/:id/edit" element={<EditSupply />} />
-          
+          <Route path="/supplies" element={<RequirePermission permission="supplies.read"><SuppliesManagement /></RequirePermission>} />
+          <Route path="/supplies/create" element={<RequirePermission permission="supplies.read"><CreateSupply /></RequirePermission>} />
+          <Route path="/supplies/:id" element={<RequirePermission permission="supplies.read"><SupplyDetails /></RequirePermission>} />
+          <Route path="/supplies/:id/edit" element={<RequirePermission permission="supplies.read"><EditSupply /></RequirePermission>} />
+
           {/* Suppliers Management Pages */}
-          <Route path="/suppliers" element={<Suppliers />} />
-          
+          <Route path="/suppliers" element={<RequirePermission permission="supplies.read"><Suppliers /></RequirePermission>} />
+
           {/* Finance Pages */}
-          <Route path="/finance" element={<Finance />} />
-          <Route path="/finance/cashflow-meta" element={<CashflowMetaManagement />} />
-          <Route path="/finance/monthly-targets" element={<MonthlyTargetsManagement />} />
-          <Route path="/finance/pnl" element={<PnLReport />} />
+          <Route path="/finance" element={<RequirePermission permission="cashflow.read"><Finance /></RequirePermission>} />
+          <Route path="/finance/cashflow-meta" element={<RequirePermission permission="cashflow.read"><CashflowMetaManagement /></RequirePermission>} />
+          <Route path="/finance/monthly-targets" element={<RequirePermission permission="cashflow.read"><MonthlyTargetsManagement /></RequirePermission>} />
+          <Route path="/finance/pnl" element={<RequirePermission permission="cashflow.read"><PnLReport /></RequirePermission>} />
           
           {/* Payroll Management Pages */}
           <Route path="/payroll" element={<PayrollManagement />} />
@@ -135,14 +136,14 @@ const AppWithRedux = () => {
           <Route path="/basic-tables" element={<BasicTables />} />
           
           {/* Catalog Pages */}
-          <Route path="/products" element={<Products />} />
-          <Route path="/products/create" element={<CreateProduct />} />
-          
+          <Route path="/products" element={<RequirePermission permission="products.read"><Products /></RequirePermission>} />
+          <Route path="/products/create" element={<RequirePermission permission="products.read"><CreateProduct /></RequirePermission>} />
+
           {/* ✅ ОБНОВЛЯЕМ: Переносим маршрут в правильную секцию */}
-          <Route path="/catalog/products" element={<Products />} />
-          <Route path="/catalog/products/create" element={<CreateProduct />} />
-          <Route path="/catalog/products/:id/edit" element={<EditProduct />} />
-          <Route path="/categories" element={<Categories />} />
+          <Route path="/catalog/products" element={<RequirePermission permission="products.read"><Products /></RequirePermission>} />
+          <Route path="/catalog/products/create" element={<RequirePermission permission="products.read"><CreateProduct /></RequirePermission>} />
+          <Route path="/catalog/products/:id/edit" element={<RequirePermission permission="products.read"><EditProduct /></RequirePermission>} />
+          <Route path="/categories" element={<RequirePermission permission="products.read"><Categories /></RequirePermission>} />
           
           {/* Others Page */}
           <Route path="/profile" element={<UserProfiles />} />

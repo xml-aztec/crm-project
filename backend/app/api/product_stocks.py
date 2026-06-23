@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Literal, Optional
 
 from app.core.dependencies import get_current_user, get_db
+from app.rbac.dependencies import require_permission
 from app.schemas.product_stock import ProductStockOut, ProductStockCreate, ProductStockUpdate, StockListResponse
 from app.repositories import product_stock as repo
 
@@ -26,7 +27,7 @@ async def create_stock(
     response_model=StockListResponse,
     summary="Список остатков с фильтрацией и статистикой",
     description="Возвращает список остатков товаров с возможностью фильтрации по товару, складу, уровню запасов, SKU, штрихкоду и названию.",
-    dependencies=[Depends(get_current_user)]
+    dependencies=[Depends(get_current_user), Depends(require_permission("stock.read"))]
 )
 async def get_stock_list(
     product_id: Optional[int] = Query(None, description="Фильтрация по ID товара"),

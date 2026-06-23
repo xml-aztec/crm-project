@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, Query
 from typing import Optional, List
 from datetime import date
-from app.core.dependencies import get_db, is_admin
+from app.core.dependencies import get_db
+from app.rbac.dependencies import require_permission
 from app.models.user import User
 from app.schemas.cashflow import CashFlowOut
 from app.repositories.cashflow import get_cash_flows
@@ -21,7 +22,7 @@ router = APIRouter(prefix="/cash-flows", tags=["CashFlow"])
     - типу движения (`income` или `expense`)
     - категории (например, `salary`, `order_payment`, `supply_payment`)
 
-    Требуется авторизация администратора.
+    Требуется право cashflow.read.
     """
 )
 async def list_cash_flows(
@@ -30,7 +31,7 @@ async def list_cash_flows(
     type_name: Optional[str] = Query(None, description="Тип движения: 'income' или 'expense'"),
     category_name: Optional[str] = Query(None, description="Название категории: 'salary', 'order_payment' и т.д."),
     db: Depends = Depends(get_db),
-    current_user: User = Depends(is_admin),
+    current_user: User = Depends(require_permission("cashflow.read")),
 ):
     return await get_cash_flows(
         db,
