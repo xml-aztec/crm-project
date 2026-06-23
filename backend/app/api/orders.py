@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date
 from typing import Optional
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -83,8 +83,8 @@ async def update_order(
 async def list_orders(
     skip: int = 0,
     limit: int = 10,
-    date_from: Optional[datetime] = Query(None),
-    date_to: Optional[datetime] = Query(None),
+    date_from: Optional[date] = Query(None, description="Начало периода (включительно), формат YYYY-MM-DD"),
+    date_to: Optional[date] = Query(None, description="Конец периода (включительно), формат YYYY-MM-DD"),
     status_id: Optional[int] = Query(None),
     customer_name: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),

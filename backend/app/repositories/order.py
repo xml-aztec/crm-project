@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timezone
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -144,8 +144,8 @@ async def get_orders(
     current_user: User,
     skip: int = 0,
     limit: int = 10,
-    date_from: Optional[datetime] = None,
-    date_to: Optional[datetime] = None,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
     manager_id: Optional[int] = None,
     status_id: Optional[int] = None,
     customer_name: Optional[str] = None,
@@ -188,14 +188,12 @@ async def get_orders(
         filters.append(func.lower(Customer.name).ilike(f"%{customer_name.lower()}%"))
 
     if date_from:
-        if date_from.tzinfo is None:
-            date_from = date_from.replace(tzinfo=timezone.utc)
-        filters.append(Order.created_at >= date_from)
+        # Начало дня — включительно с 00:00:00.
+        filters.append(Order.created_at >= datetime.combine(date_from, time.min, tzinfo=timezone.utc))
 
     if date_to:
-        if date_to.tzinfo is None:
-            date_to = date_to.replace(tzinfo=timezone.utc)
-        filters.append(Order.created_at <= date_to)
+        # Конец дня — включительно по 23:59:59.999999, иначе весь день выпадает из выборки.
+        filters.append(Order.created_at <= datetime.combine(date_to, time.max, tzinfo=timezone.utc))
 
     if filters:
         query = query.join(Order.customer).where(*filters)

@@ -23,6 +23,13 @@ const FilterIcon = () => (
   </svg>
 );
 
+// Бэкенд получает дату в ISO (YYYY-MM-DD), а показываем пользователю привычный d.m.Y.
+const formatDateForDisplay = (isoDate: string): string => {
+  const [year, month, day] = isoDate.split('-');
+  if (!year || !month || !day) return isoDate;
+  return `${day}.${month}.${year}`;
+};
+
 // Хук для debounce
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -156,7 +163,7 @@ export default function OrdersFilters({ filters, onFiltersChange }: OrdersFilter
             )}
             {(filters.date_from || filters.date_to) && (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 text-xs rounded-full">
-                Период: {filters.date_from || '...'} - {filters.date_to || '...'}
+                Период: {filters.date_from ? formatDateForDisplay(filters.date_from) : '...'} - {filters.date_to ? formatDateForDisplay(filters.date_to) : '...'}
                 <button onClick={() => {
                   handleInputChange('date_from', '');
                   handleInputChange('date_to', '');

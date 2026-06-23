@@ -96,7 +96,8 @@ export const FilterDatePicker: React.FC<{
       placeholder={placeholder}
       size="md"
       className=""
-      dateFormat="d.m.Y"
+      // Реальное значение в ISO-формате (для бэкенда), отображение — d.m.Y (через altFormat в DatePicker).
+      dateFormat="Y-m-d"
       mode="single"
     />
   );

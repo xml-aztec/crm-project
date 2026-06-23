@@ -337,7 +337,8 @@ export const ordersApi = createApi({
         method: 'POST',
         body: data,
       }),
-      invalidatesTags: ['Order'],
+      // 'Analytics' — чтобы "Статистика за текущий месяц" обновлялась сама, без перезагрузки страницы.
+      invalidatesTags: ['Order', 'Analytics'],
     }),
 
     confirmOrder: builder.mutation<ConfirmOrderResponse, { id: number; confirmed: boolean }>({
@@ -347,19 +348,20 @@ export const ordersApi = createApi({
         body: { confirmed },
       }),
       invalidatesTags: (_, __, { id }) => [
-        { type: 'Order', id }, 
+        { type: 'Order', id },
         'Order',
-        'Stock' 
+        'Stock',
+        'Analytics'
       ],
     }),
-    
+
     updateOrderStatus: builder.mutation<Order, { id: number; data: UpdateOrderStatusRequest }>({
       query: ({ id, data }) => ({
         url: `/orders/${id}/status`,
         method: 'PATCH',
         body: data,
       }),
-      invalidatesTags: (_, __, { id }) => [{ type: 'Order', id }, 'Order'],
+      invalidatesTags: (_, __, { id }) => [{ type: 'Order', id }, 'Order', 'Analytics'],
     }),
 
     deleteOrder: builder.mutation<{ detail: string }, number>({
@@ -367,7 +369,7 @@ export const ordersApi = createApi({
         url: `/orders/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['Order'],
+      invalidatesTags: ['Order', 'Analytics'],
     }),
 
     addOrderItem: builder.mutation<OrderItem, { orderId: number; data: CreateOrderItemRequest }>({

@@ -445,6 +445,9 @@ layer(base);
 .flatpickr-prev-month,
 .flatpickr-next-month {
   @apply text-gray-600 dark:text-gray-400 hover:text-brand-500 dark:hover:text-brand-400;
+  /* flatpickr.css жёстко задаёт fill: rgba(0,0,0,0.9) с более специфичным селектором —
+     перебиваем через !important, иначе стрелки невидимы на тёмном фоне. */
+  fill: currentColor !important;
 }
 
 /* Время */

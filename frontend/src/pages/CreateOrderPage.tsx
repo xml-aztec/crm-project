@@ -34,6 +34,13 @@ interface OrderData {
 
 const MAX_SUGGESTIONS = 8;
 
+const formatDateInputValue = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function CreateOrderPage() {
   const navigate = useNavigate();
 
@@ -46,6 +53,8 @@ export default function CreateOrderPage() {
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
 
   const [isQuickCustomerFormOpen, setIsQuickCustomerFormOpen] = useState(false);
+  // Текст в процессе редактирования кол-ва (позволяет временно очистить поле, не сбрасывая количество).
+  const [quantityDrafts, setQuantityDrafts] = useState<Record<number, string>>({});
   const [showDeliverySection, setShowDeliverySection] = useState(false);
   const [addressType, setAddressType] = useState<'customer' | 'new'>('customer');
 
@@ -65,7 +74,7 @@ export default function CreateOrderPage() {
     items: [],
     notes: '',
     delivery_address: '',
-    delivery_date: '',
+    delivery_date: formatDateInputValue(getNowInBishkek()),
     payment_method_id: null,
     installment_months: null
   });
@@ -164,15 +173,14 @@ export default function CreateOrderPage() {
   };
 
   const updateOrderItem = (productId: number, quantity: number) => {
-    if (quantity <= 0) {
-      removeOrderItem(productId);
-      return;
-    }
+    // Удаление товара из корзины — только через крестик (removeOrderItem),
+    // поэтому количество всегда не меньше 1, а не убирает позицию.
+    const safeQuantity = Math.max(1, quantity);
     setOrderData(prev => ({
       ...prev,
       items: prev.items.map(item =>
         item.product_id === productId
-          ? { ...item, quantity, final_price: item.unit_price * quantity }
+          ? { ...item, quantity: safeQuantity, final_price: item.unit_price * safeQuantity }
           : item
       )
     }));
@@ -558,18 +566,37 @@ export default function CreateOrderPage() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => updateOrderItem(item.product_id, item.quantity - 1)}
-                            className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center justify-center"
+                            className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center justify-center shrink-0"
                           >
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
                             </svg>
                           </button>
-                          <span className="text-sm font-medium text-gray-900 dark:text-white w-8 text-center">
-                            {item.quantity}
-                          </span>
+                          <input
+                            type="number"
+                            value={quantityDrafts[item.product_id] ?? item.quantity}
+                            onChange={(e) => {
+                              const rawValue = e.target.value;
+                              setQuantityDrafts(prev => ({ ...prev, [item.product_id]: rawValue }));
+                              const parsed = parseInt(rawValue, 10);
+                              if (!isNaN(parsed) && parsed >= 1) {
+                                updateOrderItem(item.product_id, parsed);
+                              }
+                            }}
+                            onBlur={() => {
+                              setQuantityDrafts(prev => {
+                                const next = { ...prev };
+                                delete next[item.product_id];
+                                return next;
+                              });
+                            }}
+                            className="w-12 px-1 py-0.5 text-sm font-medium text-center border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            min="1"
+                            step="1"
+                          />
                           <button
                             onClick={() => updateOrderItem(item.product_id, item.quantity + 1)}
-                            className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center justify-center"
+                            className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center justify-center shrink-0"
                           >
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -586,7 +613,7 @@ export default function CreateOrderPage() {
                                 const newPrice = parseFloat(e.target.value) || 0;
                                 if (newPrice >= 0) updateOrderItemPrice(item.product_id, newPrice);
                               }}
-                              className="w-16 px-1 py-0.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-right"
+                              className="w-16 px-1 py-0.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               min="0"
                               step="0.01"
                             />
@@ -685,7 +712,9 @@ export default function CreateOrderPage() {
                   type="date"
                   value={orderData.delivery_date}
                   onChange={(e) => handleInputChange('delivery_date', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  onClick={(e) => e.currentTarget.showPicker?.()}
+                  min={formatDateInputValue(getNowInBishkek())}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-pointer"
                 />
               </div>
             </div>
