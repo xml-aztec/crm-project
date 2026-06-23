@@ -17,6 +17,7 @@ import FormElements from "./pages/Forms/FormElements";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
+import Calendar from "./pages/Calendar";
 import RequireAuth from "./components/auth/RequireAuth";
 import AllOrders from './pages/orders/AllOrders';
 import CreateOrderPage from './pages/CreateOrderPage';
@@ -74,6 +75,7 @@ const AppWithRedux = () => {
           </RequireAuth>
         }>
           <Route index path="/" element={<Home />} />
+          <Route path="/calendar" element={<Calendar />} />
 
           {/* User Management Pages */}
           <Route path="/users" element={<Users />} />
