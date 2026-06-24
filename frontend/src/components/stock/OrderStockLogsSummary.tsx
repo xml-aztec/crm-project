@@ -116,7 +116,7 @@ const OrderStockLogsSummary: React.FC<OrderStockLogsSummaryProps> = ({
                     Последняя операция:
                   </span>
                   <span className="text-gray-900 dark:text-white">
-                    {new Date(logs[logs.length - 1].created_at).toLocaleDateString('ru-RU', {
+                    {new Date(logs[0].created_at).toLocaleDateString('ru-RU', {
                       day: '2-digit',
                       month: '2-digit',
                       year: '2-digit',

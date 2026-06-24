@@ -3,13 +3,22 @@
  * Backend сохраняет время в UTC, frontend отображает в Бишкекском времени (UTC+6)
  */
 
-const BISHKEK_OFFSET_HOURS = 6; // Кыргызстан: UTC+6 круглый год с 2016 года
+const BISHKEK_TIME_ZONE = 'Asia/Bishkek';
+const BISHKEK_OFFSET_HOURS = 6; // Кыргызстан: UTC+6 круглый год с 2016 года (без перехода на летнее время)
 
 /**
- * Конвертирует UTC дату в время Бишкека (+6 часов)
+ * Конвертирует UTC дату в время Бишкека.
+ *
+ * ВАЖНО: раньше эта функция просто добавляла 6 часов к timestamp, а вызывающий код
+ * читал результат через getHours()/getDate() и т.п. — эти методы Date сами неявно
+ * конвертируют UTC в часовой пояс ОС/браузера. Если у пользователя локальный часовой
+ * пояс уже был Asia/Bishkek (UTC+6), смещение применялось дважды и время уезжало
+ * на 6 часов вперёд. Здесь время сначала рендерится как часы Бишкека через Intl,
+ * а затем парсится обратно в Date — так результат не зависит от часового пояса
+ * устройства пользователя.
  */
 export const utcToBishkek = (utcDate: Date): Date => {
-  return new Date(utcDate.getTime() + (BISHKEK_OFFSET_HOURS * 60 * 60 * 1000));
+  return new Date(utcDate.toLocaleString('en-US', { timeZone: BISHKEK_TIME_ZONE }));
 };
 
 /**
@@ -210,8 +219,22 @@ export const getRelativeTime = (dateString: string | Date): string => {
 };
 
 /**
- * Конвертирует локальное время Бишкека в UTC для отправки на сервер
+ * Конвертирует время Бишкека в UTC для отправки на сервер.
+ *
+ * Принимает Date, чьи локальные геттеры (getFullYear/getHours/...) представляют
+ * "настенное" время Бишкека (как и возвращает utcToBishkek). Поскольку у Бишкека
+ * фиксированное смещение UTC+6 без перехода на летнее время, достаточно собрать
+ * UTC-метку из тех же чисел и вычесть смещение.
  */
 export const bishkekToUtc = (localDate: Date): Date => {
-  return new Date(localDate.getTime() - (BISHKEK_OFFSET_HOURS * 60 * 60 * 1000));
+  const utcMs = Date.UTC(
+    localDate.getFullYear(),
+    localDate.getMonth(),
+    localDate.getDate(),
+    localDate.getHours(),
+    localDate.getMinutes(),
+    localDate.getSeconds(),
+    localDate.getMilliseconds()
+  ) - (BISHKEK_OFFSET_HOURS * 60 * 60 * 1000);
+  return new Date(utcMs);
 };
