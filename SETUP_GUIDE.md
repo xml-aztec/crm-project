@@ -29,27 +29,11 @@ SENTRY_DSN=           # оставь пустым пока не подключи
 
 ---
 
-## Деплой на Fly.io
+## Деплой
 
-```bash
-# Backend
-fly deploy --config fly.backend.toml
+Сейчас система никуда не задеплоена — ранее работала на Fly.io (`fly.backend.toml`/`fly.frontend.toml`), эта настройка убрана, переезд на новый хостинг ещё не выполнен.
 
-# Frontend
-fly deploy --config fly.frontend.toml
-
-# Или через корневой Dockerfile (backend + frontend в одном контейнере)
-fly deploy
-```
-
-**Secrets на Fly.io** (один раз при первом деплое или при смене):
-```bash
-fly secrets set SECRET_KEY="..." --app leadflow-backend
-fly secrets set DATABASE_URL="postgresql+asyncpg://..." --app leadflow-backend
-fly secrets set ADMIN_EMAIL="..." --app leadflow-backend
-fly secrets set ADMIN_PASSWORD="..." --app leadflow-backend
-fly secrets set SENTRY_DSN="https://..." --app leadflow-backend   # опционально
-```
+Что осталось пригодным для любого хостинга: корневой `Dockerfile` (backend+frontend в одном контейнере через `docker-entrypoint.sh`) и отдельные `Dockerfile-backend`/`Dockerfile-frontend`. Когда выберем новый сервис — сюда добавится актуальная команда деплоя и список секретов (минимум: `SECRET_KEY`, `DATABASE_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, опционально `SENTRY_DSN`, `RESEND_API_KEY`).
 
 ---
 
@@ -82,14 +66,14 @@ alembic downgrade -1
    ```
    SENTRY_DSN=https://abc123@o0.ingest.sentry.io/0
    ```
-5. На проде: `fly secrets set SENTRY_DSN="https://..." --app leadflow-backend`
+5. На проде (когда определимся с хостингом): задать `SENTRY_DSN` тем же способом, каким на нём задаются остальные секреты
 
 ---
 
 ## UptimeRobot — мониторинг доступности
 
 1. Зарегистрируйся на [uptimerobot.com](https://uptimerobot.com) (бесплатно)
-2. Добавь монитор: **HTTP(S)** → `https://leadflow-backend.fly.dev/health`
+2. Добавь монитор: **HTTP(S)** → `https://<домен-бэкенда-после-деплоя>/health` (актуально только после выбора нового хостинга — сейчас система не задеплоена)
 3. Интервал: **5 минут**
 4. Уведомления: email или Telegram
 
@@ -175,18 +159,9 @@ poetry lock
 - [ ] Сгенерировать реальную Alembic-миграцию initial_schema (`alembic revision --autogenerate`)
 - [ ] Запустить `poetry install` в `backend/` (новые зависимости: structlog, sentry-sdk, pytest, pytest-asyncio, httpx)
 
-## CI/CD — что нужно добавить в GitHub Secrets
+## CI/CD
 
-Перейди в репозиторий → **Settings → Secrets and variables → Actions → New repository secret**:
-
-| Секрет | Значение |
-|---|---|
-| `FLY_API_TOKEN` | Получить: `fly tokens create deploy -x 999999h` |
-| `SECRET_KEY` | Тот же ключ что в `backend/.env` |
-
-После этого каждый push в `main` будет автоматически:
-1. Запускать тесты с PostgreSQL в GitHub Actions
-2. Деплоить backend и frontend на Fly.io
+`.github/workflows/deploy.yml` сейчас только прогоняет тесты (PostgreSQL 15 в GitHub Actions) на каждый push/PR в `main` — шаг деплоя убран вместе с Fly.io. Секрет `SECRET_KEY` для самого прогона тестов всё равно нужен в **Settings → Secrets and variables → Actions**. Когда появится новый хостинг — здесь добавится свой деплой-джоб и нужные ему секреты.
 
 ### День 7 — Rate Limiting + Email уведомления ✅
 | Что | Файл |
@@ -201,37 +176,22 @@ poetry lock
 | Email при регистрации (BackgroundTasks) | `api/auth.py` |
 | Email при одобрении (BackgroundTasks) | `api/users.py` |
 
-## Email — настройка SMTP
+## Email — настройка Resend
 
-Email-уведомления полностью опциональны — без SMTP-настроек система работает как раньше.
+Email-уведомления полностью опциональны — без `RESEND_API_KEY` система работает как раньше, письма тихо не отправляются. (Раньше это был SMTP через `fastapi-mail` — заменён на [Resend](https://resend.com).)
 
-### Gmail (рекомендуется для старта)
-
-1. Включи [2-Step Verification](https://myaccount.google.com/security)
-2. Создай [App Password](https://myaccount.google.com/apppasswords) для "Mail"
-3. Добавь в `backend/.env`:
+1. Зарегистрируйся на [resend.com](https://resend.com), создай API key
+2. Добавь в `backend/.env`:
    ```
-   MAIL_USERNAME=youraddress@gmail.com
-   MAIL_PASSWORD=xxxx xxxx xxxx xxxx   # App Password (16 символов)
-   MAIL_FROM=youraddress@gmail.com
-   MAIL_SERVER=smtp.gmail.com
-   MAIL_PORT=587
-   MAIL_STARTTLS=true
-   MAIL_SSL_TLS=false
+   RESEND_API_KEY=re_...
+   MAIL_FROM=onboarding@resend.dev
+   FRONTEND_URL=http://localhost:5173
    ```
-
-### Fly.io secrets (продакшн)
-
-```bash
-fly secrets set MAIL_USERNAME="..." --app leadflow-backend
-fly secrets set MAIL_PASSWORD="..." --app leadflow-backend
-fly secrets set MAIL_FROM="..." --app leadflow-backend
-fly secrets set MAIL_SERVER="smtp.gmail.com" --app leadflow-backend
-```
+3. Пока домен не верифицирован в Resend, `onboarding@resend.dev` шлёт письма **только на email, которым зарегистрирован аккаунт Resend** — для рассылки на произвольные адреса нужно верифицировать свой домен (Resend Dashboard → Domains) и поменять `MAIL_FROM` на адрес с этим доменом
 
 ### Поведение при отсутствии настроек
 
-Если `MAIL_SERVER` не задан — письма не отправляются и ошибок нет. Подключение email не требует изменений кода.
+Если `RESEND_API_KEY` не задан — письма не отправляются и ошибок нет. Подключение email не требует изменений кода.
 
 ### День 8 — Мобильная адаптивность заказов (USR-4) ✅
 | Что | Файл |

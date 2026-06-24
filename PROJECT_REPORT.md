@@ -30,7 +30,7 @@ Full-stack CRM/ERP для розничной и оптовой торговли 
 | Логирование | structlog ^24.4.0 (JSON-логи + request middleware) |
 | Мониторинг ошибок | sentry-sdk[fastapi] ^2.19.0 (опционально) |
 | Rate limiting | slowapi ^0.1.9 |
-| Email | fastapi-mail ^1.4.2 (опционально) |
+| Email | resend ^2.32.2 (опционально) |
 | Dev/Test | pytest ^8.3, pytest-asyncio ^0.24, httpx ^0.28, black, isort, mypy |
 
 ### Frontend
@@ -44,8 +44,8 @@ Full-stack CRM/ERP для розничной и оптовой торговли 
 
 ### Инфраструктура
 - Docker (отдельные образы `Dockerfile-backend`, `Dockerfile-frontend`, плюс комбинированный корневой `Dockerfile`)
-- Деплой: Fly.io, два независимых приложения — `leadflow-backend`, `leadflow-frontend` (nginx)
-- CI/CD: GitHub Actions (`.github/workflows/deploy.yml`) — тесты на PostgreSQL 15 → авто-деплой backend и frontend при push в `main`
+- Деплой: не задеплоено сейчас — ранее работало на Fly.io как два независимых приложения (`leadflow-backend`, `leadflow-frontend` через nginx), эта настройка убрана, переезд на новый хостинг не выполнен
+- CI/CD: GitHub Actions (`.github/workflows/deploy.yml`) — только тесты на PostgreSQL 15 при push/PR в `main`, без деплоя
 - Мониторинг: health-check эндпоинт + UptimeRobot (опционально), Sentry (опционально)
 
 ---
@@ -67,8 +67,8 @@ templates/    Jinja2: supply_invoice.html, email_registration.html, email_approv
 ### Конфигурация (`core/config.py`)
 Настройки через `pydantic_settings.BaseSettings`, читаются из `.env`:
 - Обязательные: `DATABASE_URL`, `SECRET_KEY`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`
-- Опциональные: `ADMIN_FULL_NAME`, `BASE_URL` (используется для определения `secure` cookie через `startswith("https://")`), `SENTRY_DSN`
-- Email-блок (все опциональны, по умолчанию `None`): `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`, `MAIL_SERVER`, `MAIL_PORT=587`, `MAIL_STARTTLS=True`, `MAIL_SSL_TLS=False`
+- Опциональные: `ADMIN_FULL_NAME`, `BASE_URL` (используется для определения `secure` cookie через `startswith("https://")`, дефолт `http://localhost:8000`), `FRONTEND_URL` (дефолт `http://localhost:5173`, используется в ссылке сброса пароля), `SENTRY_DSN`
+- Email-блок (опционален, по умолчанию `RESEND_API_KEY=None`): `RESEND_API_KEY`, `MAIL_FROM` (дефолт `onboarding@resend.dev`)
 
 ### Подключение к БД (`core/database.py`)
 ```python
@@ -88,7 +88,7 @@ create_async_engine(
 ### Middleware и безопасность приложения
 - `RequestLoggingMiddleware` (кастомный, на `BaseHTTPMiddleware`) — генерирует `request_id` (uuid4[:8]), биндит в structlog contextvars, логирует `method/path/status_code/duration_ms` в JSON
 - `SlowAPIMiddleware` + handler для `RateLimitExceeded` → 429
-- `CORSMiddleware`: `allow_origins=["https://leadflow-beta.fly.dev", "http://localhost", "http://localhost:5173/5174/5175", "http://localhost:3000"]`, `allow_credentials=True`, методы и заголовки — `*`
+- `CORSMiddleware`: `allow_origins=["http://localhost", "http://localhost:5173/5174/5175", "http://localhost:3000"]` (прод-домен пока не задан — добавится при выборе нового хостинга), `allow_credentials=True`, методы и заголовки — `*`
 
 ### Аутентификация и авторизация
 - `POST /auth/login` → httpOnly JWT cookie `access_token`, `secure=is_https` (вычисляется из `BASE_URL`)
@@ -229,26 +229,21 @@ pages/                            — 49 страниц по доменам
 ### CI/CD (`.github/workflows/deploy.yml`)
 ```
 push/PR → main:
-  job test:        postgres:15 (service) → poetry install --with dev → pytest -v
-  job deploy-backend  (needs: test, только push в main): flyctl deploy --config fly.backend.toml --remote-only
-  job deploy-frontend (needs: test, только push в main): flyctl deploy --config fly.frontend.toml --remote-only
+  job test: postgres:15 (service) → poetry install --with dev → pytest -v
 ```
-Требуемые GitHub Secrets: `FLY_API_TOKEN`, `SECRET_KEY`.
+Деплой-джобов сейчас нет (раньше деплоили на Fly.io через `flyctl deploy`, эта настройка убрана). Требуемые GitHub Secrets: `SECRET_KEY` (для прогона тестов).
 
 ---
 
 ## 9. Деплой / инфраструктура
 
-| Приложение | Fly.io app | Dockerfile | Порт |
-|---|---|---|---|
-| Backend | `leadflow-backend` | `Dockerfile-backend` | 8080 |
-| Frontend | `leadflow-frontend` | `Dockerfile-frontend` (nginx) | — |
+Сейчас система не задеплоена ни на каком хостинге — ранее работала на двух приложениях Fly.io (`leadflow-backend` на `Dockerfile-backend`, `leadflow-frontend` на `Dockerfile-frontend`/nginx), эта настройка (`fly.backend.toml`, `fly.frontend.toml`) удалена. Переезд на новый сервис в планах, конкретный хостинг пока не выбран.
 
-- Альтернативный вариант — комбинированный корневой `Dockerfile`: `docker-entrypoint.sh` запускает uvicorn в фоне, затем nginx на переднем плане (backend+frontend в одном контейнере)
-- `VITE_API_URL=https://leadflow-frontend.fly.dev/api` (env во `fly.frontend.toml`)
-- `BASE_URL=https://leadflow-beta.fly.dev` — используется backend'ом для определения `secure` флага cookie и как дефолт в `Settings`
+Что осталось пригодным для любого следующего хостинга:
+- Комбинированный корневой `Dockerfile`: `docker-entrypoint.sh` запускает uvicorn в фоне, затем nginx на переднем плане (backend+frontend в одном контейнере)
+- Отдельные `Dockerfile-backend`/`Dockerfile-frontend`, если нужно деплоить как два сервиса
 - Health-check: `GET /health` → `{"status":"ok","db":"ok","version":"0.1.0"}`
-- Production secrets (Fly): `SECRET_KEY`, `DATABASE_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, опционально `SENTRY_DSN`, `MAIL_*`
+- Минимальный набор секретов для следующего хостинга: `SECRET_KEY`, `DATABASE_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, опционально `SENTRY_DSN`, `RESEND_API_KEY`
 
 ---
 
@@ -273,8 +268,8 @@ push/PR → main:
 
 1. Alembic baseline пустая — нет реального пути миграции схемы (см. п.10)
 2. Раздел `/config/notifications` — UI присутствует, помечен как `comingSoon: true`, логика не реализована
-3. CORS жёстко ограничен одним продакшен-доменом (`leadflow-beta.fly.dev`) + localhost-портами для разработки — при смене домена фронтенда нужно обновить `origins` в `main.py`
-4. Email и Sentry — опциональные интеграции (no-op при отсутствии переменных окружения), для активации нужна настройка секретов на Fly.io
+3. CORS сейчас разрешает только localhost-порты для разработки — прод-домен не задан, т.к. система не задеплоена; при выборе нового хостинга нужно добавить его origin в `main.py`
+4. Email и Sentry — опциональные интеграции (no-op при отсутствии переменных окружения), для активации нужна настройка `RESEND_API_KEY`/`SENTRY_DSN` там, где в итоге будет жить прод
 
 ---
 

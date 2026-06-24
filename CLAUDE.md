@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Full-stack CRM/ERP for retail and wholesale businesses in Central Asia. Backend: FastAPI + async SQLAlchemy + PostgreSQL. Frontend: React 19 + Redux Toolkit (RTK Query) + Tailwind CSS. Deployed on Fly.io.
+Full-stack CRM/ERP for retail and wholesale businesses in Central Asia. Backend: FastAPI + async SQLAlchemy + PostgreSQL. Frontend: React 19 + Redux Toolkit (RTK Query) + Tailwind CSS. Not currently deployed (see Deployment section).
 
 ---
 
@@ -164,10 +164,11 @@ Remaining / newly found:
 
 ## Deployment
 
-- **Backend**: Fly.io app `leadflow-backend`, config in `fly.backend.toml`, built from `Dockerfile-backend`
-- **Frontend**: Fly.io app `leadflow-frontend`, config in `fly.frontend.toml`, built from `Dockerfile-frontend`
-- **Combined**: `Dockerfile` at root builds both into a single nginx+uvicorn image; `docker-entrypoint.sh` starts uvicorn in background then nginx in foreground
-- **CORS**: Only `https://leadflow-beta.fly.dev` is whitelisted in `main.py` — localhost origins are commented out
+Not currently deployed anywhere — previously ran on Fly.io (separate `leadflow-backend`/`leadflow-frontend` apps), that setup has been removed; the project will move to a different host later.
+
+- **Combined**: `Dockerfile` at root still builds both into a single nginx+uvicorn image; `docker-entrypoint.sh` starts uvicorn in background then nginx in foreground — reusable regardless of host
+- **CORS**: `origins` in `main.py` currently only lists localhost ports — add the new frontend's origin there once a host is chosen
+- **CI**: `.github/workflows/deploy.yml` only runs the test suite now (no deploy step)
 
 ## graphify
 

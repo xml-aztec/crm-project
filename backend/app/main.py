@@ -78,8 +78,9 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# Прод-домен пока не задан (раньше был Fly.io, переезжаем на другой хостинг) —
+# добавьте сюда origin фронтенда, когда определитесь с хостингом.
 origins = [
-    "https://leadflow-beta.fly.dev",
     "http://localhost",
     "http://localhost:5173",
     "http://localhost:5174",

@@ -1,6 +1,6 @@
 # LeadFlow CRM
 
-Full-stack CRM/ERP for retail and wholesale businesses. FastAPI + PostgreSQL backend, React 19 + Redux Toolkit frontend. Deployed on Fly.io.
+Full-stack CRM/ERP for retail and wholesale businesses. FastAPI + PostgreSQL backend, React 19 + Redux Toolkit frontend. Not currently deployed anywhere — see [Deployment](#deployment).
 
 ## Quick Start (local)
 
@@ -61,7 +61,7 @@ uvicorn app.main:app --reload --port 8000
 | Backend | FastAPI, async SQLAlchemy 2.0, PostgreSQL 15, asyncpg |
 | Frontend | React 19, Redux Toolkit (RTK Query), Tailwind CSS |
 | Auth | httpOnly JWT cookie, bcrypt passwords |
-| Deploy | Fly.io (backend + frontend as separate apps) |
+| Deploy | not currently deployed (previously Fly.io, host TBD) |
 
 ### Backend structure (`backend/app/`)
 
@@ -114,21 +114,11 @@ alembic upgrade head
 alembic revision --autogenerate -m "describe change"
 ```
 
-## Deployment (Fly.io)
+## Deployment
 
-```bash
-# Deploy backend
-fly deploy --config fly.backend.toml
+Not currently deployed anywhere — previously ran on Fly.io as two separate apps (`leadflow-backend`, `leadflow-frontend`); that setup was removed, the project will move to a different host later. The root `Dockerfile` (combined backend+frontend via nginx+uvicorn, see `docker-entrypoint.sh`) and per-service `Dockerfile-backend`/`Dockerfile-frontend` are still here and reusable for whichever host is chosen next.
 
-# Deploy frontend
-fly deploy --config fly.frontend.toml
-
-# Set secrets (first time or when rotating)
-fly secrets set SECRET_KEY="..." --app leadflow-backend
-fly secrets set DATABASE_URL="postgresql+asyncpg://..." --app leadflow-backend
-```
-
-CI/CD auto-deploys both apps on every push to `main` via GitHub Actions (requires `FLY_API_TOKEN` and `SECRET_KEY` in GitHub repository secrets).
+CI (`.github/workflows/deploy.yml`) currently only runs the test suite on push/PR to `main` — no deploy step.
 
 ## Health check
 

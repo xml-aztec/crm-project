@@ -3,7 +3,7 @@ import { store } from '../store/store';
 import { logoutUser } from '../store/slices/authSlice';
 
 // Определяем базовый URL API в зависимости от окружения
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://leadflow-beta.fly.dev/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Базовый API-клиент с поддержкой cookies
 export const api = axios.create({
