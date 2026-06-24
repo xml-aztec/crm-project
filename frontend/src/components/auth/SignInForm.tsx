@@ -1,5 +1,5 @@
 import { useState, ChangeEvent, FormEvent, useCallback, useEffect } from "react";
-import { useNavigate, Link } from "react-router";
+import { useNavigate, useLocation, Link } from "react-router";
 import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
@@ -35,7 +35,9 @@ const ERROR_MESSAGES = {
 
 export default function SignInForm() {
   const navigate = useNavigate();
-  
+  const location = useLocation();
+  const successMessage = (location.state as { message?: string } | null)?.message;
+
   // Redux состояния и actions
   const dispatch = useAppDispatch();
   const { loading, error, isAuthenticated } = useAppSelector((state) => state.auth);
@@ -224,6 +226,13 @@ export default function SignInForm() {
         <div>
           <form onSubmit={handleSubmit}>
             <div className="space-y-6">
+              {/* Сообщение после редиректа (например, после успешного сброса пароля) */}
+              {successMessage && (
+                <div className="p-3 text-sm text-success-600 bg-success-50 border border-success-200 rounded-lg dark:bg-success-900/20 dark:border-success-800">
+                  {successMessage}
+                </div>
+              )}
+
               {/* Ошибка от Redux */}
               {error && (
                 <div className="p-3 text-sm text-error-500 bg-error-50 border border-error-200 rounded-lg dark:bg-error-900/20 dark:border-error-800">
@@ -305,7 +314,7 @@ export default function SignInForm() {
                   </label>
                 </div>
                 <Link
-                  to="/reset-password"
+                  to="/forgot-password"
                   className={`text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400 ${
                     loading ? 'pointer-events-none opacity-50' : ''
                   }`}

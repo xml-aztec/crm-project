@@ -27,6 +27,19 @@ export interface RegisterResponse {
   message: string;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  new_password: string;
+}
+
+export interface MessageResponse {
+  message: string;
+}
+
 // Создание API с использованием RTK Query
 export const authApi = createApi({
   reducerPath: 'authApi',
@@ -53,12 +66,32 @@ export const authApi = createApi({
         body: credentials,
       }),
     }),
+
+    // Запрос сброса пароля по email
+    forgotPassword: builder.mutation<MessageResponse, ForgotPasswordRequest>({
+      query: (data) => ({
+        url: '/auth/forgot-password',
+        method: 'POST',
+        body: data,
+      }),
+    }),
+
+    // Сброс пароля по токену из письма
+    resetPassword: builder.mutation<MessageResponse, ResetPasswordRequest>({
+      query: (data) => ({
+        url: '/auth/reset-password',
+        method: 'POST',
+        body: data,
+      }),
+    }),
   }),
 });
 
 // Экспорт хуков для использования в компонентах
-export const { 
-  useGetPositionsQuery, 
-  useGetRolesQuery, 
-  useRegisterMutation 
+export const {
+  useGetPositionsQuery,
+  useGetRolesQuery,
+  useRegisterMutation,
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
 } = authApi;

@@ -8,16 +8,12 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str
     ADMIN_FULL_NAME: str = "Super Admin"
     BASE_URL: str = "https://leadflow-beta.fly.dev"
+    FRONTEND_URL: str = "https://leadflow-beta.fly.dev"
     SENTRY_DSN: Optional[str] = None
 
-    # Email (optional — leave blank to disable email notifications)
-    MAIL_USERNAME: Optional[str] = None
-    MAIL_PASSWORD: Optional[str] = None
-    MAIL_FROM: Optional[str] = None
-    MAIL_SERVER: Optional[str] = None
-    MAIL_PORT: int = 587
-    MAIL_STARTTLS: bool = True
-    MAIL_SSL_TLS: bool = False
+    # Email via Resend (optional — leave RESEND_API_KEY blank to disable email notifications)
+    RESEND_API_KEY: Optional[str] = None
+    MAIL_FROM: Optional[str] = "onboarding@resend.dev"
 
     class Config:
         env_file = ".env"

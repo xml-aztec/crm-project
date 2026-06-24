@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, Response, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -5,11 +6,13 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.exc import IntegrityError
 from app.core import security
 from app.schemas.user import UserRegister, UserRead
+from app.schemas.auth import ForgotPasswordRequest, ResetPasswordRequest
 from app.repositories import user as user_repo
+from app.repositories import password_reset as reset_repo
 from app.models.role import Role
 from app.core.dependencies import get_db
 from app.core.limiter import limiter
-from app.utils.email import send_registration_email
+from app.utils.email import send_registration_email, send_password_reset_email
 from app.core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -94,3 +97,57 @@ async def login(
 def logout(response: Response):
     response.delete_cookie("access_token")
     return {"message": "Logged out"}
+
+@router.post(
+    "/forgot-password",
+    summary="Запрос сброса пароля",
+    description="""
+    Принимает email и, если такой пользователь существует, отправляет ему
+    письмо со ссылкой для сброса пароля (ссылка действительна 30 минут).
+
+    Ответ всегда одинаковый независимо от того, найден пользователь или
+    нет — это защита от перебора email-адресов (CWE-204 information exposure).
+    """,
+)
+@limiter.limit("3/minute")
+async def forgot_password(
+    request: Request,
+    data: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    user = await user_repo.get_by_email(db, data.email)
+    if user:
+        reset_token = await reset_repo.create_reset_token(db, user.id)
+        reset_link = f"{settings.FRONTEND_URL}/reset-password?token={reset_token.token}"
+        await send_password_reset_email(background_tasks, user.email, reset_link)
+
+    return {"message": "Если такой email зарегистрирован, на него отправлена ссылка для сброса пароля"}
+
+@router.post(
+    "/reset-password",
+    summary="Сброс пароля по токену",
+    description="""
+    Принимает токен (из ссылки в письме) и новый пароль. Проверяет, что
+    токен существует, не использован и не истёк. При успехе меняет пароль
+    и помечает использованными все неиспользованные токены пользователя.
+    """,
+)
+@limiter.limit("5/minute")
+async def reset_password(
+    request: Request,
+    data: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    reset_token = await reset_repo.get_token(db, data.token)
+    if (
+        not reset_token
+        or reset_token.used
+        or reset_token.expires_at < datetime.now(timezone.utc)
+    ):
+        raise HTTPException(status_code=400, detail="Недействительный или истёкший токен")
+
+    await user_repo.update_password(db, reset_token.user_id, data.new_password)
+    await reset_repo.invalidate_user_tokens(db, reset_token.user_id)
+
+    return {"message": "Пароль успешно изменён"}
