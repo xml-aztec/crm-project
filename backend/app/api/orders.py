@@ -9,6 +9,7 @@ from app.models.user import User
 from app.repositories import order as repo
 from app.repositories import notification as notif_repo
 from app.repositories import order_history as history_repo
+from app.repositories import stock_log as stock_log_repo
 from app.schemas.order import (
     OrderConfirmUpdate,
     OrderCreate,
@@ -17,6 +18,7 @@ from app.schemas.order import (
     OrderUpdate,
 )
 from app.schemas.order_history import OrderHistoryOut
+from app.schemas.stock_log import StockLogOut
 from app.utils.stock import update_stock_on_order_confirmed
 
 
@@ -181,6 +183,25 @@ async def get_order_history(
     _: User = Depends(get_current_user),
 ):
     return await history_repo.get_order_history(db, order_id)
+
+
+@router.get(
+    "/{order_id}/stock-logs/",
+    response_model=list[StockLogOut],
+    summary="Логи складских операций по заказу",
+    description="Возвращает все списания/возвраты товара, связанные с подтверждением, "
+                "отменой подтверждения или удалением данного заказа."
+)
+async def get_order_stock_logs(
+    order_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    __: User = Depends(require_permission("stock.read")),
+):
+    order = await repo.get_order_by_id(db, order_id, current_user)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return await stock_log_repo.get_stock_logs(db, order_id=order_id, limit=1000)
 
 
 @router.delete(

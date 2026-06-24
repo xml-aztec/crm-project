@@ -12,6 +12,7 @@ class StockLog(Base):
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"))
     warehouse_id = Column(Integer, ForeignKey("warehouses.id", ondelete="CASCADE"))
+    order_id = Column(Integer, ForeignKey("orders.id", ondelete="SET NULL"), nullable=True, index=True)
 
     quantity = Column(Integer, nullable=False)
     type = Column(Enum(StockLogType), nullable=False)
@@ -21,3 +22,4 @@ class StockLog(Base):
 
     product = relationship("Product", lazy="joined")
     warehouse = relationship("Warehouse", lazy="joined")
+    order = relationship("Order")

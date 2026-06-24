@@ -4,6 +4,7 @@ export interface StockLog {
   id: number;
   product_id: number;
   warehouse_id: number;
+  order_id?: number | null;
   type: 'incoming' | 'outgoing' | 'return' | 'adjust';
   quantity: number;
   note: string;
@@ -14,6 +15,7 @@ export interface StockLog {
 export interface StockLogsFilters {
   product_id?: number;
   warehouse_id?: number;
+  order_id?: number;
   type?: 'incoming' | 'outgoing' | 'return' | 'adjust';
   date_from?: string;
   date_to?: string;
@@ -44,6 +46,9 @@ export const stockLogsApi = createApi({
         }
         if (params.warehouse_id) {
           searchParams.append('warehouse_id', params.warehouse_id.toString());
+        }
+        if (params.order_id) {
+          searchParams.append('order_id', params.order_id.toString());
         }
         if (params.type) {
           searchParams.append('type', params.type);

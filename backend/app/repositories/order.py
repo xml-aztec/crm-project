@@ -241,6 +241,7 @@ async def confirm_order(
             await create_stock_log(db, StockLogCreate(
                 product_id=item.product_id,
                 warehouse_id=order.warehouse_id,
+                order_id=order.id,
                 quantity=item.quantity,
                 type="return",
                 note=f"Отмена подтверждения заказа #{order.id}"
@@ -252,6 +253,7 @@ async def confirm_order(
             await create_stock_log(db, StockLogCreate(
                 product_id=item.product_id,
                 warehouse_id=order.warehouse_id,
+                order_id=order.id,
                 quantity=item.quantity,
                 type="outgoing",
                 note=f"Подтверждение заказа #{order.id}"
@@ -363,6 +365,7 @@ async def delete_order(db: AsyncSession, order_id: int) -> None:
             await create_stock_log(db, StockLogCreate(
                 product_id=item.product_id,
                 warehouse_id=order.warehouse_id,
+                order_id=order.id,
                 quantity=item.quantity,
                 type="return",
                 note=f"Удаление подтверждённого заказа #{order.id}"

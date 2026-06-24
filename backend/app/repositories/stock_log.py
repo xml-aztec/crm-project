@@ -12,6 +12,7 @@ async def get_stock_logs(
     db: AsyncSession,
     product_id: Optional[int] = None,
     warehouse_id: Optional[int] = None,
+    order_id: Optional[int] = None,
     type: Optional[StockLogType] = None,
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
@@ -31,6 +32,8 @@ async def get_stock_logs(
         stmt = stmt.where(StockLog.product_id == product_id)
     if warehouse_id:
         stmt = stmt.where(StockLog.warehouse_id == warehouse_id)
+    if order_id:
+        stmt = stmt.where(StockLog.order_id == order_id)
     if type:
         stmt = stmt.where(StockLog.type == type)
     if date_from:

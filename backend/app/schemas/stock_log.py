@@ -14,6 +14,7 @@ class StockLogType(str, Enum):
 class StockLogBase(BaseModel):
     product_id: int
     warehouse_id: int
+    order_id: Optional[int] = None
     quantity: int
     type: StockLogType
     note: Optional[str] = None

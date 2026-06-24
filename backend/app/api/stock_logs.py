@@ -15,6 +15,7 @@ router = APIRouter(prefix="/stock/logs", tags=["Stock Logs"])
 async def list_stock_logs(
     product_id: Optional[int] = Query(None, description="Фильтрация по ID товара"),
     warehouse_id: Optional[int] = Query(None, description="Фильтрация по ID склада"),
+    order_id: Optional[int] = Query(None, description="Фильтрация по ID заказа"),
     type: Optional[str] = Query(None, description="Тип движения: incoming, outgoing, return, adjust"),
     date_from: Optional[datetime] = Query(None, description="Дата от (формат ISO)"),
     date_to: Optional[datetime] = Query(None, description="Дата до (формат ISO)"),
@@ -28,6 +29,7 @@ async def list_stock_logs(
         db=db,
         product_id=product_id,
         warehouse_id=warehouse_id,
+        order_id=order_id,
         type=type,
         date_from=date_from,
         date_to=date_to,

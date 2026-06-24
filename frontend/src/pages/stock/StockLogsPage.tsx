@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useGetStockLogsQuery } from '../../store/api/stockLogsApi';
 import { useGetProductsQuery } from '../../store/api/catalogApi';
 import { useGetWarehousesQuery } from '../../store/api/warehousesApi';
@@ -13,7 +13,8 @@ const ITEMS_PER_PAGE = 20;
 interface StockLogsFilters {
   product_id?: number;
   warehouse_id?: number;
-  type?: 'incoming' | 'outgoing' | 'return' | 'adjust'; 
+  order_id?: number;
+  type?: 'incoming' | 'outgoing' | 'return' | 'adjust';
   date_from?: string;
   date_to?: string;
   skip?: number;
@@ -22,9 +23,13 @@ interface StockLogsFilters {
 
 export default function StockLogsPage() {
   const navigate = useNavigate();
-  
+  const [searchParams] = useSearchParams();
+
   const [currentPage, setCurrentPage] = useState(1);
-  const [filters, setFilters] = useState<StockLogsFilters>({});
+  const [filters, setFilters] = useState<StockLogsFilters>(() => {
+    const orderId = searchParams.get('order_id');
+    return orderId ? { order_id: Number(orderId) } : {};
+  });
   
   // Отдельно обрабатываем поиск для локальной фильтрации
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,6 +42,7 @@ export default function StockLogsPage() {
   const queryParams = useMemo(() => ({
     product_id: debouncedFilters.product_id,
     warehouse_id: debouncedFilters.warehouse_id,
+    order_id: debouncedFilters.order_id,
     type: debouncedFilters.type,
     date_from: debouncedFilters.date_from,
     date_to: debouncedFilters.date_to,
@@ -106,7 +112,7 @@ export default function StockLogsPage() {
   // Сброс пагинации при изменении фильтров или поиска
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters.product_id, filters.warehouse_id, filters.type, filters.date_from, filters.date_to, debouncedSearchTerm]);
+  }, [filters.product_id, filters.warehouse_id, filters.order_id, filters.type, filters.date_from, filters.date_to, debouncedSearchTerm]);
 
   const operationTypeOptions = [
     { value: 'incoming', label: 'Поступление' },
