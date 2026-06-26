@@ -9,8 +9,8 @@ class Supply(Base):
     supplier_id = Column(Integer, ForeignKey("suppliers.id", ondelete="SET NULL"), nullable=True)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id", ondelete="CASCADE"), nullable=False)
     created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=False)
-    delivered_at = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, server_default=func.now())
+    delivered_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     warehouse = relationship("Warehouse", lazy="joined")
     created_user = relationship("User", lazy="joined")
