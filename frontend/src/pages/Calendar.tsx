@@ -12,7 +12,7 @@ const Calendar: React.FC = () => {
   return (
     <>
       <PageMeta
-        title="Календарь | TechStore"
+        title="Календарь | LeadFlow"
         description="Просмотр календаря по месяцам, неделям и дням"
       />
       <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">

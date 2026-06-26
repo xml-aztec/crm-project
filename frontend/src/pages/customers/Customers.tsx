@@ -192,7 +192,7 @@ export default function Customers() {
   return (
     <>
       <PageMeta
-        title="Все клиенты | TechStore"
+        title="Все клиенты | LeadFlow"
         description="Управление клиентами интернет-магазина"
       />
       <PageBreadcrumb pageTitle="Все клиенты" />

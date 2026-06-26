@@ -48,7 +48,7 @@ import { notificationsApi } from './api/notificationsApi';
 import { rbacApi } from './api/rbacApi';
 
 const persistConfig = {
-  key: 'techstore',
+  key: 'leadflow',
   version: 1,
   storage,
   whitelist: ['auth'], 

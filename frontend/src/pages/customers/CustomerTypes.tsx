@@ -183,7 +183,7 @@ export default function CustomerTypes() {
   return (
     <>
       <PageMeta
-        title="Типы клиентов | TechStore"
+        title="Типы клиентов | LeadFlow"
         description="Управление типами клиентов интернет-магазина"
       />
       <PageBreadcrumb pageTitle="Типы клиентов" />
