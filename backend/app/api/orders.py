@@ -19,7 +19,6 @@ from app.schemas.order import (
 )
 from app.schemas.order_history import OrderHistoryOut
 from app.schemas.stock_log import StockLogOut
-from app.utils.stock import update_stock_on_order_confirmed
 
 
 async def _notify_admins_new_order(order_id: int, manager_name: str) -> None:
@@ -139,11 +138,7 @@ async def confirm_order(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    if data.confirmed:
-        await repo.check_stock_before_confirmation(db, order)
-        await update_stock_on_order_confirmed(db, order)
-
-    order = await repo.confirm_order(db, order_id, data.confirmed, current_user=current_user)  
+    order = await repo.confirm_order(db, order_id, data.confirmed, current_user=current_user)
 
     return order
 

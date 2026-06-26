@@ -84,7 +84,7 @@ async def upsert(db: AsyncSession, data: ProductStockCreate):
     existing = result.scalar_one_or_none()
 
     if existing:
-        existing.quantity = data.quantity
+        existing.quantity += data.quantity
         await db.commit()
         await db.refresh(existing)
         return existing

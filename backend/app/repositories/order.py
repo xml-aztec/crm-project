@@ -330,6 +330,17 @@ async def update_order_status(
         order.cancellation_reason = cancellation_reason
         if order.finalized_total_price is None:
             order.finalized_total_price = order.total_price
+        if order.confirmed:
+            await restore_stock_for_order(db, order.id)
+            for item in order.items:
+                await create_stock_log(db, StockLogCreate(
+                    product_id=item.product_id,
+                    warehouse_id=order.warehouse_id,
+                    order_id=order.id,
+                    quantity=item.quantity,
+                    type="return",
+                    note=f"Отмена заказа #{order.id}: {cancellation_reason}"
+                ))
 
     if status_id == confirmed_status_id:
         if order.finalized_total_price is None:

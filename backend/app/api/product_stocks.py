@@ -6,6 +6,8 @@ from app.core.dependencies import get_current_user, get_db
 from app.rbac.dependencies import require_permission
 from app.schemas.product_stock import ProductStockOut, ProductStockCreate, ProductStockUpdate, StockListResponse
 from app.repositories import product_stock as repo
+from app.schemas.stock_log import StockLogCreate
+from app.repositories.stock_log import create_stock_log
 
 router = APIRouter(prefix="/stock", tags=["Product Stock"])
 
@@ -20,7 +22,15 @@ async def create_stock(
     data: ProductStockCreate,
     db: AsyncSession = Depends(get_db)
 ) -> ProductStockOut:
-    return await repo.upsert(db, data)
+    result = await repo.upsert(db, data)
+    await create_stock_log(db, StockLogCreate(
+        product_id=data.product_id,
+        warehouse_id=data.warehouse_id,
+        quantity=data.quantity,
+        type="incoming",
+        note="Ручное добавление остатка"
+    ))
+    return result
 
 @router.get(
     "/",
@@ -84,6 +94,14 @@ async def update_stock(
     updated = await repo.update(db, stock_id, data.model_dump(exclude_unset=True))
     if not updated:
         raise HTTPException(status_code=404, detail="Stock not found")
+    if data.quantity is not None:
+        await create_stock_log(db, StockLogCreate(
+            product_id=updated.product_id,
+            warehouse_id=updated.warehouse_id,
+            quantity=data.quantity,
+            type="adjust",
+            note="Ручная корректировка остатка"
+        ))
     return updated
 
 @router.delete(

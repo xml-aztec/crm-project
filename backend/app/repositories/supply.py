@@ -10,6 +10,8 @@ from app.models.supply_item import SupplyItem
 from app.models.product_stock import ProductStock
 from app.models.supplier import Supplier
 from app.schemas.supply import SupplyCreate, SupplyUpdate
+from app.schemas.stock_log import StockLogCreate
+from app.repositories.stock_log import create_stock_log
 
 
 async def count_supplies(
@@ -88,6 +90,15 @@ async def create_supply(db: AsyncSession, data: SupplyCreate, created_by: int):
                 stocks[item.product_id] = new_stock
 
         await db.commit()
+
+        for item in data.items:
+            await create_stock_log(db, StockLogCreate(
+                product_id=item.product_id,
+                warehouse_id=data.warehouse_id,
+                quantity=item.quantity,
+                type="incoming",
+                note=f"Поставка #{supply.id}"
+            ))
 
         result = await db.execute(
             select(Supply)
@@ -258,6 +269,17 @@ async def update_supply(db: AsyncSession, supply_id: int, data: SupplyUpdate):
                     new_stocks[item.product_id] = new_stock
 
         await db.commit()
+
+        if data.items:
+            for item in data.items:
+                await create_stock_log(db, StockLogCreate(
+                    product_id=item.product_id,
+                    warehouse_id=supply.warehouse_id,
+                    quantity=item.quantity,
+                    type="incoming",
+                    note=f"Обновление поставки #{supply_id}"
+                ))
+
         await db.refresh(supply)
 
         return await get_supply_by_id(db, supply_id)
@@ -302,6 +324,13 @@ async def delete_supply(db: AsyncSession, supply_id: int):
         stock.quantity -= item.quantity
 
     for item in supply.items:
+        await create_stock_log(db, StockLogCreate(
+            product_id=item.product_id,
+            warehouse_id=supply.warehouse_id,
+            quantity=item.quantity,
+            type="adjust",
+            note=f"Удаление поставки #{supply_id}"
+        ))
         await db.delete(item)
     await db.delete(supply)
 
