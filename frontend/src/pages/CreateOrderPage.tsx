@@ -456,7 +456,7 @@ export default function CreateOrderPage() {
             <option value="">Выберите склад...</option>
             {warehouses.map((warehouse: Warehouse) => (
               <option key={warehouse.id} value={warehouse.id}>
-                {warehouse.name}{warehouse.branch_name ? ` — ${warehouse.branch_name}` : ''}
+                {warehouse.name}{warehouse.branch?.name ? ` — ${warehouse.branch.name}` : ''}
               </option>
             ))}
           </select>

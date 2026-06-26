@@ -10,6 +10,7 @@ class ProductStock(Base):
     product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id", ondelete="CASCADE"), nullable=False)
     quantity = Column(Integer, nullable=False, default=0)
+    reserved = Column(Integer, nullable=False, default=0, server_default='0')
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     product = relationship("Product")

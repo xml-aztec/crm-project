@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 from typing import List, Optional
 from datetime import datetime
 
@@ -12,7 +12,13 @@ class ProductStockCreate(ProductStockBase):
 
 class ProductStockOut(ProductStockBase):
     id: int
+    reserved: int = 0
     updated_at: datetime
+
+    @computed_field
+    @property
+    def available(self) -> int:
+        return max(0, self.quantity - self.reserved)
 
     model_config = {
         "from_attributes": True
@@ -35,6 +41,12 @@ class StockStats(BaseModel):
 class StockListResponse(BaseModel):
     stocks: List[ProductStockOut]
     stats: StockStats
+
+class StockTransferRequest(BaseModel):
+    from_warehouse_id: int
+    to_warehouse_id: int
+    product_id: int
+    quantity: int = Field(..., gt=0)
 
 class ProductStockQueryParams(BaseModel):
     product_id: Optional[int] = None

@@ -11,6 +11,7 @@ import Button from '../../components/ui/button/Button';
 import AddStockForm from '../../components/stock/AddStockForm';
 import QuantityEditor from '../../components/stock/QuantityEditor';
 import DeleteConfirmModal from '../../components/ui/DeleteConfirmModal';
+import StockTransferModal from '../../components/stock/StockTransferModal';
 import { useDeleteStockMutation } from '../../store/api/stockApi';
 
 const ITEMS_PER_PAGE = 20; 
@@ -20,6 +21,8 @@ interface Stock {
   product_id: number;
   warehouse_id: number;
   quantity: number;
+  reserved: number;
+  available: number;
   updated_at: string;
 }
 
@@ -30,6 +33,7 @@ interface StockResponse {
     in_stock: number;
     low_stock: number;
     out_of_stock: number;
+    total_quantity: number;
   };
 }
 
@@ -58,6 +62,7 @@ const WarehouseInventory: React.FC = () => {
   });
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [stockToDelete, setStockToDelete] = useState<Stock | null>(null);
+  const [transferTarget, setTransferTarget] = useState<{ productId: number } | null>(null);
   
   // ✅ Дебаунс поиска как в StockLogsPage
   const debouncedFilters = useDebounce(filters, 300);
@@ -582,6 +587,12 @@ const WarehouseInventory: React.FC = () => {
                     Количество
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Резерв
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Доступно
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Статус
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -621,6 +632,12 @@ const WarehouseInventory: React.FC = () => {
                         onUpdate={(newQuantity) => handleQuantityUpdate(stock.id, newQuantity)}
                       />
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600 dark:text-yellow-400 font-medium">
+                      {stock.reserved ?? 0}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-700 dark:text-blue-300 font-semibold">
+                      {stock.available ?? stock.quantity}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStockLevelBadge(stock.quantity)}
                     </td>
@@ -630,15 +647,26 @@ const WarehouseInventory: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => setStockToDelete(stock)}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                        title="Удалить остаток"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setTransferTarget({ productId: stock.product_id })}
+                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                          title="Переместить на другой склад"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setStockToDelete(stock)}
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          title="Удалить остаток"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -718,6 +746,13 @@ const WarehouseInventory: React.FC = () => {
         onClose={() => setStockToDelete(null)}
         onConfirm={handleDeleteStock}
         isLoading={isDeleting}
+      />
+
+      <StockTransferModal
+        isOpen={!!transferTarget}
+        onClose={() => setTransferTarget(null)}
+        initialProductId={transferTarget?.productId}
+        initialWarehouseId={warehouseIdNum}
       />
     </div>
   );

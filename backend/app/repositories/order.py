@@ -15,7 +15,13 @@ from app.models.product_stock import ProductStock
 from app.models.user import User
 from app.models.warehouse import Warehouse
 from app.utils.orders import recalculate_order_total
-from app.utils.stock import check_stock_before_order_creation, deduct_stock_for_order, restore_stock_for_order
+from app.utils.stock import (
+    check_stock_before_order_creation,
+    deduct_stock_for_order,
+    restore_stock_for_order,
+    reserve_stock_for_order,
+    release_stock_reservation,
+)
 from app.schemas.stock_log import StockLogCreate
 from app.repositories.stock_log import create_stock_log
 from app.rbac.service import user_is_admin
@@ -123,6 +129,9 @@ async def create_order(
 
     await history_repo.add_entry(db, order.id, "created", "Заказ создан", user_id=current_user.id)
     await db.commit()
+
+    # Резервируем остатки для нового заказа
+    await reserve_stock_for_order(db, order.id)
 
     result = await db.execute(
         select(Order)
@@ -237,6 +246,7 @@ async def confirm_order(
 
     if order.confirmed and not confirmed:
         await restore_stock_for_order(db, order.id)
+        await reserve_stock_for_order(db, order.id)  # заказ снова ожидает — резервируем обратно
         for item in order.items:
             await create_stock_log(db, StockLogCreate(
                 product_id=item.product_id,
@@ -341,6 +351,8 @@ async def update_order_status(
                     type="return",
                     note=f"Отмена заказа #{order.id}: {cancellation_reason}"
                 ))
+        else:
+            await release_stock_reservation(db, order.id)
 
     if status_id == confirmed_status_id:
         if order.finalized_total_price is None:
@@ -364,7 +376,11 @@ async def update_order_status(
 
 
 async def delete_order(db: AsyncSession, order_id: int) -> None:
-    result = await db.execute(select(Order).where(Order.id == order_id))
+    result = await db.execute(
+        select(Order)
+        .options(selectinload(Order.items))
+        .where(Order.id == order_id)
+    )
     order = result.scalar_one_or_none()
 
     if not order:
@@ -381,6 +397,8 @@ async def delete_order(db: AsyncSession, order_id: int) -> None:
                 type="return",
                 note=f"Удаление подтверждённого заказа #{order.id}"
             ))
+    else:
+        await release_stock_reservation(db, order.id)
 
     await db.delete(order)
     await db.commit()

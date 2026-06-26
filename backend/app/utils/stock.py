@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.order_item import OrderItem
 from app.models.product import Product
@@ -8,9 +8,7 @@ from app.models.order import Order
 
 
 async def restore_stock_for_order(db: AsyncSession, order_id: int):
-    """
-    Восстанавливает остатки товаров на складе при отмене заказа.
-    """
+    """Восстанавливает физический остаток при отмене/разподтверждении подтверждённого заказа."""
     warehouse_result = await db.execute(
         select(Order.warehouse_id).where(Order.id == order_id)
     )
@@ -24,7 +22,7 @@ async def restore_stock_for_order(db: AsyncSession, order_id: int):
     items = result.scalars().all()
 
     for item in items:
-        stmt = (
+        await db.execute(
             update(ProductStock)
             .where(
                 ProductStock.product_id == item.product_id,
@@ -32,9 +30,63 @@ async def restore_stock_for_order(db: AsyncSession, order_id: int):
             )
             .values(quantity=ProductStock.quantity + item.quantity)
         )
-        await db.execute(stmt)
 
     await db.commit()
+
+
+async def reserve_stock_for_order(db: AsyncSession, order_id: int):
+    """Резервирует остаток для нового/возвращённого в ожидание заказа."""
+    warehouse_result = await db.execute(
+        select(Order.warehouse_id).where(Order.id == order_id)
+    )
+    warehouse_id = warehouse_result.scalar_one_or_none()
+    if warehouse_id is None:
+        return
+
+    result = await db.execute(
+        select(OrderItem).where(OrderItem.order_id == order_id)
+    )
+    items = result.scalars().all()
+
+    for item in items:
+        await db.execute(
+            update(ProductStock)
+            .where(
+                ProductStock.product_id == item.product_id,
+                ProductStock.warehouse_id == warehouse_id
+            )
+            .values(reserved=ProductStock.reserved + item.quantity)
+        )
+
+    await db.commit()
+
+
+async def release_stock_reservation(db: AsyncSession, order_id: int):
+    """Снимает резерв при отмене/удалении неподтверждённого заказа."""
+    warehouse_result = await db.execute(
+        select(Order.warehouse_id).where(Order.id == order_id)
+    )
+    warehouse_id = warehouse_result.scalar_one_or_none()
+    if warehouse_id is None:
+        return
+
+    result = await db.execute(
+        select(OrderItem).where(OrderItem.order_id == order_id)
+    )
+    items = result.scalars().all()
+
+    for item in items:
+        await db.execute(
+            update(ProductStock)
+            .where(
+                ProductStock.product_id == item.product_id,
+                ProductStock.warehouse_id == warehouse_id
+            )
+            .values(reserved=func.greatest(ProductStock.reserved - item.quantity, 0))
+        )
+
+    await db.commit()
+
 
 async def check_stock_before_order_creation(
     db: AsyncSession,
@@ -42,24 +94,30 @@ async def check_stock_before_order_creation(
     warehouse_id: int
 ):
     for item in items:
-        stmt = select(ProductStock.quantity).where(
+        stmt = select(ProductStock.quantity, ProductStock.reserved).where(
             ProductStock.product_id == item.product_id,
             ProductStock.warehouse_id == warehouse_id
         )
         result = await db.execute(stmt)
-        quantity = result.scalar_one_or_none()
+        row = result.one_or_none()
 
-        if quantity is None:
+        if row is None:
             raise HTTPException(400, detail=f"Товар id={item.product_id} отсутствует на складе ID={warehouse_id}")
 
-        if quantity < item.quantity:
+        quantity, reserved = row
+        available = (quantity or 0) - (reserved or 0)
+
+        if available < item.quantity:
             product_result = await db.execute(
                 select(Product.name).where(Product.id == item.product_id)
             )
             product_name = product_result.scalar_one_or_none() or f"ID={item.product_id}"
-            raise HTTPException(400, detail=f"Недостаточно товара '{product_name}' на складе (нужно {item.quantity}, есть {quantity})")
-        
-        
+            raise HTTPException(
+                400,
+                detail=f"Недостаточно товара '{product_name}' на складе (нужно {item.quantity}, доступно {available})"
+            )
+
+
 async def deduct_stock_for_order(db: AsyncSession, order: Order):
     await db.refresh(order, ["items", "warehouse"])
 
@@ -81,5 +139,7 @@ async def deduct_stock_for_order(db: AsyncSession, order: Order):
             )
 
         stock.quantity -= item.quantity
+        # Снимаем резерв: товар переходит из «зарезервирован» в «списан»
+        stock.reserved = max(0, stock.reserved - item.quantity)
 
     await db.flush()

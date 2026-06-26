@@ -200,12 +200,13 @@ async def update_supply(db: AsyncSession, supply_id: int, data: SupplyUpdate):
         raise HTTPException(status_code=404, detail="Поставка не найдена")
 
     try:
+        old_warehouse_id = supply.warehouse_id
         old_product_ids = [item.product_id for item in supply.items]
         stock_result = await db.execute(
             select(ProductStock).where(
                 and_(
                     ProductStock.product_id.in_(old_product_ids),
-                    ProductStock.warehouse_id == supply.warehouse_id
+                    ProductStock.warehouse_id == old_warehouse_id
                 )
             )
         )
@@ -234,13 +235,18 @@ async def update_supply(db: AsyncSession, supply_id: int, data: SupplyUpdate):
         if data.delivered_at is not None:
             supply.delivered_at = data.delivered_at
 
+        if data.warehouse_id is not None and data.warehouse_id != old_warehouse_id:
+            supply.warehouse_id = data.warehouse_id
+
+        effective_warehouse_id = supply.warehouse_id
+
         if data.items:
             new_product_ids = [item.product_id for item in data.items]
             new_stock_result = await db.execute(
                 select(ProductStock).where(
                     and_(
                         ProductStock.product_id.in_(new_product_ids),
-                        ProductStock.warehouse_id == supply.warehouse_id
+                        ProductStock.warehouse_id == effective_warehouse_id
                     )
                 )
             )
@@ -262,7 +268,7 @@ async def update_supply(db: AsyncSession, supply_id: int, data: SupplyUpdate):
                 else:
                     new_stock = ProductStock(
                         product_id=item.product_id,
-                        warehouse_id=supply.warehouse_id,
+                        warehouse_id=effective_warehouse_id,
                         quantity=item.quantity
                     )
                     db.add(new_stock)
@@ -274,7 +280,7 @@ async def update_supply(db: AsyncSession, supply_id: int, data: SupplyUpdate):
             for item in data.items:
                 await create_stock_log(db, StockLogCreate(
                     product_id=item.product_id,
-                    warehouse_id=supply.warehouse_id,
+                    warehouse_id=effective_warehouse_id,
                     quantity=item.quantity,
                     type="incoming",
                     note=f"Обновление поставки #{supply_id}"

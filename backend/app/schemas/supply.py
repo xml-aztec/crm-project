@@ -26,6 +26,7 @@ class SupplyItemUpdate(BaseModel):
 
 class SupplyUpdate(BaseModel):
     supplier_id: Optional[int] = None
+    warehouse_id: Optional[int] = None
     delivered_at: Optional[datetime] = None
     items: Optional[List[SupplyItemUpdate]] = None
 
