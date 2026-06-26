@@ -1,7 +1,7 @@
 import React from 'react';
 import { useGetOrderStockLogsQuery } from '../../store/api/stockLogsApi';
 import { useGetProductsQuery } from '../../store/api/catalogApi';
-import { useGetWarehousesQuery } from '../../store/api/warehousesApi';
+import { useGetWarehousesQuery } from '../../store/api/warehouseApi';
 
 interface OrderStockLogsProps {
   orderId: number;

@@ -30,6 +30,7 @@ class StockStats(BaseModel):
     in_stock: int
     low_stock: int
     out_of_stock: int
+    total_quantity: int
 
 class StockListResponse(BaseModel):
     stocks: List[ProductStockOut]

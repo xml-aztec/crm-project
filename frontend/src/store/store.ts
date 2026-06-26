@@ -29,7 +29,6 @@ import { customersApi } from './api/customersApi';
 import { customerTypesApi } from './api/customerTypesApi';
 import { paymentMethodsApi } from './api/paymentMethodsApi';
 import { branchesApi } from './api/branchesApi';
-import { warehousesApi } from './api/warehousesApi';
 import { warehouseApi } from './api/warehouseApi';
 import { stockApi } from './api/stockApi';
 import { stockLogsApi } from './api/stockLogsApi';
@@ -68,7 +67,6 @@ const rootReducer = combineReducers({
   [customerTypesApi.reducerPath]: customerTypesApi.reducer,
   [paymentMethodsApi.reducerPath]: paymentMethodsApi.reducer,
   [branchesApi.reducerPath]: branchesApi.reducer,
-  [warehousesApi.reducerPath]: warehousesApi.reducer,
   [warehouseApi.reducerPath]: warehouseApi.reducer,
   [stockApi.reducerPath]: stockApi.reducer,
   [stockLogsApi.reducerPath]: stockLogsApi.reducer,
@@ -160,7 +158,6 @@ export const store = configureStore({
       customerTypesApi.middleware,
       paymentMethodsApi.middleware,
       branchesApi.middleware,
-      warehousesApi.middleware,
       warehouseApi.middleware,
       stockApi.middleware,
       stockLogsApi.middleware,

@@ -59,6 +59,7 @@ export interface StockStats {
   in_stock: number;
   low_stock: number;
   out_of_stock: number;
+  total_quantity: number;
 }
 
 export const stockApi = createApi({

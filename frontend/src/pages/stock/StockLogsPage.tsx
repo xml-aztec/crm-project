@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useGetStockLogsQuery } from '../../store/api/stockLogsApi';
 import { useGetProductsQuery } from '../../store/api/catalogApi';
-import { useGetWarehousesQuery } from '../../store/api/warehousesApi';
+import { useGetWarehousesQuery } from '../../store/api/warehouseApi';
 import { useDebounce } from '../../hooks/useDebounce';
 import { FilterDatePicker } from '../../components/form/DatePickerVariants';
 import Label from '../../components/form/Label';

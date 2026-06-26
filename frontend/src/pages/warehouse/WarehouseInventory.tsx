@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router'; 
+import { useParams, useNavigate } from 'react-router';
+import { LOW_STOCK_THRESHOLD } from '../../constants/stock';
 import { useGetWarehouseByIdQuery } from '../../store/api/warehouseApi';
 import { useGetBranchByIdQuery } from '../../store/api/branchesApi';
 import { useGetProductsQuery } from '../../store/api/catalogApi';
@@ -177,14 +178,14 @@ const WarehouseInventory: React.FC = () => {
         inStock: apiStats.in_stock,
         lowStock: apiStats.low_stock,
         outOfStock: apiStats.out_of_stock,
-        totalQuantity: currentInventory.reduce((sum, item) => sum + item.quantity, 0)
+        totalQuantity: apiStats.total_quantity,
       };
     }
 
-    // Fallback - вычисляем локально
+    // Fallback - вычисляем локально (только если API не вернул статистику)
     const totalProducts = currentInventory.length;
-    const inStock = currentInventory.filter(item => item.quantity > 10).length;
-    const lowStock = currentInventory.filter(item => item.quantity > 0 && item.quantity <= 10).length;
+    const inStock = currentInventory.filter(item => item.quantity > LOW_STOCK_THRESHOLD).length;
+    const lowStock = currentInventory.filter(item => item.quantity > 0 && item.quantity <= LOW_STOCK_THRESHOLD).length;
     const outOfStock = currentInventory.filter(item => item.quantity === 0).length;
     const totalQuantity = currentInventory.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -226,7 +227,7 @@ const WarehouseInventory: React.FC = () => {
       );
     }
     
-    if (quantity <= 10) {
+    if (quantity <= LOW_STOCK_THRESHOLD) {
       return (
         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
           Мало

@@ -6,7 +6,7 @@ import {
   Brand
 } from '../../store/api/catalogApi';
 import { useGetCustomersQuery, Customer } from '../../store/api/customersApi';
-import { useGetWarehousesQuery } from '../../store/api/warehousesApi'; // Добавляем импорт
+import { useGetWarehousesQuery } from '../../store/api/warehouseApi';
 import { useCreateOrderMutation } from '../../store/api/ordersApi';
 import Button from '../ui/button/Button';
 import QuickCustomerForm from './QuickCustomerForm';

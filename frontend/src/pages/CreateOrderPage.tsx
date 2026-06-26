@@ -9,7 +9,7 @@ import {
 import { useGetCustomersQuery, Customer } from '../store/api/customersApi';
 import { useCreateOrderMutation } from '../store/api/ordersApi';
 import { useGetPaymentMethodsQuery } from '../store/api/paymentMethodsApi';
-import { useGetWarehousesQuery, Warehouse } from '../store/api/warehousesApi';
+import { useGetWarehousesQuery, Warehouse } from '../store/api/warehouseApi';
 import Button from '../components/ui/button/Button';
 import QuickCustomerForm from '../components/orders/QuickCustomerForm';
 import { getNowInBishkek } from '../utils/dateUtils';

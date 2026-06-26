@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { LOW_STOCK_THRESHOLD } from '../../constants/stock';
 import { useGetStockQuery, useDeleteStockMutation } from '../../store/api/stockApi';
 import { useGetProductsQuery } from '../../store/api/catalogApi';
 import { useGetWarehousesQuery } from '../../store/api/warehouseApi';
@@ -97,7 +98,7 @@ const StockManagement: React.FC = () => {
     if (apiStats) {
       return {
         total_items: apiStats.total,
-        total_quantity: stockData.reduce((sum, item) => sum + item.quantity, 0),
+        total_quantity: apiStats.total_quantity,
         low_stock_count: apiStats.low_stock,
         out_of_stock_count: apiStats.out_of_stock,
         warehouses_count: new Set(stockData.map(item => item.warehouse_id)).size
@@ -108,7 +109,7 @@ const StockManagement: React.FC = () => {
     return {
       total_items: stockData.length,
       total_quantity: stockData.reduce((sum, item) => sum + item.quantity, 0),
-      low_stock_count: stockData.filter(item => item.quantity > 0 && item.quantity <= 10).length,
+      low_stock_count: stockData.filter(item => item.quantity > 0 && item.quantity <= LOW_STOCK_THRESHOLD).length,
       out_of_stock_count: stockData.filter(item => item.quantity === 0).length,
       warehouses_count: new Set(stockData.map(item => item.warehouse_id)).size
     };
@@ -177,7 +178,7 @@ const StockManagement: React.FC = () => {
       );
     }
     
-    if (quantity <= 10) {
+    if (quantity <= LOW_STOCK_THRESHOLD) {
       return (
         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
           Мало

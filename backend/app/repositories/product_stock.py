@@ -49,6 +49,7 @@ async def get_filtered_with_stats(
         func.sum(case((ProductStock.quantity > LOW_STOCK_THRESHOLD, 1), else_=0)),
         func.sum(case(((ProductStock.quantity > 0) & (ProductStock.quantity <= LOW_STOCK_THRESHOLD), 1), else_=0)),
         func.sum(case((ProductStock.quantity == 0, 1), else_=0)),
+        func.coalesce(func.sum(ProductStock.quantity), 0),
     ).join(Product, ProductStock.product_id == Product.id)
 
     if product_id is not None:
@@ -63,13 +64,14 @@ async def get_filtered_with_stats(
         stat_stmt = stat_stmt.where(Product.name.ilike(f"%{name}%"))
 
     stat_result = await db.execute(stat_stmt)
-    total, in_stock, low_stock, out_of_stock = stat_result.one()
+    total, in_stock, low_stock, out_of_stock, total_quantity = stat_result.one()
 
     stats = {
         "total": total or 0,
         "in_stock": in_stock or 0,
         "low_stock": low_stock or 0,
         "out_of_stock": out_of_stock or 0,
+        "total_quantity": total_quantity or 0,
     }
 
     return stocks, stats
