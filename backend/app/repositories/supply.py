@@ -97,7 +97,8 @@ async def create_supply(db: AsyncSession, data: SupplyCreate, created_by: int):
                 warehouse_id=data.warehouse_id,
                 quantity=item.quantity,
                 type="incoming",
-                note=f"Поставка #{supply.id}"
+                note=f"Поставка #{supply.id}",
+                created_by=created_by,
             ))
 
         result = await db.execute(
@@ -194,7 +195,7 @@ async def get_supply_by_id(db: AsyncSession, supply_id: int) -> Optional[Supply]
     return supply
 
 
-async def update_supply(db: AsyncSession, supply_id: int, data: SupplyUpdate):
+async def update_supply(db: AsyncSession, supply_id: int, data: SupplyUpdate, current_user_id: Optional[int] = None):
     supply = await get_supply_by_id(db, supply_id)
     if not supply:
         raise HTTPException(status_code=404, detail="Поставка не найдена")
@@ -283,7 +284,8 @@ async def update_supply(db: AsyncSession, supply_id: int, data: SupplyUpdate):
                     warehouse_id=effective_warehouse_id,
                     quantity=item.quantity,
                     type="incoming",
-                    note=f"Обновление поставки #{supply_id}"
+                    note=f"Обновление поставки #{supply_id}",
+                    created_by=current_user_id,
                 ))
 
         await db.refresh(supply)
@@ -295,7 +297,7 @@ async def update_supply(db: AsyncSession, supply_id: int, data: SupplyUpdate):
         raise HTTPException(status_code=500, detail=f"Ошибка при обновлении поставки: {str(e)}")
 
 
-async def delete_supply(db: AsyncSession, supply_id: int):
+async def delete_supply(db: AsyncSession, supply_id: int, current_user_id: Optional[int] = None):
     result = await db.execute(
         select(Supply).where(Supply.id == supply_id).options(
             selectinload(Supply.items)
@@ -335,7 +337,8 @@ async def delete_supply(db: AsyncSession, supply_id: int):
             warehouse_id=supply.warehouse_id,
             quantity=item.quantity,
             type="adjust",
-            note=f"Удаление поставки #{supply_id}"
+            note=f"Удаление поставки #{supply_id}",
+            created_by=current_user_id,
         ))
         await db.delete(item)
     await db.delete(supply)

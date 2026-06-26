@@ -1,5 +1,10 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
+export interface StockLogUser {
+  id: number;
+  full_name: string;
+}
+
 export interface StockLog {
   id: number;
   product_id: number;
@@ -9,7 +14,8 @@ export interface StockLog {
   quantity: number;
   note: string;
   created_at: string;
-  updated_at: string;
+  created_by?: number | null;
+  created_by_user?: StockLogUser | null;
 }
 
 export interface StockLogsFilters {

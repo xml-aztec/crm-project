@@ -23,7 +23,8 @@ async def get_stock_logs(
         select(StockLog)
         .options(
             selectinload(StockLog.product),
-            selectinload(StockLog.warehouse)
+            selectinload(StockLog.warehouse),
+            selectinload(StockLog.created_by_user),
         )
         .order_by(StockLog.created_at.desc())
     )

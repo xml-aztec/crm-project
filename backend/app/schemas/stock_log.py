@@ -21,12 +21,18 @@ class StockLogBase(BaseModel):
 
 
 class StockLogCreate(StockLogBase):
-    pass
+    created_by: Optional[int] = None
+
+
+class UserBrief(BaseModel):
+    id: int
+    full_name: str
+    model_config = {"from_attributes": True}
 
 
 class StockLogOut(StockLogBase):
     id: int
     created_at: datetime
-
-    class Config:
-        orm_mode = True
+    created_by: Optional[int] = None
+    created_by_user: Optional[UserBrief] = None
+    model_config = {"from_attributes": True}

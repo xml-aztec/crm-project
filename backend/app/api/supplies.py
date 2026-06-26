@@ -93,9 +93,10 @@ async def download_supply_pdf(supply_id: int, db: AsyncSession = Depends(get_db)
 async def update_supply(
     supply_id: int,
     data: SupplyUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    return await repo.update_supply(db, supply_id, data)
+    return await repo.update_supply(db, supply_id, data, current_user_id=current_user.id)
 
 @router.delete(
     "/{supply_id}",
@@ -104,5 +105,9 @@ async def update_supply(
     description="Удаляет поставку и корректирует остатки. Доступно только администратору.",
     dependencies=[Depends(is_admin)]
 )
-async def delete_supply(supply_id: int, db: AsyncSession = Depends(get_db)):
-    await repo.delete_supply(db, supply_id)
+async def delete_supply(
+    supply_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    await repo.delete_supply(db, supply_id, current_user_id=current_user.id)

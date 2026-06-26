@@ -216,6 +216,9 @@ const OrderStockLogs: React.FC<OrderStockLogsProps> = ({ orderId, className = ''
                       <div>📍 Склад: {getWarehouseName(log.warehouse_id)}</div>
                       <div>{log.note}</div>
                       <div>🕒 {formatDate(log.created_at)}</div>
+                      {log.created_by_user && (
+                        <div>👤 {log.created_by_user.full_name}</div>
+                      )}
                     </div>
                   </div>
                 </div>

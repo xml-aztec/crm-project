@@ -409,6 +409,9 @@ export default function StockLogsPage() {
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
                 <tr>
+                  <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    #
+                  </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Тип
                   </th>
@@ -425,6 +428,9 @@ export default function StockLogsPage() {
                     Количество
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Сотрудник
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Примечание
                   </th>
                 </tr>
@@ -439,6 +445,11 @@ export default function StockLogsPage() {
                       ${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-800/50'}
                     `}
                   >
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">
+                        #{log.id}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         {getTypeIcon(log.type)}
@@ -475,6 +486,11 @@ export default function StockLogsPage() {
                         {log.type === 'outgoing' ? '-' : '+'}
                         {log.quantity}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-700 dark:text-gray-300">
+                        {log.created_by_user?.full_name || '—'}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 max-w-xs">
                       <div className="truncate" title={log.note || ''}>

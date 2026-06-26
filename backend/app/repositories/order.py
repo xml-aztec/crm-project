@@ -254,7 +254,8 @@ async def confirm_order(
                 order_id=order.id,
                 quantity=item.quantity,
                 type="return",
-                note=f"Отмена подтверждения заказа #{order.id}"
+                note=f"Отмена подтверждения заказа #{order.id}",
+                created_by=current_user.id,
             ))
 
     if confirmed and not order.confirmed:
@@ -266,7 +267,8 @@ async def confirm_order(
                 order_id=order.id,
                 quantity=item.quantity,
                 type="outgoing",
-                note=f"Подтверждение заказа #{order.id}"
+                note=f"Подтверждение заказа #{order.id}",
+                created_by=current_user.id,
             ))
 
     order.confirmed = confirmed
@@ -349,7 +351,8 @@ async def update_order_status(
                     order_id=order.id,
                     quantity=item.quantity,
                     type="return",
-                    note=f"Отмена заказа #{order.id}: {cancellation_reason}"
+                    note=f"Отмена заказа #{order.id}: {cancellation_reason}",
+                    created_by=current_user.id,
                 ))
         else:
             await release_stock_reservation(db, order.id)

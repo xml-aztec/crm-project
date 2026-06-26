@@ -5,6 +5,7 @@ from typing import List, Literal, Optional
 from sqlalchemy import select
 from app.core.dependencies import get_current_user, get_db
 from app.rbac.dependencies import require_permission
+from app.models.user import User
 from app.schemas.product_stock import ProductStockOut, ProductStockCreate, ProductStockUpdate, StockListResponse, StockTransferRequest
 from app.repositories import product_stock as repo
 from app.models.product_stock import ProductStock
@@ -18,11 +19,11 @@ router = APIRouter(prefix="/stock", tags=["Product Stock"])
     response_model=ProductStockOut,
     summary="Создание или обновление остатка",
     description="Добавляет новый остаток или обновляет существующий по паре (product_id, warehouse_id).",
-    dependencies=[Depends(get_current_user)]
 )
 async def create_stock(
     data: ProductStockCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> ProductStockOut:
     result = await repo.upsert(db, data)
     await create_stock_log(db, StockLogCreate(
@@ -30,7 +31,8 @@ async def create_stock(
         warehouse_id=data.warehouse_id,
         quantity=data.quantity,
         type="incoming",
-        note="Ручное добавление остатка"
+        note="Ручное добавление остатка",
+        created_by=current_user.id,
     ))
     return result
 
@@ -86,12 +88,12 @@ async def get_stock_by_id(
     response_model=ProductStockOut,
     summary="Обновить остаток товара",
     description="Изменяет количество товара на складе. Можно изменить только поле quantity.",
-    dependencies=[Depends(get_current_user)]
 )
 async def update_stock(
     stock_id: int,
     data: ProductStockUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> ProductStockOut:
     updated = await repo.update(db, stock_id, data.model_dump(exclude_unset=True))
     if not updated:
@@ -102,7 +104,8 @@ async def update_stock(
             warehouse_id=updated.warehouse_id,
             quantity=data.quantity,
             type="adjust",
-            note="Ручная корректировка остатка"
+            note="Ручная корректировка остатка",
+            created_by=current_user.id,
         ))
     return updated
 
@@ -111,11 +114,11 @@ async def update_stock(
     response_model=dict,
     summary="Перемещение товара между складами",
     description="Атомарно перемещает товар с одного склада на другой и записывает два лога.",
-    dependencies=[Depends(get_current_user)]
 )
 async def transfer_stock(
     data: StockTransferRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> dict:
     if data.from_warehouse_id == data.to_warehouse_id:
         raise HTTPException(400, detail="Исходный и целевой склад должны отличаться")
@@ -157,14 +160,16 @@ async def transfer_stock(
         warehouse_id=data.from_warehouse_id,
         quantity=data.quantity,
         type="outgoing",
-        note=f"Перемещение на склад #{data.to_warehouse_id}"
+        note=f"Перемещение на склад #{data.to_warehouse_id}",
+        created_by=current_user.id,
     ))
     await create_stock_log(db, StockLogCreate(
         product_id=data.product_id,
         warehouse_id=data.to_warehouse_id,
         quantity=data.quantity,
         type="incoming",
-        note=f"Перемещение со склада #{data.from_warehouse_id}"
+        note=f"Перемещение со склада #{data.from_warehouse_id}",
+        created_by=current_user.id,
     ))
 
     return {"detail": "Перемещение выполнено успешно"}
