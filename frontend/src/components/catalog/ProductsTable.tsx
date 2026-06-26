@@ -10,11 +10,14 @@ import ProductQRCode from './ProductQRCode';
 interface ProductsTableProps {
   products: Product[];
   isLoading?: boolean;
+  brandsMap?: Record<number, string>;
+  categoriesMap?: Record<number, string>;
+  subcategoriesMap?: Record<number, string>;
 }
 
 const ITEMS_PER_PAGE = 10;
 
-export default function ProductsTable({ products, isLoading = false }: ProductsTableProps) {
+export default function ProductsTable({ products, isLoading = false, brandsMap = {}, categoriesMap = {}, subcategoriesMap = {} }: ProductsTableProps) {
   const navigate = useNavigate();
   const [deleteProduct] = useDeleteProductMutation();
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -196,11 +199,6 @@ export default function ProductsTable({ products, isLoading = false }: ProductsT
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900/50">
               <tr>
-                {/* ID */}
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  ID
-                </th>
-                
                 {/* Название и основная информация */}
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-64">
                   Товар
@@ -247,13 +245,6 @@ export default function ProductsTable({ products, isLoading = false }: ProductsT
                     ${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-800/50'}
                   `}
                 >
-                  {/* ID */}
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                      #{product.id}
-                    </span>
-                  </td>
-
                   {/* Название и основная информация */}
                   <td className="px-6 py-4">
                     <div className="max-w-xs">
@@ -267,7 +258,7 @@ export default function ProductsTable({ products, isLoading = false }: ProductsT
                       )}
                       {product.brand_id && (
                         <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                          Бренд ID: {product.brand_id}
+                          {brandsMap[product.brand_id] ?? `Бренд #${product.brand_id}`}
                         </div>
                       )}
                     </div>
@@ -322,11 +313,11 @@ export default function ProductsTable({ products, isLoading = false }: ProductsT
                   {/* Категория */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
-                      Категория #{product.category_id}
+                      {categoriesMap[product.category_id] ?? `Категория #${product.category_id}`}
                     </div>
                     {product.subcategory_id && (
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Подкат. #{product.subcategory_id}
+                        {subcategoriesMap[product.subcategory_id] ?? `Подкат. #${product.subcategory_id}`}
                       </div>
                     )}
                   </td>

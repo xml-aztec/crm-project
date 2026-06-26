@@ -176,9 +176,6 @@ export default function UsersTable({ users, isLoading, roles, positions }: Users
                         <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
                           {user.full_name}
                         </span>
-                        <span className="block text-gray-500 text-theme-xs dark:text-gray-400">
-                          ID: {user.id}
-                        </span>
                       </div>
                     </div>
                   </TableCell>

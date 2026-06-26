@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { useGetProductsQuery, useImportProductsCsvMutation, ImportCsvResult } from '../../store/api/catalogApi';
+import { useGetProductsQuery, useGetBrandsQuery, useGetCategoriesQuery, useGetSubcategoriesQuery, useImportProductsCsvMutation, ImportCsvResult } from '../../store/api/catalogApi';
 import { ProductFilters } from '../../types/catalog';
 import ProductsTable from '../../components/catalog/ProductsTable';
 import ProductFiltersComponent from '../../components/catalog/ProductsFilters';
@@ -26,7 +26,14 @@ export default function Products() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: products = [], isLoading, error } = useGetProductsQuery();
+  const { data: brands = [] } = useGetBrandsQuery();
+  const { data: categories = [] } = useGetCategoriesQuery();
+  const { data: subcategories = [] } = useGetSubcategoriesQuery();
   const [importCsv, { isLoading: importing }] = useImportProductsCsvMutation();
+
+  const brandsMap = useMemo(() => Object.fromEntries(brands.map(b => [b.id, b.name])), [brands]);
+  const categoriesMap = useMemo(() => Object.fromEntries(categories.map(c => [c.id, c.name])), [categories]);
+  const subcategoriesMap = useMemo(() => Object.fromEntries(subcategories.map(s => [s.id, s.name])), [subcategories]);
 
   const handleExport = async () => {
     setExporting(true);
@@ -281,6 +288,9 @@ export default function Products() {
       <ProductsTable
         products={pagedProducts}
         isLoading={isLoading}
+        brandsMap={brandsMap}
+        categoriesMap={categoriesMap}
+        subcategoriesMap={subcategoriesMap}
       />
 
       {/* Pagination */}

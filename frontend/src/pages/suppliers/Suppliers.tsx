@@ -235,9 +235,6 @@ const Suppliers: React.FC = () => {
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
                             {supplier.name}
                           </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            ID: {supplier.id}
-                          </div>
                         </div>
                       </div>
                     </td>

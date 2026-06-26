@@ -392,9 +392,6 @@ export default function Customers() {
                           <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
                             {customer.name || 'Не указано'}
                           </span>
-                          <span className="block text-gray-500 text-theme-xs dark:text-gray-400">
-                            ID: {customer.id}
-                          </span>
                         </div>
                       </div>
                     </TableCell>
