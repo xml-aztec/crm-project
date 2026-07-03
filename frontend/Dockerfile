@@ -1,4 +1,5 @@
-FROM node:18-alpine AS build
+# tailwindcss v4 (@tailwindcss/oxide native binding) requires Node >= 20.
+FROM node:20-alpine AS build
 
 WORKDIR /app
 

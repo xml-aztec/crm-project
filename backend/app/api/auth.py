@@ -86,7 +86,10 @@ async def login(
         value=token,
         httponly=True,
         secure=is_https,
-        samesite="lax",
+        # Frontend and backend are separate origins in deployment, so the
+        # cookie needs SameSite=None (requires Secure) to be sent cross-site.
+        # Locally both run on http://localhost, where Lax is enough.
+        samesite="none" if is_https else "lax",
         max_age=60 * 60,
         expires=60 * 60,
     )
@@ -95,7 +98,12 @@ async def login(
 
 @router.post("/logout", summary="Выход пользователя")
 def logout(response: Response):
-    response.delete_cookie("access_token")
+    is_https = settings.BASE_URL.startswith("https://")
+    response.delete_cookie(
+        "access_token",
+        secure=is_https,
+        samesite="none" if is_https else "lax",
+    )
     return {"message": "Logged out"}
 
 @router.post(

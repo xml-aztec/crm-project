@@ -1,13 +1,16 @@
 # Stage 1: Build frontend
-FROM node:18-alpine AS frontend-build
+# tailwindcss v4 (@tailwindcss/oxide native binding) requires Node >= 20.
+FROM node:20-alpine AS frontend-build
 
 WORKDIR /app/frontend
 
 COPY frontend/package*.json frontend/tsconfig.json ./
 COPY frontend/ ./
 
-# Передаём переменную окружения VITE_API_URL через build-arg
-ARG VITE_API_URL
+# Фронтенд и бэкенд живут в одном контейнере за одним nginx, поэтому по
+# умолчанию ходим на бэкенд через относительный /api (nginx проксирует
+# /api/* на локальный uvicorn) — переопределяется build-arg при необходимости.
+ARG VITE_API_URL=/api
 ENV VITE_API_URL=$VITE_API_URL
 
 RUN npm ci
@@ -28,24 +31,27 @@ RUN pip install poetry \
 COPY backend/ ./backend
 
 # Stage 3: Final image with Nginx + backend + frontend
-FROM nginx:stable-alpine
+# Debian-based (not Alpine) so we can copy backend-build's site-packages
+# directly — Alpine/musl wheels are ABI-incompatible with Debian-built ones.
+FROM python:3.12-slim
 
-# Устанавливаем python и необходимые системные зависимости
-RUN apk add --no-cache python3 py3-pip bash
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends nginx gettext-base \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -f /etc/nginx/sites-enabled/default
 
-# Создаём виртуальное окружение и активируем его
-RUN python3 -m venv /venv
-
-RUN /venv/bin/pip install --upgrade pip \
-    && /venv/bin/pip install uvicorn[standard] asyncpg sqlalchemy
+# Бэкенд-зависимости и консольные скрипты (alembic, uvicorn) из backend-build
+COPY --from=backend-build /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=backend-build /usr/local/bin /usr/local/bin
 
 WORKDIR /app/backend
 
 # Копируем фронтенд в nginx
 COPY --from=frontend-build /app/frontend/dist /usr/share/nginx/html
 
-# Копируем конфиг nginx
-COPY nginx/default.conf /etc/nginx/conf.d/default.conf
+# Шаблон конфига nginx — порт подставляется в entrypoint через envsubst,
+# т.к. Railway задаёт $PORT динамически при каждом деплое.
+COPY nginx/default.conf.template /etc/nginx/default.conf.template
 
 # Копируем backend из билд-стадии
 COPY --from=backend-build /app/backend /app/backend
@@ -54,6 +60,7 @@ COPY --from=backend-build /app/backend /app/backend
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-EXPOSE 80 8000
+ENV PORT=80
+EXPOSE 80
 
 CMD ["docker-entrypoint.sh"]

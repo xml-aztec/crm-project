@@ -78,8 +78,6 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Прод-домен пока не задан (раньше был Fly.io, переезжаем на другой хостинг) —
-# добавьте сюда origin фронтенда, когда определитесь с хостингом.
 origins = [
     "http://localhost",
     "http://localhost:5173",
@@ -87,6 +85,10 @@ origins = [
     "http://localhost:5175",
     "http://localhost:3000",
 ]
+# Прод/тестовый домен фронтенда (например, Railway) задаётся через
+# FRONTEND_URL и добавляется сюда автоматически, чтобы не хардкодить хост.
+if settings.FRONTEND_URL not in origins:
+    origins.append(settings.FRONTEND_URL)
 
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(

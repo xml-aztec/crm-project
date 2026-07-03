@@ -1,0 +1,20 @@
+server {
+    listen ${PORT};
+
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
+        try_files $uri /index.html;
+    }
+
+    # Локальный backend в этом же контейнере (uvicorn на 127.0.0.1:8000).
+    # Префикс /api/ отрезается nginx — backend отвечает на свои обычные
+    # пути (/auth, /users, ...) без префикса.
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
