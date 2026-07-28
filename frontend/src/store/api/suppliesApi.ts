@@ -12,7 +12,8 @@ export interface SupplyItem {
 
 export interface Supply {
   id: number;
-  supplier: Supplier;
+  // Поставщик/создатель могут быть удалены (FK ON DELETE SET NULL) — null допустим.
+  supplier: Supplier | null;
   warehouse: {
     id: number;
     name: string;
@@ -24,7 +25,7 @@ export interface Supply {
   created_user: {
     id: number;
     full_name: string;
-  };
+  } | null;
   items: SupplyItem[];
 }
 

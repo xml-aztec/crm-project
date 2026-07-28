@@ -36,7 +36,9 @@ COPY backend/ ./backend
 FROM python:3.12-slim
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends nginx gettext-base \
+    # wkhtmltopdf: бинарник, который шеллит наружу пакет pdfkit
+    # (backend/app/utils/pdf.py) для генерации PDF накладных поставок.
+    && apt-get install -y --no-install-recommends nginx gettext-base wkhtmltopdf \
     && rm -rf /var/lib/apt/lists/* \
     && rm -f /etc/nginx/sites-enabled/default
 

@@ -294,10 +294,10 @@ const SuppliesManagement: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        {supply.supplier.name}
+                        {supply.supplier?.name ?? '—'}
                       </div>
                       <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {supply.supplier.contact_person}
+                        {supply.supplier?.contact_person}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
@@ -313,7 +313,7 @@ const SuppliesManagement: React.FC = () => {
                       {calculateSupplyTotal(supply.items).toLocaleString()} сом
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {supply.created_user.full_name}
+                      {supply.created_user?.full_name ?? '—'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">

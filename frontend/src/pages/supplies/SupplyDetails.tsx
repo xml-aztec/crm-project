@@ -191,12 +191,12 @@ const SupplyDetails: React.FC = () => {
                   Поставщик
                 </label>
                 <div className="text-gray-900 dark:text-white">
-                  <p className="font-medium">{supply.supplier.name}</p>
+                  <p className="font-medium">{supply.supplier?.name ?? 'Поставщик удалён'}</p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {supply.supplier.contact_person}
+                    {supply.supplier?.contact_person}
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {supply.supplier.contact_info}
+                    {supply.supplier?.contact_info}
                   </p>
                 </div>
               </div>
@@ -227,7 +227,7 @@ const SupplyDetails: React.FC = () => {
                   Создал
                 </label>
                 <div className="text-gray-900 dark:text-white">
-                  <p className="font-medium">{supply.created_user.full_name}</p>
+                  <p className="font-medium">{supply.created_user?.full_name ?? 'Пользователь удалён'}</p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     {formatDate(supply.created_at)}
                   </p>
@@ -359,7 +359,7 @@ const SupplyDetails: React.FC = () => {
             </h3>
             
             <div className="text-sm text-gray-600 dark:text-gray-400">
-              {supply.supplier.address || 'Адрес не указан'}
+              {supply.supplier?.address || 'Адрес не указан'}
             </div>
           </div>
         </div>
@@ -371,7 +371,7 @@ const SupplyDetails: React.FC = () => {
         onClose={() => setShowDeleteModal(false)}
         onConfirm={handleDelete}
         title="Удалить поставку"
-        itemName={`#${supply.id} от ${supply.supplier.name}`}
+        itemName={`#${supply.id} от ${supply.supplier?.name ?? 'неизвестного поставщика'}`}
         isLoading={isDeleting}
       />
     </div>

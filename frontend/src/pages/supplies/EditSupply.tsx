@@ -54,7 +54,7 @@ const EditSupply: React.FC = () => {
       const formattedDate = deliveredDate.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm format
       
       setFormData({
-        supplier_id: supply.supplier.id.toString(),
+        supplier_id: supply.supplier?.id.toString() ?? '',
         delivered_at: formattedDate,
         items: supply.items.map(item => ({
           product_id: item.product_id,
@@ -253,7 +253,7 @@ const EditSupply: React.FC = () => {
             Редактировать поставку #{supply.id}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Изменение информации о поставке от {supply.supplier.name}
+            Изменение информации о поставке от {supply.supplier?.name ?? 'неизвестного поставщика'}
           </p>
         </div>
       </div>

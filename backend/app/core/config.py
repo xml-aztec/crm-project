@@ -1,5 +1,6 @@
+import os
 from typing import Optional
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
@@ -31,5 +32,19 @@ class Settings(BaseSettings):
         if v.startswith("postgresql://"):
             return "postgresql+asyncpg://" + v[len("postgresql://"):]
         return v
+
+    @model_validator(mode="after")
+    def _default_urls_from_render(self) -> "Settings":
+        # Render injects RENDER_EXTERNAL_URL (the service's public https URL)
+        # automatically — the exact subdomain isn't known until first deploy,
+        # so fall back to it instead of requiring BASE_URL/FRONTEND_URL to be
+        # hardcoded in render.yaml ahead of time.
+        external_url = os.environ.get("RENDER_EXTERNAL_URL")
+        if external_url:
+            if "BASE_URL" not in os.environ:
+                self.BASE_URL = external_url
+            if "FRONTEND_URL" not in os.environ:
+                self.FRONTEND_URL = external_url
+        return self
 
 settings = Settings()
