@@ -36,9 +36,17 @@ COPY backend/ ./backend
 FROM python:3.12-slim
 
 RUN apt-get update \
+    && apt-get install -y --no-install-recommends nginx gettext-base wget ca-certificates \
     # wkhtmltopdf: бинарник, который шеллит наружу пакет pdfkit
     # (backend/app/utils/pdf.py) для генерации PDF накладных поставок.
-    && apt-get install -y --no-install-recommends nginx gettext-base wkhtmltopdf \
+    # Начиная с Debian bullseye пакет wkhtmltopdf убран из apt-репозиториев
+    # (тянет патченный Qt WebKit, который Debian больше не поставляет) —
+    # ставим официальный .deb с проекта напрямую; apt разрешает его рантайм-
+    # зависимости (fontconfig, libjpeg62-turbo, libxrender1, ...) сам.
+    && wget -q -O /tmp/wkhtmltox.deb \
+        https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-3/wkhtmltox_0.12.6.1-3.bookworm_amd64.deb \
+    && (dpkg -i /tmp/wkhtmltox.deb || apt-get install -y -f) \
+    && rm /tmp/wkhtmltox.deb \
     && rm -rf /var/lib/apt/lists/* \
     && rm -f /etc/nginx/sites-enabled/default
 
