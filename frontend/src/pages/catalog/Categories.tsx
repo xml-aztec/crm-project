@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { Category, Subcategory, Brand } from '../../types/catalog';
 import CategoriesTable from '../../components/catalog/CategoriesTable';
 import SubcategoriesTable from '../../components/catalog/SubcategoriesTable';
@@ -56,8 +57,27 @@ const tabs = [
   }
 ];
 
+const VALID_TABS: TabType[] = ['categories', 'subcategories', 'brands'];
+
 export default function Categories() {
-  const [activeTab, setActiveTab] = useState<TabType>('categories');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab') as TabType | null;
+  const [activeTab, setActiveTabState] = useState<TabType>(
+    tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'categories'
+  );
+
+  const setActiveTab = (tab: TabType) => {
+    setActiveTabState(tab);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (tab === 'categories') next.delete('tab');
+        else next.set('tab', tab);
+        return next;
+      },
+      { replace: true }
+    );
+  };
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formType, setFormType] = useState<FormType>(null);
   

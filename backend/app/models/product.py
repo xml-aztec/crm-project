@@ -19,8 +19,8 @@ class Product(Base):
     brand_id = Column(Integer, ForeignKey("brands.id", ondelete="SET NULL"), nullable=True)
 
     category = relationship("Category")
-    subcategory = relationship("Subcategory")
-    brand = relationship("Brand")
+    subcategory = relationship("Subcategory", back_populates="products")
+    brand = relationship("Brand", back_populates="products")
 
     __table_args__ = (
         UniqueConstraint("sku", name="uq_product_sku"),

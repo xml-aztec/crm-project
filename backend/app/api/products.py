@@ -6,12 +6,23 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user, get_db, is_admin
 from app.rbac.dependencies import require_permission
+from app.models.brand import Brand
+from app.models.category import Category
+from app.models.subcategory import Subcategory
 from app.models.user import User
 from app.repositories import product as repo
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
 from app.utils.barcode_utils import generate_qr_image
+from app.utils.excel_products import (
+    build_export_workbook,
+    build_import_template_workbook,
+    parse_import_rows,
+)
+from sqlalchemy import select
 
 router = APIRouter(prefix="/products", tags=["Products"])
+
+EXCEL_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 @router.get(
     "/",
@@ -93,6 +104,111 @@ async def import_products_csv(
         raise HTTPException(status_code=400, detail="Загрузите CSV-файл (.csv)")
     content = await file.read()
     return await repo.import_from_csv(db, content)
+
+
+@router.get(
+    "/export-excel",
+    summary="Экспорт каталога в Excel",
+    description="Скачивает товары в формате .xlsx. Поддерживает те же фильтры, что и список товаров; без фильтров экспортирует весь каталог."
+)
+async def export_products_excel(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+    name: Optional[str] = Query(None),
+    sku: Optional[str] = Query(None),
+    barcode: Optional[str] = Query(None),
+    brand_id: Optional[int] = Query(None),
+    category_id: Optional[int] = Query(None),
+    subcategory_id: Optional[int] = Query(None),
+    min_price: Optional[float] = Query(None),
+    max_price: Optional[float] = Query(None),
+    min_cost_price: Optional[float] = Query(None),
+    max_cost_price: Optional[float] = Query(None),
+    available_quantity_min: Optional[int] = Query(None),
+    available_quantity_max: Optional[int] = Query(None),
+):
+    rows = await repo.get_export_rows(
+        db,
+        name=name, sku=sku, barcode=barcode, brand_id=brand_id,
+        category_id=category_id, subcategory_id=subcategory_id,
+        min_price=min_price, max_price=max_price,
+        min_cost_price=min_cost_price, max_cost_price=max_cost_price,
+        available_quantity_min=available_quantity_min,
+        available_quantity_max=available_quantity_max,
+    )
+    buf = build_export_workbook(rows)
+    return StreamingResponse(
+        buf,
+        media_type=EXCEL_MEDIA_TYPE,
+        headers={"Content-Disposition": "attachment; filename=products_export.xlsx"},
+    )
+
+
+@router.get(
+    "/import-template",
+    summary="Шаблон для импорта товаров",
+    description="Скачивает .xlsx шаблон с заголовками, примерами (на основе реальных категорий/подкатегорий/брендов системы) и листом с пояснениями."
+)
+async def download_import_template(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_admin),
+):
+    sample_category = (await db.execute(select(Category.name).limit(1))).scalar_one_or_none()
+    sample_subcategory = (await db.execute(select(Subcategory.name).limit(1))).scalar_one_or_none()
+    sample_brand = (await db.execute(select(Brand.name).limit(1))).scalar_one_or_none()
+
+    buf = build_import_template_workbook(sample_category, sample_subcategory, sample_brand)
+    return StreamingResponse(
+        buf,
+        media_type=EXCEL_MEDIA_TYPE,
+        headers={"Content-Disposition": "attachment; filename=products_import_template.xlsx"},
+    )
+
+
+@router.post(
+    "/import-excel/preview",
+    summary="Превью импорта из Excel",
+    description="Проверяет .xlsx файл без сохранения: возвращает построчный результат валидации (создание/обновление/ошибка)."
+)
+async def preview_import_products_excel(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_admin),
+):
+    if not (file.filename or "").lower().endswith(".xlsx"):
+        raise HTTPException(status_code=400, detail="Загрузите файл Excel (.xlsx)")
+    content = await file.read()
+    rows = parse_import_rows(content)
+    results = await repo.validate_import_rows(db, rows)
+
+    to_create = sum(1 for r in results if r.action == "create")
+    to_update = sum(1 for r in results if r.action == "update")
+    with_errors = sum(1 for r in results if r.action == "error")
+
+    return {
+        "rows": [
+            {"row": r.row, "sku": r.sku, "name": r.name, "action": r.action, "errors": r.errors}
+            for r in results
+        ],
+        "summary": {"to_create": to_create, "to_update": to_update, "errors": with_errors},
+    }
+
+
+@router.post(
+    "/import-excel",
+    summary="Импорт товаров из Excel",
+    description="Загружает .xlsx файл и массово создаёт/обновляет товары (пачками). Совпадение по артикулу (SKU) — обновление, иначе создание. Только для администраторов."
+)
+async def import_products_excel(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_admin),
+):
+    if not (file.filename or "").lower().endswith(".xlsx"):
+        raise HTTPException(status_code=400, detail="Загрузите файл Excel (.xlsx)")
+    content = await file.read()
+    rows = parse_import_rows(content)
+    return await repo.import_products_excel(db, rows)
 
 
 @router.get(

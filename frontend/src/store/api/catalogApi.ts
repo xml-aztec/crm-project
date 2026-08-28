@@ -1,4 +1,13 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import type {
+  Category as CategoryFull,
+  Subcategory as SubcategoryFull,
+  Brand as BrandFull,
+  CatalogPage,
+  CatalogSortOrder,
+  BulkActionResult,
+  BulkStatusResult,
+} from '../../types/catalog';
 
 export interface Product {
   id: number;
@@ -16,22 +25,11 @@ export interface Product {
   available_quantity: number;  
 }
 
-export interface Brand {
-  id: number;
-  name: string;
-}
-
-export interface Category {
-  id: number;
-  name: string;
-  description?: string;
-}
-
-export interface Subcategory {
-  id: number;
-  name: string;
-  category_id: number;
-}
+// Re-exported so existing `import { Category } from '.../catalogApi'`-style code keeps working;
+// the canonical definitions (including is_active/created_at/products_count) live in types/catalog.ts.
+export type Brand = BrandFull;
+export type Category = CategoryFull;
+export type Subcategory = SubcategoryFull;
 
 export interface CreateProductRequest {
   name: string;
@@ -64,6 +62,7 @@ export interface CreateBrandRequest {
 
 export interface UpdateBrandRequest {
   name?: string;
+  is_active?: boolean;
 }
 
 export interface CreateCategoryRequest {
@@ -74,6 +73,7 @@ export interface CreateCategoryRequest {
 export interface UpdateCategoryRequest {
   name?: string;
   description?: string;
+  is_active?: boolean;
 }
 
 export interface CreateSubcategoryRequest {
@@ -84,12 +84,67 @@ export interface CreateSubcategoryRequest {
 export interface UpdateSubcategoryRequest {
   name?: string;
   category_id?: number;
+  is_active?: boolean;
 }
 
 export interface ImportCsvResult {
   created: number;
   updated: number;
   errors: string[];
+}
+
+export interface ImportPreviewRow {
+  row: number;
+  sku: string | null;
+  name: string | null;
+  action: 'create' | 'update' | 'error';
+  errors: string[];
+}
+
+export interface ImportPreviewResult {
+  rows: ImportPreviewRow[];
+  summary: { to_create: number; to_update: number; errors: number };
+}
+
+export interface ExcelImportResult {
+  created: number;
+  updated: number;
+  errors: { row: number; message: string }[];
+}
+
+export interface CatalogPaginationParams {
+  search?: string;
+  is_active?: boolean;
+  sort_by?: string;
+  sort_order?: CatalogSortOrder;
+  page?: number;
+  page_size?: number;
+}
+
+export interface SubcategoryPaginationParams extends CatalogPaginationParams {
+  category_id?: number;
+}
+
+export interface BulkIdsRequest {
+  ids: number[];
+  force?: boolean;
+}
+
+export interface BulkStatusRequest {
+  ids: number[];
+  is_active: boolean;
+}
+
+function buildQueryString(params?: Record<string, unknown>): string {
+  const search = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        search.append(key, String(value));
+      }
+    });
+  }
+  return search.toString();
 }
 
 export interface PaginationParams {
@@ -226,6 +281,21 @@ export const catalogApi = createApi({
       invalidatesTags: ['Category'],
     }),
 
+    getCategoriesPaginated: builder.query<CatalogPage<CategoryFull>, CatalogPaginationParams | void>({
+      query: (params) => `categories/paginated?${buildQueryString(params as Record<string, unknown>)}`,
+      providesTags: ['Category'],
+    }),
+
+    bulkDeleteCategories: builder.mutation<BulkActionResult, BulkIdsRequest>({
+      query: (body) => ({ url: 'categories/bulk-delete', method: 'POST', body }),
+      invalidatesTags: ['Category'],
+    }),
+
+    bulkSetCategoriesStatus: builder.mutation<BulkStatusResult, BulkStatusRequest>({
+      query: (body) => ({ url: 'categories/bulk-status', method: 'POST', body }),
+      invalidatesTags: ['Category'],
+    }),
+
     getBrands: builder.query<Brand[], void>({
       query: () => 'brands/',
       providesTags: ['Brand'],
@@ -255,6 +325,21 @@ export const catalogApi = createApi({
         url: `brands/${id}/`,
         method: 'DELETE',
       }),
+      invalidatesTags: ['Brand'],
+    }),
+
+    getBrandsPaginated: builder.query<CatalogPage<BrandFull>, CatalogPaginationParams | void>({
+      query: (params) => `brands/paginated?${buildQueryString(params as Record<string, unknown>)}`,
+      providesTags: ['Brand'],
+    }),
+
+    bulkDeleteBrands: builder.mutation<BulkActionResult, BulkIdsRequest>({
+      query: (body) => ({ url: 'brands/bulk-delete', method: 'POST', body }),
+      invalidatesTags: ['Brand'],
+    }),
+
+    bulkSetBrandsStatus: builder.mutation<BulkStatusResult, BulkStatusRequest>({
+      query: (body) => ({ url: 'brands/bulk-status', method: 'POST', body }),
       invalidatesTags: ['Brand'],
     }),
 
@@ -290,6 +375,21 @@ export const catalogApi = createApi({
       invalidatesTags: ['Subcategory'],
     }),
 
+    getSubcategoriesPaginated: builder.query<CatalogPage<SubcategoryFull>, SubcategoryPaginationParams | void>({
+      query: (params) => `subcategories/paginated?${buildQueryString(params as Record<string, unknown>)}`,
+      providesTags: ['Subcategory'],
+    }),
+
+    bulkDeleteSubcategories: builder.mutation<BulkActionResult, BulkIdsRequest>({
+      query: (body) => ({ url: 'subcategories/bulk-delete', method: 'POST', body }),
+      invalidatesTags: ['Subcategory'],
+    }),
+
+    bulkSetSubcategoriesStatus: builder.mutation<BulkStatusResult, BulkStatusRequest>({
+      query: (body) => ({ url: 'subcategories/bulk-status', method: 'POST', body }),
+      invalidatesTags: ['Subcategory'],
+    }),
+
     importProductsCsv: builder.mutation<ImportCsvResult, FormData>({
       queryFn: async (formData) => {
         try {
@@ -304,6 +404,84 @@ export const catalogApi = createApi({
             return { error: { status: response.status, data: err } };
           }
           const data: ImportCsvResult = await response.json();
+          return { data };
+        } catch (e) {
+          return { error: { status: 'FETCH_ERROR', error: String(e) } };
+        }
+      },
+      invalidatesTags: ['Product'],
+    }),
+
+    downloadImportTemplate: builder.mutation<Blob, void>({
+      queryFn: async () => {
+        try {
+          const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+          const response = await fetch(`${baseUrl}/products/import-template`, {
+            credentials: 'include',
+          });
+          if (!response.ok) {
+            return { error: { status: response.status, data: 'Не удалось скачать шаблон' } };
+          }
+          return { data: await response.blob() };
+        } catch (e) {
+          return { error: { status: 'FETCH_ERROR', error: String(e) } };
+        }
+      },
+    }),
+
+    exportProductsExcel: builder.mutation<Blob, Record<string, string | number | undefined> | void>({
+      queryFn: async (filters) => {
+        try {
+          const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+          const qs = buildQueryString(filters as Record<string, unknown>);
+          const response = await fetch(`${baseUrl}/products/export-excel?${qs}`, {
+            credentials: 'include',
+          });
+          if (!response.ok) {
+            return { error: { status: response.status, data: 'Не удалось экспортировать товары' } };
+          }
+          return { data: await response.blob() };
+        } catch (e) {
+          return { error: { status: 'FETCH_ERROR', error: String(e) } };
+        }
+      },
+    }),
+
+    previewImportExcel: builder.mutation<ImportPreviewResult, FormData>({
+      queryFn: async (formData) => {
+        try {
+          const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+          const response = await fetch(`${baseUrl}/products/import-excel/preview`, {
+            method: 'POST',
+            credentials: 'include',
+            body: formData,
+          });
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({ detail: 'Ошибка предпросмотра импорта' }));
+            return { error: { status: response.status, data: err } };
+          }
+          const data: ImportPreviewResult = await response.json();
+          return { data };
+        } catch (e) {
+          return { error: { status: 'FETCH_ERROR', error: String(e) } };
+        }
+      },
+    }),
+
+    importExcel: builder.mutation<ExcelImportResult, FormData>({
+      queryFn: async (formData) => {
+        try {
+          const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+          const response = await fetch(`${baseUrl}/products/import-excel`, {
+            method: 'POST',
+            credentials: 'include',
+            body: formData,
+          });
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({ detail: 'Ошибка импорта' }));
+            return { error: { status: response.status, data: err } };
+          }
+          const data: ExcelImportResult = await response.json();
           return { data };
         } catch (e) {
           return { error: { status: 'FETCH_ERROR', error: String(e) } };
@@ -326,13 +504,26 @@ export const {
   useCreateCategoryMutation,
   useUpdateCategoryMutation,
   useDeleteCategoryMutation,
+  useGetCategoriesPaginatedQuery,
+  useBulkDeleteCategoriesMutation,
+  useBulkSetCategoriesStatusMutation,
   useGetBrandsQuery,
   useCreateBrandMutation,
   useUpdateBrandMutation,
   useDeleteBrandMutation,
+  useGetBrandsPaginatedQuery,
+  useBulkDeleteBrandsMutation,
+  useBulkSetBrandsStatusMutation,
   useGetSubcategoriesQuery,
   useCreateSubcategoryMutation,
   useUpdateSubcategoryMutation,
   useDeleteSubcategoryMutation,
+  useGetSubcategoriesPaginatedQuery,
+  useBulkDeleteSubcategoriesMutation,
+  useBulkSetSubcategoriesStatusMutation,
   useImportProductsCsvMutation,
+  useDownloadImportTemplateMutation,
+  useExportProductsExcelMutation,
+  usePreviewImportExcelMutation,
+  useImportExcelMutation,
 } = catalogApi;

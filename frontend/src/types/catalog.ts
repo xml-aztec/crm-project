@@ -14,18 +14,28 @@ export interface Product {
 export interface Brand {
   id: number;
   name: string;
+  is_active: boolean;
+  created_at: string;
+  products_count: number;
 }
 
 export interface Category {
   id: number;
   name: string;
   description?: string;
+  is_active: boolean;
+  created_at: string;
+  products_count: number;
+  subcategories_count: number;
 }
 
 export interface Subcategory {
   id: number;
   name: string;
   category_id: number;
+  is_active: boolean;
+  created_at: string;
+  products_count: number;
 }
 
 export interface ProductFilters {
@@ -40,4 +50,28 @@ export interface ProductFilters {
 
 export interface CategoryFilters {
   search: string;
+}
+
+export type CatalogSortOrder = 'asc' | 'desc';
+
+export interface CatalogPage<T> {
+  items: T[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface BulkActionSkipped {
+  id: number;
+  reason: string;
+}
+
+export interface BulkActionResult {
+  deleted: number[];
+  skipped: BulkActionSkipped[];
+}
+
+export interface BulkStatusResult {
+  updated: number;
 }

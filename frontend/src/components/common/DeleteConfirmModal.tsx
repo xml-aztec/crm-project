@@ -8,15 +8,18 @@ interface DeleteConfirmModalProps {
   onClose: () => void;
   onConfirm: () => void;
   isLoading?: boolean;
+  /** Extra warning shown above the "cannot be undone" line, e.g. linked-records counts. */
+  warningText?: string | null;
 }
 
-export default function DeleteConfirmModal({ 
-  title, 
-  itemName, 
-  isOpen, 
-  onClose, 
-  onConfirm, 
-  isLoading = false 
+export default function DeleteConfirmModal({
+  title,
+  itemName,
+  isOpen,
+  onClose,
+  onConfirm,
+  isLoading = false,
+  warningText = null,
 }: DeleteConfirmModalProps) {
   useEffect(() => {
     if (isOpen) {
@@ -74,6 +77,11 @@ export default function DeleteConfirmModal({
           <p className="text-gray-600 dark:text-gray-400">
             Вы уверены, что хотите удалить <span className="font-semibold text-gray-900 dark:text-white">"{itemName}"</span>?
           </p>
+          {warningText && (
+            <p className="text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 mt-3">
+              {warningText}
+            </p>
+          )}
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
             Это действие нельзя отменить.
           </p>

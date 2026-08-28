@@ -1,10 +1,44 @@
 import { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { useGetProductsQuery, useGetBrandsQuery, useGetCategoriesQuery, useGetSubcategoriesQuery, useImportProductsCsvMutation, ImportCsvResult } from '../../store/api/catalogApi';
+import {
+  useGetProductsQuery,
+  useGetBrandsQuery,
+  useGetCategoriesQuery,
+  useGetSubcategoriesQuery,
+  useDownloadImportTemplateMutation,
+  useExportProductsExcelMutation,
+  usePreviewImportExcelMutation,
+  useImportExcelMutation,
+  ImportPreviewResult,
+  ExcelImportResult,
+} from '../../store/api/catalogApi';
 import { ProductFilters } from '../../types/catalog';
 import ProductsTable from '../../components/catalog/ProductsTable';
 import ProductFiltersComponent from '../../components/catalog/ProductsFilters';
+import ImportPreviewModal from '../../components/catalog/ImportPreviewModal';
 import Button from '../../components/ui/button/Button';
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function buildExportFilters(filters: ProductFilters): Record<string, string | number> {
+  const params: Record<string, string | number> = {};
+  if (filters.search) params.name = filters.search;
+  if (filters.category_id) params.category_id = filters.category_id;
+  if (filters.subcategory_id) params.subcategory_id = filters.subcategory_id;
+  if (filters.brand_id) params.brand_id = filters.brand_id;
+  if (filters.price_min) params.min_price = filters.price_min;
+  if (filters.price_max) params.max_price = filters.price_max;
+  if (filters.in_stock === 'in_stock') params.available_quantity_min = 1;
+  if (filters.in_stock === 'out_of_stock') params.available_quantity_max = 0;
+  return params;
+}
 
 const PAGE_SIZE = 20;
 
@@ -21,35 +55,45 @@ export default function Products() {
   });
 
   const [page, setPage] = useState(1);
-  const [exporting, setExporting] = useState(false);
-  const [importResult, setImportResult] = useState<ImportCsvResult | null>(null);
+  const [exporting, setExporting] = useState<'filtered' | 'all' | null>(null);
+  const [importResult, setImportResult] = useState<ExcelImportResult | null>(null);
+  const [previewResult, setPreviewResult] = useState<ImportPreviewResult | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: products = [], isLoading, error } = useGetProductsQuery();
   const { data: brands = [] } = useGetBrandsQuery();
   const { data: categories = [] } = useGetCategoriesQuery();
   const { data: subcategories = [] } = useGetSubcategoriesQuery();
-  const [importCsv, { isLoading: importing }] = useImportProductsCsvMutation();
+  const [downloadTemplate, { isLoading: downloadingTemplate }] = useDownloadImportTemplateMutation();
+  const [exportExcel] = useExportProductsExcelMutation();
+  const [previewImport, { isLoading: previewing }] = usePreviewImportExcelMutation();
+  const [confirmImport, { isLoading: importing }] = useImportExcelMutation();
 
   const brandsMap = useMemo(() => Object.fromEntries(brands.map(b => [b.id, b.name])), [brands]);
   const categoriesMap = useMemo(() => Object.fromEntries(categories.map(c => [c.id, c.name])), [categories]);
   const subcategoriesMap = useMemo(() => Object.fromEntries(subcategories.map(s => [s.id, s.name])), [subcategories]);
 
-  const handleExport = async () => {
-    setExporting(true);
+  const handleExport = async (mode: 'filtered' | 'all') => {
+    setExporting(mode);
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      const res = await fetch(`${baseUrl}/products/export-csv`, { credentials: 'include' });
-      if (!res.ok) return;
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'products_export.csv';
-      a.click();
-      URL.revokeObjectURL(url);
+      const params = mode === 'filtered' ? buildExportFilters(filters) : undefined;
+      const result = await exportExcel(params).unwrap();
+      downloadBlob(result, 'products_export.xlsx');
+    } catch {
+      // Обработка ошибки без алерта
     } finally {
-      setExporting(false);
+      setExporting(null);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const result = await downloadTemplate().unwrap();
+      downloadBlob(result, 'products_import_template.xlsx');
+    } catch {
+      // Обработка ошибки без алерта
     }
   };
 
@@ -57,12 +101,34 @@ export default function Products() {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
+
     const formData = new FormData();
     formData.append('file', file);
-    const result = await importCsv(formData);
+    const result = await previewImport(formData);
+    if ('data' in result && result.data) {
+      setPendingFile(file);
+      setPreviewResult(result.data);
+      setIsPreviewOpen(true);
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!pendingFile) return;
+    const formData = new FormData();
+    formData.append('file', pendingFile);
+    const result = await confirmImport(formData);
     if ('data' in result && result.data) {
       setImportResult(result.data);
     }
+    setIsPreviewOpen(false);
+    setPreviewResult(null);
+    setPendingFile(null);
+  };
+
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false);
+    setPreviewResult(null);
+    setPendingFile(null);
   };
 
   // Фильтрация товаров
@@ -188,21 +254,41 @@ export default function Products() {
           )}
 
           <Button
-            onClick={handleExport}
+            onClick={handleDownloadTemplate}
             variant="outline"
             size="sm"
-            disabled={exporting}
+            disabled={downloadingTemplate}
+          >
+            {downloadingTemplate ? 'Скачивание...' : 'Скачать шаблон'}
+          </Button>
+
+          <Button
+            onClick={() => handleExport('filtered')}
+            variant="outline"
+            size="sm"
+            disabled={exporting !== null}
+            title="Экспортировать товары с учётом текущих фильтров и поиска"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            {exporting ? 'Экспорт...' : 'Экспорт CSV'}
+            {exporting === 'filtered' ? 'Экспорт...' : 'Экспорт (с фильтрами)'}
+          </Button>
+
+          <Button
+            onClick={() => handleExport('all')}
+            variant="outline"
+            size="sm"
+            disabled={exporting !== null}
+            title="Экспортировать весь каталог, без учёта фильтров"
+          >
+            {exporting === 'all' ? 'Экспорт...' : 'Экспорт всё'}
           </Button>
 
           <input
             ref={fileInputRef}
             type="file"
-            accept=".csv"
+            accept=".xlsx"
             className="hidden"
             onChange={handleImportFile}
           />
@@ -210,12 +296,12 @@ export default function Products() {
             onClick={() => fileInputRef.current?.click()}
             variant="outline"
             size="sm"
-            disabled={importing}
+            disabled={previewing}
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12" />
             </svg>
-            {importing ? 'Импорт...' : 'Импорт CSV'}
+            {previewing ? 'Проверка файла...' : 'Импорт из Excel'}
           </Button>
 
           <Button onClick={handleCreateProduct}>
@@ -239,8 +325,8 @@ export default function Products() {
             </p>
             {importResult.errors.length > 0 && (
               <ul className="mt-2 space-y-0.5">
-                {importResult.errors.slice(0, 5).map((e, i) => (
-                  <li key={i} className="text-xs text-red-600 dark:text-red-400">{e}</li>
+                {importResult.errors.slice(0, 5).map((e) => (
+                  <li key={e.row} className="text-xs text-red-600 dark:text-red-400">Строка {e.row}: {e.message}</li>
                 ))}
                 {importResult.errors.length > 5 && (
                   <li className="text-xs text-gray-500">...ещё {importResult.errors.length - 5} ошибок</li>
@@ -347,6 +433,14 @@ export default function Products() {
           </div>
         </div>
       )}
+
+      <ImportPreviewModal
+        isOpen={isPreviewOpen}
+        result={previewResult}
+        isImporting={importing}
+        onClose={handleClosePreview}
+        onConfirm={handleConfirmImport}
+      />
     </div>
   );
 }
