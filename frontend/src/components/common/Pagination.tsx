@@ -12,12 +12,12 @@ export default function Pagination({ page, totalPages, total, onPageChange }: Pa
   const pageNumbers = Array.from({ length: Math.min(5, totalPages) }, (_, i) => start + i);
 
   return (
-    <div className="flex items-center justify-between px-2 py-3">
-      <p className="text-sm text-gray-500 dark:text-gray-400">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-2 py-3">
+      <p className="text-sm text-gray-500 dark:text-gray-400 text-center sm:text-left">
         Стр. {page} из {totalPages}
         {total !== undefined && ` · всего ${total}`}
       </p>
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center justify-center gap-1">
         <button
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page === 1}

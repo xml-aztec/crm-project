@@ -4,6 +4,7 @@ import LoadingSpinner from '../ui/LoadingSpinner';
 import DeleteConfirmModal from '../common/DeleteConfirmModal';
 import Toggle from '../ui/Toggle';
 import Checkbox from '../form/input/Checkbox';
+import Pagination from '../common/Pagination';
 
 const EditIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -237,11 +238,11 @@ export default function EntityTable<T extends CatalogItem>({
       {filtersSlot}
 
       {selection && selection.selectedIds.size > 0 && (
-        <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-brand-200 bg-brand-50 dark:border-brand-800 dark:bg-brand-900/20 px-4 py-3">
+        <div className="mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-brand-200 bg-brand-50 dark:border-brand-800 dark:bg-brand-900/20 px-4 py-3">
           <span className="text-sm font-medium text-gray-800 dark:text-gray-100">
             Выбрано: {selection.selectedIds.size}
           </span>
-          <div className="flex items-center gap-2">{bulkActionsSlot}</div>
+          <div className="flex flex-wrap items-center gap-2">{bulkActionsSlot}</div>
         </div>
       )}
 
@@ -371,42 +372,13 @@ export default function EntityTable<T extends CatalogItem>({
         </div>
 
         {pagination && pagination.totalPages > 1 && (
-          <div className="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 sm:px-6">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Стр. {pagination.page} из {pagination.totalPages} · всего {pagination.total}
-            </p>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => pagination.onPageChange(Math.max(1, pagination.page - 1))}
-                disabled={pagination.page === 1}
-                className="px-3 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                ‹
-              </button>
-              {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                const start = Math.max(1, Math.min(pagination.page - 2, pagination.totalPages - 4));
-                return start + i;
-              }).map((n) => (
-                <button
-                  key={n}
-                  onClick={() => pagination.onPageChange(n)}
-                  className={`px-3 py-1 text-sm rounded border ${
-                    n === pagination.page
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  {n}
-                </button>
-              ))}
-              <button
-                onClick={() => pagination.onPageChange(Math.min(pagination.totalPages, pagination.page + 1))}
-                disabled={pagination.page === pagination.totalPages}
-                className="px-3 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                ›
-              </button>
-            </div>
+          <div className="border-t border-gray-200 dark:border-gray-700">
+            <Pagination
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              total={pagination.total}
+              onPageChange={pagination.onPageChange}
+            />
           </div>
         )}
       </div>

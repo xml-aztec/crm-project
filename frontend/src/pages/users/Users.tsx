@@ -58,7 +58,7 @@ export default function Users() {
               Управляйте пользователями системы и их правами доступа
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="text-sm text-gray-500 dark:text-gray-400">
               Найдено: <span className="font-medium text-gray-900 dark:text-white">{data?.total ?? 0}</span>
             </div>

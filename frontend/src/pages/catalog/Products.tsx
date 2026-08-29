@@ -232,7 +232,7 @@ export default function Products() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Каталог товаров
@@ -241,8 +241,8 @@ export default function Products() {
             Управление товарами и их характеристиками
           </p>
         </div>
-        
-        <div className="flex items-center gap-3">
+
+        <div className="flex flex-wrap items-center gap-2">
           {Object.values(filters).some(value => value !== undefined && value !== '') && (
             <Button
               onClick={handleClearFilters}
@@ -352,7 +352,7 @@ export default function Products() {
 
       {/* Results Summary */}
       {!isLoading && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {filteredProducts.length === 0
               ? 'Товары не найдены'
@@ -381,11 +381,11 @@ export default function Products() {
 
       {/* Pagination */}
       {!isLoading && totalPages > 1 && (
-        <div className="flex items-center justify-between px-2">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-2">
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center sm:text-left">
             Показано {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredProducts.length)} из {filteredProducts.length}
           </p>
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center justify-center gap-1">
             <button
               onClick={() => setPage(1)}
               disabled={page === 1}

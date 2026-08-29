@@ -47,11 +47,11 @@ export default function ImportPreviewModal({ isOpen, result, isImporting, onClos
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto overflow-x-auto p-6">
           {rows.length === 0 ? (
             <p className="text-sm text-gray-500 dark:text-gray-400">Файл не содержит строк с данными.</p>
           ) : (
-            <table className="min-w-full text-sm">
+            <table className="min-w-full text-sm whitespace-nowrap sm:whitespace-normal">
               <thead>
                 <tr className="text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
                   <th className="pb-2 pr-4">Строка</th>
