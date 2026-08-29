@@ -30,6 +30,7 @@ export interface UserRead {
   phone?: string;
   is_active: boolean;
   is_verified: boolean;
+  is_admin?: boolean;
   role?: Role;
   role_id?: number;
   position?: Position;

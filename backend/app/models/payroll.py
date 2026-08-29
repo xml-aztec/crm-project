@@ -12,7 +12,7 @@ class Payroll(Base):
     bonus_amount = Column(Integer, default=0)
     penalty_amount = Column(Integer, default=0)
     total_paid = Column(Integer, nullable=False)
-    paid_at = Column(DateTime, nullable=True)
+    paid_at = Column(DateTime(timezone=True), nullable=True)
     comment = Column(String, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"))
 

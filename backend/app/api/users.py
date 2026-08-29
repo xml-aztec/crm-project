@@ -60,9 +60,12 @@ async def list_users(
     description="Возвращает данные текущего авторизованного пользователя."
 )
 async def get_current_user_profile(
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    return current_user
+    profile = UserRead.model_validate(current_user, from_attributes=True)
+    profile.is_admin = await user_is_admin(current_user, db)
+    return profile
 
 
 @router.get(

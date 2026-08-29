@@ -19,6 +19,7 @@ router = APIRouter(prefix="/stock", tags=["Product Stock"])
     response_model=ProductStockOut,
     summary="Создание или обновление остатка",
     description="Добавляет новый остаток или обновляет существующий по паре (product_id, warehouse_id).",
+    dependencies=[Depends(require_permission("stock.create"))],
 )
 async def create_stock(
     data: ProductStockCreate,
@@ -88,6 +89,7 @@ async def get_stock_by_id(
     response_model=ProductStockOut,
     summary="Обновить остаток товара",
     description="Изменяет количество товара на складе. Можно изменить только поле quantity.",
+    dependencies=[Depends(require_permission("stock.update"))],
 )
 async def update_stock(
     stock_id: int,
@@ -114,6 +116,7 @@ async def update_stock(
     response_model=dict,
     summary="Перемещение товара между складами",
     description="Атомарно перемещает товар с одного склада на другой и записывает два лога.",
+    dependencies=[Depends(require_permission("stock.update"))],
 )
 async def transfer_stock(
     data: StockTransferRequest,
@@ -180,7 +183,7 @@ async def transfer_stock(
     response_model=dict,
     summary="Удаление остатка",
     description="Удаляет запись об остатке товара по ID. Возвращает сообщение об успешном удалении.",
-    dependencies=[Depends(get_current_user)]
+    dependencies=[Depends(get_current_user), Depends(require_permission("stock.delete"))]
 )
 async def delete_stock(
     stock_id: int,

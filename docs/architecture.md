@@ -7,7 +7,7 @@
 | Backend | Python 3.12, FastAPI (`extras=all`) 0.115, async SQLAlchemy 2.0, asyncpg |
 | БД | PostgreSQL 15 |
 | Валидация | Pydantic v2 + pydantic-settings |
-| Миграции | Alembic (8 реальных миграций поверх пустого baseline) |
+| Миграции | Alembic (9 реальных миграций поверх пустого baseline) |
 | Аутентификация | JWT (python-jose, HS256, 1 час) в httpOnly-куке, bcrypt (passlib) |
 | PDF | `pdfkit` + wkhtmltopdf (бинарник ставится в Docker-образ напрямую) + Jinja2-шаблоны |
 | QR/штрихкоды | `qrcode` + Pillow (генерация), `html5-qrcode` на фронтенде (сканирование) |

@@ -294,7 +294,7 @@ async def download_product_qr(
 async def create_product(
     data: ProductCreate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(is_admin),
+    _: User = Depends(require_permission("products.create")),
 ):
     return await repo.create(db, data)
 
@@ -308,7 +308,7 @@ async def update_product(
     product_id: int,
     data: ProductUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(is_admin),
+    _: User = Depends(require_permission("products.update")),
 ):
     product = await repo.update(db, product_id, data.model_dump(exclude_unset=True))
     if not product:
@@ -324,7 +324,7 @@ async def update_product(
 async def delete_product(
     product_id: int,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(is_admin),
+    _: User = Depends(require_permission("products.delete")),
 ):
     product = await repo.get_by_id(db, product_id)
     if not product:

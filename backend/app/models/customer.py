@@ -14,5 +14,5 @@ class Customer(Base):
     address = Column(Text)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    orders = relationship("Order", back_populates="customer", cascade="all, delete-orphan")
+    orders = relationship("Order", back_populates="customer")
     customer_type = relationship("CustomerType", back_populates="customers")

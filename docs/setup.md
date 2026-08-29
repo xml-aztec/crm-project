@@ -58,7 +58,7 @@ npm run dev   # http://localhost:5173, проксирует на VITE_API_URL (�
 
 ## Миграции (Alembic)
 
-Проект использует гибридную схему — не «пустой baseline», как утверждали старые отчёты в корне репозитория (на момент этого аудита это уже неактуально): после начального `baseline` добавлено **8 реальных миграций** (индексы, RBAC-таблицы и сидинг прав, миграция легаси-ролей в RBAC, `stock_logs.order_id`, `password_reset_tokens`, `product_stock.reserved`, `is_active`/`created_at` на каталоге).
+Проект использует гибридную схему — не «пустой baseline», как утверждали старые отчёты в корне репозитория (на момент этого аудита это уже неактуально): после начального `baseline` добавлено **9 реальных миграций** (индексы, RBAC-таблицы и сидинг прав, миграция легаси-ролей в RBAC, `stock_logs.order_id`, `password_reset_tokens`, `product_stock.reserved`, `is_active`/`created_at` на каталоге, `payrolls.paid_at` — таймзона, 2026-08-29).
 
 ```bash
 cd backend

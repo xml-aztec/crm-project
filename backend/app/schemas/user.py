@@ -23,6 +23,7 @@ class UserRead(UserBase):
     created_at: datetime
     is_approved: bool
     is_active: Optional[bool] = None
+    is_admin: bool = False
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None

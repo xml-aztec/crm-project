@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import SessionLocal
-from app.core.dependencies import get_current_user, get_db, is_admin, is_order_owner_or_admin
+from app.core.dependencies import get_current_user, get_db, is_order_owner_or_admin
 from app.rbac.dependencies import require_permission
 from app.models.user import User
 from app.repositories import order as repo
@@ -132,7 +132,8 @@ async def confirm_order(
     order_id: int = Path(..., description="ID заказа"),
     data: OrderConfirmUpdate = Body(...),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),  
+    current_user: User = Depends(get_current_user),
+    _: User = Depends(is_order_owner_or_admin),
 ):
     order = await repo.get_order_by_id(db, order_id, current_user)
     if not order:
@@ -154,6 +155,7 @@ async def change_order_status(
     data: OrderStatusUpdate = Body(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _: User = Depends(is_order_owner_or_admin),
 ):
     order = await repo.update_order_status(
         db=db,
@@ -208,7 +210,7 @@ async def get_order_stock_logs(
 async def delete_order(
     order_id: int,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(is_admin),
+    _: User = Depends(require_permission("orders.delete")),
 ):
     await repo.delete_order(db, order_id)
     return Response(status_code=204)

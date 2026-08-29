@@ -374,8 +374,20 @@ async def update_order_status(
     await history_repo.add_entry(db, order_id, "status_changed", desc, user_id=current_user.id)
 
     await db.commit()
-    await db.refresh(order)
-    return order
+
+    result = await db.execute(
+        select(Order)
+        .options(
+            selectinload(Order.items).selectinload(OrderItem.product),
+            joinedload(Order.customer),
+            joinedload(Order.user),
+            selectinload(Order.payment_method),
+            joinedload(Order.status),
+            joinedload(Order.warehouse),
+        )
+        .where(Order.id == order_id)
+    )
+    return result.scalar_one()
 
 
 async def delete_order(db: AsyncSession, order_id: int) -> None:

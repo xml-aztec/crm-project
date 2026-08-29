@@ -268,21 +268,21 @@ erDiagram
 `id`, `manager_id` FK → users.id (`ondelete=CASCADE`), `month` Date, `target_amount` Float. `UniqueConstraint(manager_id, month)`.
 
 ### `payrolls`
-`id`, `user_id` FK → users.id (`ondelete=CASCADE`), `month` String(7), `base_salary` Integer, `bonus_amount`, `penalty_amount`, `total_paid` Integer, `paid_at`, `comment`, `created_by` FK → users.id (без `ondelete`), `kpi_percent` Integer, `kpi_rule_id` FK → kpi_rules.id (`SET NULL`).
+`id`, `user_id` FK → users.id (`ondelete=CASCADE`), `month` String(7), `base_salary` Integer, `bonus_amount`, `penalty_amount`, `total_paid` Integer, `paid_at` **DateTime(timezone=True)** (исправлено 2026-08-29, миграция `a1b2c3d4e5f6` — раньше был `DateTime` без таймзоны, что ломало `POST /payrolls/{id}/pay` на каждом вызове, см. [CHANGELOG.md](../CHANGELOG.md)), `comment`, `created_by` FK → users.id (без `ondelete`), `kpi_percent` Integer, `kpi_rule_id` FK → kpi_rules.id (`SET NULL`).
 
 ---
 
 ## Особенности каскадного удаления (свод)
 
-Проект в основном придерживается принципа **`ondelete="SET NULL"` для сохранения истории** (явно описан и соблюдён для `Product.category_id/subcategory_id/brand_id`, `Order.*`, `CashFlow.category_id` и большинства остальных связей) — но есть **исключения, где ORM-уровневый `cascade="all, delete-orphan"` реально удаляет связанные записи**, а не обнуляет FK:
+Проект в основном придерживается принципа **`ondelete="SET NULL"` для сохранения истории** (явно описан и соблюдён для `Product.category_id/subcategory_id/brand_id`, `Order.*`, `CashFlow.category_id` и большинства остальных связей) — были **исключения, где ORM-уровневый `cascade="all, delete-orphan"` реально удалял связанные записи**, а не обнулял FK; два из них исправлены 2026-08-29:
 
 | Родитель | Каскадно удаляется | Согласовано с FK на уровне БД? |
 |---|---|---|
 | `Category` → `subcategories` | подкатегории | Да (`ondelete=CASCADE`) — ожидаемо |
 | `Order` → `items` | позиции заказа | Да (`ondelete=CASCADE`) — ожидаемо |
 | `Supply` → `items` | позиции поставки | FK без `ondelete`, но ORM обрабатывает сам — ожидаемо |
-| `User` → `payrolls`, `monthly_targets` | вся зарплатная история и KPI-планы сотрудника | Да (`ondelete=CASCADE`) — **но безвозвратно теряется финансовая история** |
-| `Customer` → `orders` | **все заказы клиента** (а через них — `order_items`, `order_history`) | **Нет** — `orders.customer_id` объявлен `SET NULL`, но ORM-каскад удаляет заказы раньше, чем сработал бы FK |
-| `Branch` → `warehouses` | все склады филиала → (через `ondelete=CASCADE` на дочерних FK) все `product_stock`, `stock_logs`, `supplies`+`supply_items` этих складов | **Нет** — `warehouses.branch_id` объявлен `SET NULL`, но ORM удаляет склады напрямую |
+| `User` → `payrolls`, `monthly_targets` | вся зарплатная история и KPI-планы сотрудника | Да (`ondelete=CASCADE`) — безвозвратно теряется финансовая история; **осознанно не тронуто** (бизнес-решение, не баг рассинхронизации — см. [known-issues.md, п. 3](./known-issues.md)) |
+| `Customer` → `orders` | ~~все заказы клиента~~ | ✅ **Исправлено 2026-08-29** — убран `cascade="all, delete-orphan"`, теперь заказы переживают удаление клиента (`customer_id` уходит в `NULL`, как и было задумано FK) |
+| `Branch` → `warehouses` | ~~все склады филиала и всё, что на них~~ | ✅ **Исправлено 2026-08-29** — убран `cascade="all, delete-orphan"`, склады переживают удаление филиала |
 
-Два последних случая — реальный риск потери данных без предупреждения; разбор в [known-issues.md](./known-issues.md#критично-целостность-данных).
+Подробности исправления — [CHANGELOG.md](../CHANGELOG.md).

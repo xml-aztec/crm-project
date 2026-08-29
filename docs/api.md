@@ -37,7 +37,7 @@
 | GET | `/users/pending` | 👑 | Заявки, ожидающие одобрения |
 | GET | `/users/` | 👑 | Список всех пользователей |
 | GET | `/users/paginated` | 👑 | То же с пагинацией/поиском/фильтром по роли и статусу |
-| GET | `/users/me` | 🔓 | Свой профиль |
+| GET | `/users/me` | 🔓 | Свой профиль. С 2026-08-29 включает `is_admin` (вычисляется через RBAC, `app.rbac.service.user_is_admin`) — источник, который теперь использует и фронтенд (`useRoleAccess`) |
 | GET | `/users/me/stats` | 🔓 | Своя статистика по заказам |
 | GET | `/users/me/permissions` | 🔓 | Свои RBAC-права (используется фронтом для `usePermissions`) |
 | GET | `/users/{id}` | 👑 | Профиль пользователя |
@@ -99,9 +99,9 @@
 | GET | `/products/{id}` | 🔓 | Товар по ID с QR и остатком |
 | GET | `/products/{id}/qr` | 🔓 | PNG QR-кода товара |
 | GET | `/products/{id}/qr/download` | 🔓 | То же с заголовком на скачивание |
-| POST | `/products/` | 👑 | Создание товара |
-| PATCH | `/products/{id}` | 👑 | Обновление товара |
-| DELETE | `/products/{id}` | 👑 | Удаление товара |
+| POST | `/products/` | 🔑 `products.create` | Создание товара |
+| PATCH | `/products/{id}` | 🔑 `products.update` | Обновление товара |
+| DELETE | `/products/{id}` | 🔑 `products.delete` | Удаление товара |
 
 ## Customers / Customer Types
 
@@ -109,7 +109,9 @@
 |---|---|---|---|
 | GET | `/customers/`, `/customers/paginated` | 🔑 `customers.read` | Список / пагинация с поиском и фильтрами |
 | GET | `/customers/{id}` | 🔓 | Клиент по ID |
-| POST/PATCH/DELETE | `/customers/...` | 👑 | CRUD |
+| POST | `/customers/` | 🔑 `customers.create` | Создание |
+| PATCH | `/customers/{id}` | 🔑 `customers.update` | Обновление |
+| DELETE | `/customers/{id}` | 🔑 `customers.delete` | Удаление |
 | GET | `/customer-types/` | 🔓 | Справочник типов клиентов |
 | POST/PATCH/DELETE | `/customer-types/...` | 👑 | CRUD типов |
 
@@ -121,18 +123,18 @@
 | GET | `/orders/` | 🔓 + 🔑 `orders.read` | Список с фильтрами |
 | GET | `/orders/{id}` | 🔓 | Заказ по ID (отменённый — виден только автору/админу) |
 | PATCH | `/orders/{id}` | 👤 | Изменение способа оплаты/срока рассрочки — только автор или админ |
-| PATCH | `/orders/{id}/confirm` | 🔓 | Подтверждение — списывает товар со склада, проверяет остаток |
-| PATCH | `/orders/{id}/status` | 🔓 | Смена статуса; отмена требует `cancellation_reason`, доступна только автору/админу |
+| PATCH | `/orders/{id}/confirm` | 👤 | Подтверждение — списывает товар со склада, проверяет остаток; только автор или админ |
+| PATCH | `/orders/{id}/status` | 👤 | Смена статуса; отмена требует `cancellation_reason`; только автор или админ |
 | GET | `/orders/{id}/history` | 🔓 | Таймлайн изменений (аудит) |
 | GET | `/orders/{id}/stock-logs/` | 🔓 + 🔑 `stock.read` | Логи списания/возврата склада по этому заказу |
-| DELETE | `/orders/{id}` | 👑 | Удаление заказа |
-| POST | `/orders/{order_id}/items` | 🔓 | Добавить позицию в **любой** заказ — без проверки владения |
-| PATCH | `/orders/{order_id}/items/{item_id}` | 🔓 | Изменить позицию — без проверки владения |
-| DELETE | `/orders/{order_id}/items/{item_id}` | 🔓 | Удалить позицию — без проверки владения |
+| DELETE | `/orders/{id}` | 🔑 `orders.delete` | Удаление заказа |
+| POST | `/orders/{order_id}/items` | 👤 | Добавить позицию — только автор заказа или админ |
+| PATCH | `/orders/{order_id}/items/{item_id}` | 👤 | Изменить позицию — только автор заказа или админ |
+| DELETE | `/orders/{order_id}/items/{item_id}` | 👤 | Удалить позицию — только автор заказа или админ |
 | GET | `/order-statuses/` | 🔓 | Справочник статусов |
 | POST | `/order-statuses/` | 👑 | Добавить статус |
 
-⚠️ `confirm`/`status`/добавление-изменение-удаление позиций требуют только авторизации, без проверки, что пользователь — владелец заказа или админ (в отличие от `PATCH /orders/{id}` и отмены статуса, где владение проверяется). Подробнее — [known-issues.md](./known-issues.md).
+✅ **Исправлено 2026-08-29**: `confirm`/`status`/добавление-изменение-удаление позиций теперь проверяют владение заказом (`is_order_owner_or_admin`) — раньше требовали только авторизации. См. [CHANGELOG.md](../CHANGELOG.md).
 
 ## Склад: Warehouses / Product Stock / Stock Logs
 
@@ -141,15 +143,15 @@
 | GET | `/warehouses/` | 🔑 `stock.read` | Список складов |
 | GET | `/warehouses/{id}` | 🔓 | Склад по ID |
 | POST/PATCH/DELETE | `/warehouses/...` | 👑 | CRUD складов |
-| POST | `/stock/` | 🔓 | Создать/обновить остаток (upsert по товар+склад) |
+| POST | `/stock/` | 🔑 `stock.create` | Создать/обновить остаток (upsert по товар+склад) |
 | GET | `/stock/` | 🔑 `stock.read` | Список остатков с фильтрами и статистикой |
 | GET | `/stock/{id}` | 🔓 | Остаток по ID |
-| PATCH | `/stock/{id}` | 🔓 | Изменить количество |
-| POST | `/stock/transfer` | 🔓 | Перемещение между складами (атомарно, с проверкой доступного остатка) |
-| DELETE | `/stock/{id}` | 🔓 | Удалить остаток |
+| PATCH | `/stock/{id}` | 🔑 `stock.update` | Изменить количество |
+| POST | `/stock/transfer` | 🔑 `stock.update` | Перемещение между складами (атомарно, с проверкой доступного остатка) |
+| DELETE | `/stock/{id}` | 🔑 `stock.delete` | Удалить остаток |
 | GET | `/stock/logs/`, `/stock/logs/paginated` | 🔑 `stock.read` | Журнал движений с фильтрами |
 
-⚠️ Все write-операции над `/stock/*` (создание, изменение количества, перемещение, удаление) требуют только авторизации — без `stock.write`/`stock.update` или `is_admin`. См. [known-issues.md, п. 5](./known-issues.md#5-складские-write-операции-доступны-любому-авторизованному-пользователю).
+✅ **Исправлено 2026-08-29**: write-операции над `/stock/*` теперь требуют соответствующего RBAC-права (раньше — только авторизации). См. [CHANGELOG.md](../CHANGELOG.md).
 
 ## Suppliers / Supplies
 
@@ -158,11 +160,12 @@
 | GET | `/suppliers/`, `/suppliers/paginated` | 🔑 `supplies.read` | Список поставщиков |
 | GET | `/suppliers/{id}` | 🔓 | Поставщик по ID |
 | POST/PATCH/DELETE | `/suppliers/...` | 👑 | CRUD |
-| POST | `/supplies/` | 👑 | Создание поставки (начисляет товар на склад) |
+| POST | `/supplies/` | 🔑 `supplies.create` | Создание поставки (начисляет товар на склад) |
 | GET | `/supplies/` | 🔑 `supplies.read` | Список поставок с пагинацией |
 | GET | `/supplies/{id}` | 🔓 | Поставка по ID |
 | GET | `/supplies/{id}/pdf` | 🔓 | PDF-накладная с QR |
-| PATCH/DELETE | `/supplies/{id}` | 👑 | Изменение/удаление |
+| PATCH | `/supplies/{id}` | 🔑 `supplies.update` | Изменение |
+| DELETE | `/supplies/{id}` | 🔑 `supplies.delete` | Удаление |
 | GET | `/analytics/supply/daily` | 👑 | Динамика поставок по дням |
 | GET | `/analytics/supply/top-suppliers` | 👑 | Топ поставщиков за месяц |
 | GET | `/analytics/supply/top-supplied-products` | 👑 | Топ поставленных товаров |
@@ -229,4 +232,4 @@
 
 ## Сводка по фактическому использованию RBAC-прав
 
-Из 37 заведённых в `rbac/seed.py` прав в API реально проверяются только 6 (все — `*.read`): `products.read`, `customers.read`, `orders.read`, `stock.read`, `supplies.read`, `cashflow.read`. Остальные права (`*.create`, `*.update`, `*.delete`, `*.approve`, весь `users.*`, `payroll.*`, `reports.*`) существуют в БД и доступны для назначения через `/rbac/roles`, но ни один эндпоинт их не запрашивает — de facto не влияют на доступ.
+**Обновлено 2026-08-29.** Изначально из 37 заведённых в `rbac/seed.py` прав в API реально проверялись только 6 (все — `*.read`). Теперь также проверяются `create`/`update`/`delete` на 5 доменах: `products.{create,update,delete}`, `customers.{create,update,delete}`, `stock.{create,update,delete}`, `orders.delete`, `supplies.{create,update,delete}` — итого 20 из 37 кодов реально влияют на доступ. Остальные права (весь `users.*`, `payroll.*`, `reports.*`, а также `orders.{create,update}`, `cashflow.*` кроме `read`) существуют в БД и доступны для назначения через `/rbac/roles`, но пока не подключены ни к одному эндпоинту — de facto не влияют на доступ (эти домены по-прежнему проверяются через грубый `is_admin`).

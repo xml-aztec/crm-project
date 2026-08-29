@@ -9,4 +9,4 @@ class Branch(Base):
     name = Column(String(100), nullable=False, unique=True)
     location = Column(String(255), nullable=True)
 
-    warehouses = relationship("Warehouse", back_populates="branch", cascade="all, delete-orphan")
+    warehouses = relationship("Warehouse", back_populates="branch")

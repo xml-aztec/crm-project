@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Literal, Optional
 
-from app.core.dependencies import get_current_user, get_db, is_admin
+from app.core.dependencies import get_current_user, get_db
 from app.rbac.dependencies import require_permission
 from app.repositories import customer as repo
 from app.schemas.customer import CustomerCreate, CustomerPage, CustomerRead, CustomerUpdate
@@ -66,7 +66,7 @@ async def get_customer(customer_id: int, db: AsyncSession = Depends(get_db)):
     "/",
     response_model=CustomerRead,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(is_admin)],
+    dependencies=[Depends(require_permission("customers.create"))],
     summary="Создать нового клиента",
     description="Создаёт нового клиента с указанными данными: имя, телефон, email, адрес, тип клиента."
 )
@@ -76,7 +76,7 @@ async def create_customer(data: CustomerCreate, db: AsyncSession = Depends(get_d
 @router.patch(
     "/{customer_id}",
     response_model=CustomerRead,
-    dependencies=[Depends(is_admin)],
+    dependencies=[Depends(require_permission("customers.update"))],
     summary="Обновить данные клиента",
     description="Обновляет информацию о клиенте по его ID. Обновляемые поля: имя, телефон, email, адрес, тип клиента."
 )
@@ -89,7 +89,7 @@ async def update_customer(customer_id: int, data: CustomerUpdate, db: AsyncSessi
 @router.delete(
     "/{customer_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(is_admin)],
+    dependencies=[Depends(require_permission("customers.delete"))],
     summary="Удалить клиента",
     description="Удаляет клиента по его ID. Если клиент не найден — возвращает 404."
 )

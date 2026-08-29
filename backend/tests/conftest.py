@@ -1,4 +1,10 @@
 import os
+
+# Должно быть установлено до `from app.main import app` — core/limiter.py
+# читает этот флаг при импорте, чтобы не спотыкаться о лимит /auth/login
+# (5/мин) при большом количестве логинов в одном прогоне тестов.
+os.environ.setdefault("DISABLE_RATE_LIMIT", "true")
+
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport

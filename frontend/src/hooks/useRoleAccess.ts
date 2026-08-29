@@ -13,7 +13,7 @@ export const useRoleAccess = (): PermissionCheck & {
 
   return useMemo(() => {
     const currentRole = user?.role?.name as UserRole;
-    
+
     const hasRole = (role: UserRole): boolean => {
       return currentRole === role;
     };
@@ -22,7 +22,11 @@ export const useRoleAccess = (): PermissionCheck & {
       return roles.includes(currentRole);
     };
 
-    const isAdmin = currentRole === 'admin' || user?.role_id === 1;
+    // Источник истины — RBAC на бэкенде (`/users/me` -> is_admin, вычисляется
+    // через app.rbac.service.user_is_admin), а не легаси role.name/role_id:
+    // бэкенд больше не считает roles.name достаточным для admin-доступа,
+    // и объект user с /users/me вообще не содержит вложенный role.name.
+    const isAdmin = user?.is_admin === true;
     const isManager = currentRole === 'manager' || isAdmin;
     const canEdit = isManager || currentRole === 'staff';
     const canDelete = isAdmin;

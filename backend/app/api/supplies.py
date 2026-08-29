@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 from datetime import date
 
-from app.core.dependencies import get_current_user, get_db, is_admin
+from app.core.dependencies import get_current_user, get_db
 from app.rbac.dependencies import require_permission
 from app.models.user import User
 from app.schemas.supply import SupplyCreate, SupplyUpdate, SupplyOut, SupplyListResponse
@@ -16,8 +16,8 @@ router = APIRouter(prefix="/supplies", tags=["Supplies"])
     "/",
     response_model=SupplyOut,
     summary="Создать поставку",
-    description="Создаёт новую поставку и обновляет остатки на складе. Доступно только администратору.",
-    dependencies=[Depends(is_admin)]
+    description="Создаёт новую поставку и обновляет остатки на складе.",
+    dependencies=[Depends(require_permission("supplies.create"))]
 )
 async def create_supply(
     data: SupplyCreate,
@@ -89,8 +89,8 @@ async def download_supply_pdf(supply_id: int, db: AsyncSession = Depends(get_db)
     "/{supply_id}",
     response_model=SupplyOut,
     summary="Обновить поставку",
-    description="Редактирует поставку и корректирует остатки на складе. Доступно только администратору.",
-    dependencies=[Depends(is_admin)]
+    description="Редактирует поставку и корректирует остатки на складе.",
+    dependencies=[Depends(require_permission("supplies.update"))]
 )
 async def update_supply(
     supply_id: int,
@@ -104,8 +104,8 @@ async def update_supply(
     "/{supply_id}",
     status_code=204,
     summary="Удалить поставку",
-    description="Удаляет поставку и корректирует остатки. Доступно только администратору.",
-    dependencies=[Depends(is_admin)]
+    description="Удаляет поставку и корректирует остатки.",
+    dependencies=[Depends(require_permission("supplies.delete"))]
 )
 async def delete_supply(
     supply_id: int,
