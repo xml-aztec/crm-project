@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
+from typing import List, Literal, Optional
 
 from app.core.dependencies import get_current_user, get_db, is_admin
 from app.rbac.dependencies import require_permission
 from app.repositories import customer as repo
-from app.schemas.customer import CustomerCreate, CustomerRead, CustomerUpdate
+from app.schemas.customer import CustomerCreate, CustomerPage, CustomerRead, CustomerUpdate
 
 router = APIRouter(prefix="/customers", tags=["Customers"])
 
@@ -22,6 +22,32 @@ async def list_customers(
     limit: int = Query(100, ge=1, le=500),
 ):
     return await repo.get_all(db, skip=skip, limit=limit)
+
+@router.get(
+    "/paginated",
+    response_model=CustomerPage,
+    dependencies=[Depends(get_current_user), Depends(require_permission("customers.read"))],
+    summary="Список клиентов с пагинацией, поиском и фильтрами",
+)
+async def list_customers_paginated(
+    db: AsyncSession = Depends(get_db),
+    search: Optional[str] = Query(None),
+    customer_type_id: Optional[int] = Query(None),
+    sort_by: Literal["name", "email", "created_at"] = Query("name"),
+    sort_order: Literal["asc", "desc"] = Query("asc"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+):
+    items, total, total_pages = await repo.get_paginated(
+        db,
+        search=search,
+        customer_type_id=customer_type_id,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        page_size=page_size,
+    )
+    return CustomerPage(items=items, total=total, page=page, page_size=page_size, total_pages=total_pages)
 
 @router.get(
     "/{customer_id}",

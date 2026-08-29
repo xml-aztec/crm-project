@@ -27,12 +27,12 @@ export const customerTypesApi = createApi({
   tagTypes: ['CustomerType'],
   endpoints: (builder) => ({
     getCustomerTypes: builder.query<CustomerType[], void>({
-      query: () => '/customer-types',
+      query: () => '/customer-types/',
       providesTags: ['CustomerType'],
     }),
     createCustomerType: builder.mutation<CustomerType, CreateCustomerTypeRequest>({
       query: (data) => ({
-        url: '/customer-types',
+        url: '/customer-types/',
         method: 'POST',
         body: data,
       }),

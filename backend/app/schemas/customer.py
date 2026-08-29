@@ -21,3 +21,10 @@ class CustomerRead(CustomerBase):
 
     class Config:
         from_attributes = True
+
+class CustomerPage(BaseModel):
+    items: list[CustomerRead]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int

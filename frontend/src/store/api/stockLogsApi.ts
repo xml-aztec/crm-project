@@ -29,6 +29,25 @@ export interface StockLogsFilters {
   limit?: number;
 }
 
+export interface StockLogsPaginationParams {
+  product_id?: number;
+  warehouse_id?: number;
+  order_id?: number;
+  type?: 'incoming' | 'outgoing' | 'return' | 'adjust';
+  date_from?: string;
+  date_to?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface StockLogPage {
+  items: StockLog[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
 // API для логов движения товаров
 export const stockLogsApi = createApi({
   reducerPath: 'stockLogsApi',
@@ -79,6 +98,22 @@ export const stockLogsApi = createApi({
       keepUnusedDataFor: 300, // 5 минут
     }),
 
+    // Получить логи движения товаров с серверной пагинацией (общее число страниц/записей)
+    getStockLogsPaginated: builder.query<StockLogPage, StockLogsPaginationParams | void>({
+      query: (params) => {
+        const searchParams = new URLSearchParams();
+        if (params) {
+          Object.entries(params).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+              searchParams.append(key, String(value));
+            }
+          });
+        }
+        return `stock/logs/paginated?${searchParams.toString()}`;
+      },
+      providesTags: ['StockLog'],
+    }),
+
     // Получить логи движения для конкретного заказа
     getOrderStockLogs: builder.query<StockLog[], number>({
       query: (orderId) => `orders/${orderId}/stock-logs/`,
@@ -90,5 +125,6 @@ export const stockLogsApi = createApi({
 
 export const {
   useGetStockLogsQuery,
+  useGetStockLogsPaginatedQuery,
   useGetOrderStockLogsQuery,
 } = stockLogsApi;

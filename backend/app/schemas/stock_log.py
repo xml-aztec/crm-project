@@ -36,3 +36,11 @@ class StockLogOut(StockLogBase):
     created_by: Optional[int] = None
     created_by_user: Optional[UserBrief] = None
     model_config = {"from_attributes": True}
+
+
+class StockLogPage(BaseModel):
+    items: list[StockLogOut]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int

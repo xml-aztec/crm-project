@@ -37,6 +37,7 @@ export interface SuppliesResponse {
 export interface SupplyFilters {
   warehouse_id?: number;
   supplier_id?: number;
+  search?: string;
   date_from?: string;
   date_to?: string;
   limit?: number;
@@ -85,6 +86,9 @@ export const suppliesApi = createApi({
         }
         if (filters.supplier_id) {
           params.append('supplier_id', filters.supplier_id.toString());
+        }
+        if (filters.search) {
+          params.append('search', filters.search);
         }
         if (filters.date_from) {
           params.append('date_from', filters.date_from);

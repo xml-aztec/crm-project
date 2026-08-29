@@ -1,7 +1,7 @@
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy import select, delete, func
+from sqlalchemy import and_, or_, select, delete, func
 from app.models.order import Order
 from app.models.product import Product
 from app.models.order_item import OrderItem
@@ -16,6 +16,50 @@ async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100) -> list[U
         select(User).where(User.is_approved == True).offset(skip).limit(limit)
     )
     return result.scalars().all()
+
+
+USER_SORT_COLUMNS = {
+    "full_name": User.full_name,
+    "email": User.email,
+    "created_at": User.created_at,
+}
+
+
+async def get_users_paginated(
+    db: AsyncSession,
+    *,
+    search: Optional[str] = None,
+    role_id: Optional[int] = None,
+    is_active: Optional[bool] = None,
+    sort_by: str = "full_name",
+    sort_order: str = "asc",
+    page: int = 1,
+    page_size: int = 20,
+):
+    filters = [User.is_approved == True]
+    if search:
+        pattern = f"%{search}%"
+        filters.append(or_(User.full_name.ilike(pattern), User.email.ilike(pattern)))
+    if role_id is not None:
+        filters.append(User.role_id == role_id)
+    if is_active is not None:
+        filters.append(User.is_active == is_active)
+
+    where_clause = and_(*filters)
+    query = select(User).where(where_clause)
+    count_query = select(func.count()).select_from(User).where(where_clause)
+
+    sort_column = USER_SORT_COLUMNS.get(sort_by, User.full_name)
+    query = query.order_by(sort_column.desc() if sort_order == "desc" else sort_column.asc())
+
+    total = (await db.execute(count_query)).scalar_one()
+
+    offset = (page - 1) * page_size
+    result = await db.execute(query.offset(offset).limit(page_size))
+    items = result.scalars().all()
+
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    return items, total, total_pages
 
 
 async def update_password(db: AsyncSession, user_id: int, new_password: str) -> None:

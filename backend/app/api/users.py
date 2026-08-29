@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Literal, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -8,6 +8,7 @@ from app.repositories import user as user_repo
 from app.schemas.user import (
     UserDetailedStats,
     UserOut,
+    UserPage,
     UserRead,
     UserStatsOut,
     UserUpdate,
@@ -62,6 +63,36 @@ async def get_current_user_profile(
     current_user: User = Depends(get_current_user)
 ):
     return current_user
+
+
+@router.get(
+    "/paginated",
+    response_model=UserPage,
+    dependencies=[Depends(is_admin)],
+    summary="Список пользователей с пагинацией, поиском и фильтрами",
+    description="Серверная пагинация, поиск по имени/email, фильтр по роли и статусу, сортировка. Только для администраторов."
+)
+async def list_users_paginated(
+    db: AsyncSession = Depends(get_db),
+    search: Optional[str] = Query(None),
+    role_id: Optional[int] = Query(None),
+    is_active: Optional[bool] = Query(None),
+    sort_by: Literal["full_name", "email", "created_at"] = Query("full_name"),
+    sort_order: Literal["asc", "desc"] = Query("asc"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+):
+    items, total, total_pages = await user_repo.get_users_paginated(
+        db,
+        search=search,
+        role_id=role_id,
+        is_active=is_active,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        page_size=page_size,
+    )
+    return UserPage(items=items, total=total, page=page, page_size=page_size, total_pages=total_pages)
 
 
 @router.get(

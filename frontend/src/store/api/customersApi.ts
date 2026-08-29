@@ -30,6 +30,23 @@ export interface UpdateCustomerRequest {
   address?: string;
 }
 
+export interface CustomerPage {
+  items: Customer[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface CustomersPaginationParams {
+  search?: string;
+  customer_type_id?: number;
+  sort_by?: 'name' | 'email' | 'created_at';
+  sort_order?: 'asc' | 'desc';
+  page?: number;
+  page_size?: number;
+}
+
 export const customersApi = createApi({
   reducerPath: 'customersApi',
   baseQuery: fetchBaseQuery({
@@ -43,7 +60,7 @@ export const customersApi = createApi({
   tagTypes: ['Customer'],
   endpoints: (builder) => ({
     getCustomers: builder.query<Customer[], void>({
-      query: () => '/customers',
+      query: () => '/customers/',
       providesTags: (result) =>
         result
           ? [
@@ -52,13 +69,27 @@ export const customersApi = createApi({
             ]
           : [{ type: 'Customer', id: 'LIST' }],
     }),
+    getCustomersPaginated: builder.query<CustomerPage, CustomersPaginationParams | void>({
+      query: (params) => {
+        const search = new URLSearchParams();
+        if (params) {
+          Object.entries(params).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+              search.append(key, String(value));
+            }
+          });
+        }
+        return `/customers/paginated?${search.toString()}`;
+      },
+      providesTags: [{ type: 'Customer', id: 'LIST' }],
+    }),
     getCustomerById: builder.query<Customer, number>({
       query: (id) => `/customers/${id}`,
       providesTags: (_, __, id) => [{ type: 'Customer', id }],
     }),
     createCustomer: builder.mutation<Customer, CreateCustomerRequest>({
       query: (newCustomer) => ({
-        url: '/customers',
+        url: '/customers/',
         method: 'POST',
         body: newCustomer,
       }),
@@ -87,6 +118,7 @@ export const customersApi = createApi({
 
 export const {
   useGetCustomersQuery,
+  useGetCustomersPaginatedQuery,
   useGetCustomerByIdQuery,
   useCreateCustomerMutation,
   useUpdateCustomerMutation,

@@ -1,118 +1,76 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
-import { useGetStockLogsQuery } from '../../store/api/stockLogsApi';
+import { useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router';
+import { useGetStockLogsPaginatedQuery } from '../../store/api/stockLogsApi';
 import { useGetProductsQuery } from '../../store/api/catalogApi';
 import { useGetWarehousesQuery } from '../../store/api/warehouseApi';
-import { useDebounce } from '../../hooks/useDebounce';
+import { useTableUrlState } from '../../hooks/useTableUrlState';
 import { FilterDatePicker } from '../../components/form/DatePickerVariants';
 import Label from '../../components/form/Label';
 import Button from '../../components/ui/button/Button';
+import Pagination from '../../components/common/Pagination';
+import CatalogSearchInput from '../../components/catalog/CatalogSearchInput';
 
-const ITEMS_PER_PAGE = 20; 
+const ITEMS_PER_PAGE = 20;
 
-interface StockLogsFilters {
-  product_id?: number;
-  warehouse_id?: number;
-  order_id?: number;
-  type?: 'incoming' | 'outgoing' | 'return' | 'adjust';
-  date_from?: string;
-  date_to?: string;
-  skip?: number;
-  limit?: number;
+interface StockLogFilterValues extends Record<string, string> {
+  product_id: string;
+  warehouse_id: string;
+  order_id: string;
+  type: string;
+  date_from: string;
+  date_to: string;
 }
 
 export default function StockLogsPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [filters, setFilters] = useState<StockLogsFilters>(() => {
-    const orderId = searchParams.get('order_id');
-    return orderId ? { order_id: Number(orderId) } : {};
+  const { page, search, filters, setPage, setSearch, setFilter, reset } = useTableUrlState<StockLogFilterValues>({
+    prefix: 'stocklog',
+    defaultSortBy: 'created_at',
+    defaultFilters: {
+      product_id: '',
+      warehouse_id: '',
+      order_id: '',
+      type: '',
+      date_from: '',
+      date_to: '',
+    },
   });
-  
-  // Отдельно обрабатываем поиск для локальной фильтрации
-  const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  
-  // Дебаунс только для API параметров
-  const debouncedFilters = useDebounce(filters, 300);
 
-  // Параметры для API запроса с правильной пагинацией
   const queryParams = useMemo(() => ({
-    product_id: debouncedFilters.product_id,
-    warehouse_id: debouncedFilters.warehouse_id,
-    order_id: debouncedFilters.order_id,
-    type: debouncedFilters.type,
-    date_from: debouncedFilters.date_from,
-    date_to: debouncedFilters.date_to,
-    skip: (currentPage - 1) * ITEMS_PER_PAGE,
-    limit: ITEMS_PER_PAGE,
-  }), [debouncedFilters, currentPage]);
+    product_id: filters.product_id ? Number(filters.product_id) : undefined,
+    warehouse_id: filters.warehouse_id ? Number(filters.warehouse_id) : undefined,
+    order_id: filters.order_id ? Number(filters.order_id) : undefined,
+    type: (filters.type || undefined) as 'incoming' | 'outgoing' | 'return' | 'adjust' | undefined,
+    date_from: filters.date_from || undefined,
+    date_to: filters.date_to || undefined,
+    page,
+    page_size: ITEMS_PER_PAGE,
+  }), [filters, page]);
 
   const {
-    data: apiResponse,
+    data,
     isLoading,
+    isFetching,
     error,
     refetch
-  } = useGetStockLogsQuery(queryParams);
+  } = useGetStockLogsPaginatedQuery(queryParams);
 
   const { data: products = [] } = useGetProductsQuery();
   const { data: warehouses = [] } = useGetWarehousesQuery();
 
-  // Локальная фильтрация по названию товара
+  const logs = useMemo(() => data?.items ?? [], [data]);
+
+  // Локальный поиск по названию товара — работает в пределах загруженной страницы
+  // (сервер фильтрует по product_id, а не по свободному тексту).
   const filteredStockLogs = useMemo(() => {
-    if (!apiResponse) return [];
-
-    let logs = Array.isArray(apiResponse) ? apiResponse : [];
-    
-    // Применяем локальный поиск по названию товара
-    if (debouncedSearchTerm.trim()) {
-      const searchLower = debouncedSearchTerm.toLowerCase();
-      logs = logs.filter(log => {
-        const product = products.find(p => p.id === log.product_id);
-        const productName = product?.name || '';
-        return productName.toLowerCase().includes(searchLower);
-      });
-    }
-
-    return logs;
-  }, [apiResponse, debouncedSearchTerm, products]);
-
-  // Пагинация на основе размера ответа API
-  const pagination = useMemo(() => {
-    const hasPrevious = currentPage > 1;
-    const hasNext = filteredStockLogs.length === ITEMS_PER_PAGE; // Если получили полную страницу, значит есть следующая
-    
-    return {
-      currentPage,
-      hasNext,
-      hasPrevious,
-      nextPage: () => {
-        if (hasNext) {
-          setCurrentPage(prev => prev + 1);
-        }
-      },
-      prevPage: () => {
-        if (hasPrevious) {
-          setCurrentPage(prev => prev - 1);
-        }
-      },
-      goToPage: (page: number) => {
-        if (page >= 1) {
-          setCurrentPage(page);
-        }
-      },
-      resetToFirstPage: () => {
-        setCurrentPage(1);
-      }
-    };
-  }, [currentPage, filteredStockLogs.length]);
-
-  // Сброс пагинации при изменении фильтров или поиска
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filters.product_id, filters.warehouse_id, filters.order_id, filters.type, filters.date_from, filters.date_to, debouncedSearchTerm]);
+    if (!search.trim()) return logs;
+    const searchLower = search.toLowerCase();
+    return logs.filter(log => {
+      const product = products.find(p => p.id === log.product_id);
+      return (product?.name || '').toLowerCase().includes(searchLower);
+    });
+  }, [logs, search, products]);
 
   const operationTypeOptions = [
     { value: 'incoming', label: 'Поступление' },
@@ -121,27 +79,7 @@ export default function StockLogsPage() {
     { value: 'adjust', label: 'Корректировка' },
   ];
 
-  // Обработчики фильтров
-  const handleFilterChange = useCallback((field: keyof StockLogsFilters, value: any) => {
-    setFilters(prev => ({
-      ...prev,
-      [field]: value === '' ? undefined : value
-    }));
-  }, []);
-
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchTerm(value);
-  }, []);
-
-  const clearFilters = useCallback(() => {
-    setFilters({});
-    setSearchTerm('');
-  }, []);
-
-  // Проверяем, есть ли активные фильтры
-  const hasActiveFilters = useMemo(() => {
-    return Object.values(filters).some(value => value !== undefined) || searchTerm.trim() !== '';
-  }, [filters, searchTerm]);
+  const hasActiveFilters = !!search || Object.values(filters).some((v) => !!v);
 
   // Вспомогательные функции
   const getProductName = useCallback((productId: number) => {
@@ -209,7 +147,7 @@ export default function StockLogsPage() {
   }, []);
 
   // Loading состояние
-  if (isLoading && !filteredStockLogs.length) {
+  if (isLoading && !logs.length) {
     return (
       <div className="max-w-7xl mx-auto p-6">
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -263,41 +201,28 @@ export default function StockLogsPage() {
             История всех операций со складскими остатками
           </p>
         </div>
-        
+
         <Button onClick={() => navigate('/stock')}>
           Управление остатками
         </Button>
       </div>
 
-      {/* Оптимизированные фильтры */}
+      {/* Фильтры */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
         {/* Первая строка - Поиск и Товар на всю ширину */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           {/* Поиск по названию товара (локальная фильтрация) */}
           <div>
             <Label>Поиск по названию товара</Label>
-            <div className="relative">
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Название товара..."
-              />
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-            </div>
+            <CatalogSearchInput value={search} onChange={setSearch} placeholder="Название товара..." />
           </div>
 
           {/* Товар (API фильтр) */}
           <div>
             <Label>Товар</Label>
             <select
-              value={filters.product_id?.toString() || ''}
-              onChange={(e) => handleFilterChange('product_id', e.target.value ? parseInt(e.target.value) : undefined)}
+              value={filters.product_id}
+              onChange={(e) => setFilter('product_id', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">Все товары</option>
@@ -316,8 +241,8 @@ export default function StockLogsPage() {
           <div>
             <Label>Склад</Label>
             <select
-              value={filters.warehouse_id?.toString() || ''}
-              onChange={(e) => handleFilterChange('warehouse_id', e.target.value ? parseInt(e.target.value) : undefined)}
+              value={filters.warehouse_id}
+              onChange={(e) => setFilter('warehouse_id', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">Все склады</option>
@@ -333,8 +258,8 @@ export default function StockLogsPage() {
           <div>
             <Label>Тип операции</Label>
             <select
-              value={filters.type || ''}
-              onChange={(e) => handleFilterChange('type', e.target.value || undefined)}
+              value={filters.type}
+              onChange={(e) => setFilter('type', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">Все операции</option>
@@ -352,8 +277,8 @@ export default function StockLogsPage() {
             <FilterDatePicker
               id="stock-logs-date-from"
               placeholder="Дата от"
-              value={filters.date_from || ''}
-              onChange={(_dates, dateStr) => handleFilterChange('date_from', dateStr)}
+              value={filters.date_from}
+              onChange={(_dates, dateStr) => setFilter('date_from', dateStr)}
             />
           </div>
 
@@ -363,8 +288,8 @@ export default function StockLogsPage() {
             <FilterDatePicker
               id="stock-logs-date-to"
               placeholder="Дата до"
-              value={filters.date_to || ''}
-              onChange={(_dates, dateStr) => handleFilterChange('date_to', dateStr)}
+              value={filters.date_to}
+              onChange={(_dates, dateStr) => setFilter('date_to', dateStr)}
             />
           </div>
         </div>
@@ -372,7 +297,7 @@ export default function StockLogsPage() {
         {/* Кнопка очистки фильтров */}
         {hasActiveFilters && (
           <div className="mt-4 flex justify-end">
-            <Button variant="outline" size="sm" onClick={clearFilters}>
+            <Button variant="outline" size="sm" onClick={reset}>
               Очистить фильтры
             </Button>
           </div>
@@ -380,8 +305,8 @@ export default function StockLogsPage() {
       </div>
 
       {/* Контейнер таблицы */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-        {isLoading && (
+      <div className="relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+        {isFetching && (
           <div className="absolute top-0 left-0 right-0 h-1 bg-blue-200 dark:bg-blue-800 overflow-hidden z-20">
             <div className="h-full bg-blue-500 dark:bg-blue-400 animate-pulse"></div>
           </div>
@@ -435,10 +360,10 @@ export default function StockLogsPage() {
                   </th>
                 </tr>
               </thead>
-              <tbody className={`bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 ${isLoading ? 'opacity-70' : ''}`}>
+              <tbody className={`bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 ${isFetching ? 'opacity-70' : ''}`}>
                 {filteredStockLogs.map((log, index) => (
-                  <tr 
-                    key={log.id} 
+                  <tr
+                    key={log.id}
                     className={`
                       transition-all duration-150
                       hover:bg-blue-50 dark:hover:bg-blue-900/10 hover:shadow-sm
@@ -475,8 +400,8 @@ export default function StockLogsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`text-sm font-medium ${
-                        log.type === 'outgoing' 
-                          ? 'text-red-600 dark:text-red-400' 
+                        log.type === 'outgoing'
+                          ? 'text-red-600 dark:text-red-400'
                           : log.type === 'incoming'
                           ? 'text-blue-600 dark:text-blue-400'
                           : log.type === 'return'
@@ -504,68 +429,9 @@ export default function StockLogsPage() {
           </div>
         )}
 
-        {/* Улучшенная пагинация */}
-        {(pagination.hasPrevious || pagination.hasNext) && (
-          <div className="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 sm:px-6">
-            <div className="flex-1 flex justify-between sm:hidden">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={pagination.prevPage}
-                disabled={!pagination.hasPrevious || isLoading}
-              >
-                Назад
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={pagination.nextPage}
-                disabled={!pagination.hasNext || isLoading}
-              >
-                Далее
-              </Button>
-            </div>
-            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-gray-700 dark:text-gray-300">
-                  Страница <span className="font-medium">{currentPage}</span>
-                  {filteredStockLogs.length > 0 && (
-                    <>, показано <span className="font-medium">{filteredStockLogs.length}</span> записей</>
-                  )}
-                </p>
-              </div>
-              <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={pagination.prevPage}
-                    disabled={!pagination.hasPrevious || isLoading}
-                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700"
-                  >
-                    <span className="sr-only">Предыдущая</span>
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-                    </svg>
-                  </Button>
-                  <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300">
-                    {currentPage}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={pagination.nextPage}
-                    disabled={!pagination.hasNext || isLoading}
-                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700"
-                  >
-                    <span className="sr-only">Следующая</span>
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
-                    </svg>
-                  </Button>
-                </nav>
-              </div>
-            </div>
+        {data && (
+          <div className="border-t border-gray-200 dark:border-gray-700">
+            <Pagination page={page} totalPages={data.total_pages} total={data.total} onPageChange={setPage} />
           </div>
         )}
       </div>

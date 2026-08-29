@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import List, Optional
+from typing import List, Literal, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas.supplier import SupplierOut, SupplierCreate, SupplierUpdate
+from app.schemas.supplier import SupplierOut, SupplierCreate, SupplierPage, SupplierUpdate
 from app.repositories import supplier as repo
 from app.core.dependencies import get_current_user, get_db, is_admin
 from app.rbac.dependencies import require_permission
@@ -18,6 +18,24 @@ router = APIRouter(prefix="/suppliers", tags=["Suppliers"])
 )
 async def list_suppliers(db: AsyncSession = Depends(get_db)):
     return await repo.get_all(db)
+
+@router.get(
+    "/paginated",
+    response_model=SupplierPage,
+    dependencies=[Depends(get_current_user), Depends(require_permission("supplies.read"))],
+    summary="Список поставщиков с пагинацией и поиском",
+)
+async def list_suppliers_paginated(
+    db: AsyncSession = Depends(get_db),
+    search: Optional[str] = Query(None),
+    sort_order: Literal["asc", "desc"] = Query("asc"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+):
+    items, total, total_pages = await repo.get_paginated(
+        db, search=search, sort_order=sort_order, page=page, page_size=page_size,
+    )
+    return SupplierPage(items=items, total=total, page=page, page_size=page_size, total_pages=total_pages)
 
 @router.get(
     "/{supplier_id}",

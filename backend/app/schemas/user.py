@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from typing import Annotated, List, Optional, Union
 from datetime import datetime
 
@@ -6,7 +6,7 @@ class UserBase(BaseModel):
     email: EmailStr
     full_name: Optional[str] = None
     phone: Optional[str] = None
-    role_id: int
+    role_id: Optional[int] = None
     position_id: Optional[int] = None
     salary_base: Optional[int] = None
 
@@ -34,15 +34,24 @@ class UserUpdate(BaseModel):
     salary_base: Optional[int] = None
 
 class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     email: EmailStr
     full_name: str
     phone: Optional[str] = None
     is_approved: bool
-    role_id: int
+    role_id: Optional[int] = None
     position_id: Optional[int] = None
     is_active: Optional[bool] = None
     salary_base: Optional[int] = None
+
+class UserPage(BaseModel):
+    items: List[UserOut]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
 
 class UserStatsOut(BaseModel):
     orders_count: int

@@ -1,6 +1,24 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { UserRead } from './userApi';
 
+export interface UserPage {
+  items: UserRead[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface UsersPaginationParams {
+  search?: string;
+  role_id?: number;
+  is_active?: boolean;
+  sort_by?: 'full_name' | 'email' | 'created_at';
+  sort_order?: 'asc' | 'desc';
+  page?: number;
+  page_size?: number;
+}
+
 // Тип для пользователя, ожидающего одобрения
 export interface PendingUser {
   id: number;
@@ -56,7 +74,22 @@ export const usersManagementApi = createApi({
   endpoints: (builder) => ({
     // Получение всех пользователей
     getAllUsers: builder.query<UserRead[], void>({
-      query: () => '/users',
+      query: () => '/users/',
+      providesTags: ['Users']
+    }),
+
+    getUsersPaginated: builder.query<UserPage, UsersPaginationParams | void>({
+      query: (params) => {
+        const search = new URLSearchParams();
+        if (params) {
+          Object.entries(params).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+              search.append(key, String(value));
+            }
+          });
+        }
+        return `/users/paginated?${search.toString()}`;
+      },
       providesTags: ['Users']
     }),
 
@@ -149,6 +182,7 @@ export const usersManagementApi = createApi({
 
 export const {
   useGetAllUsersQuery,
+  useGetUsersPaginatedQuery,
   useGetPendingUsersQuery,
   useGetUserByIdQuery,
   useApproveUserMutation,

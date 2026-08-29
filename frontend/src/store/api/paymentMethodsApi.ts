@@ -32,12 +32,12 @@ export const paymentMethodsApi = createApi({
   tagTypes: ['PaymentMethod'],
   endpoints: (builder) => ({
     getPaymentMethods: builder.query<PaymentMethod[], void>({
-      query: () => '/payment-methods',
+      query: () => '/payment-methods/',
       providesTags: ['PaymentMethod'],
     }),
     createPaymentMethod: builder.mutation<PaymentMethod, CreatePaymentMethodRequest>({
       query: (data) => ({
-        url: '/payment-methods',
+        url: '/payment-methods/',
         method: 'POST',
         body: data,
       }),

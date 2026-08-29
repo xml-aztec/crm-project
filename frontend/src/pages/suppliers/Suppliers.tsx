@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from "react-router";
-import { 
-  useGetSuppliersQuery, 
+import {
+  useGetSuppliersPaginatedQuery,
   useCreateSupplierMutation,
   useUpdateSupplierMutation,
   useDeleteSupplierMutation,
@@ -9,38 +9,45 @@ import {
   CreateSupplierRequest,
   UpdateSupplierRequest
 } from '../../store/api/suppliersApi';
+import { useTableUrlState } from '../../hooks/useTableUrlState';
 import Button from '../../components/ui/button/Button';
 import SupplierModal from '../../components/suppliers/SupplierModal';
 import DeleteConfirmModal from '../../components/ui/DeleteConfirmModal';
+import Pagination from '../../components/common/Pagination';
+import CatalogSearchInput from '../../components/catalog/CatalogSearchInput';
+
+const PAGE_SIZE = 20;
 
 const Suppliers: React.FC = () => {
   const navigate = useNavigate();
-  
-  // Состояние
-  const [searchTerm, setSearchTerm] = useState('');
+
+  const { page, search, setPage, setSearch, reset } = useTableUrlState({
+    prefix: 'supplier',
+    defaultSortBy: 'name',
+  });
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | undefined>();
   const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
 
   // API запросы
-  const { 
-    data: suppliers = [], 
-    isLoading, 
-    error, 
-    refetch 
-  } = useGetSuppliersQuery();
-  
+  const {
+    data,
+    isLoading,
+    isFetching,
+    error,
+    refetch
+  } = useGetSuppliersPaginatedQuery({
+    search: search || undefined,
+    page,
+    page_size: PAGE_SIZE,
+  });
+
   const [createSupplier, { isLoading: isCreating }] = useCreateSupplierMutation();
   const [updateSupplier, { isLoading: isUpdating }] = useUpdateSupplierMutation();
   const [deleteSupplier, { isLoading: isDeleting }] = useDeleteSupplierMutation();
 
-  // Фильтрация поставщиков
-  const filteredSuppliers = suppliers.filter(supplier =>
-    supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    supplier.contact_person.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    supplier.contact_info.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    supplier.address.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const suppliers = data?.items ?? [];
 
   // Обработчики
   const handleCreateSupplier = useCallback(() => {
@@ -115,10 +122,10 @@ const Suppliers: React.FC = () => {
             Управление поставщиками
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Просмотр и управление базой поставщиков
+            Просмотр и управление базой поставщиков{data ? ` (всего: ${data.total})` : ''}
           </p>
         </div>
-        
+
         <Button onClick={handleCreateSupplier}>
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -131,23 +138,19 @@ const Suppliers: React.FC = () => {
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Поиск по названию, контактному лицу, контактам или адресу..."
-              />
-            </div>
+            <CatalogSearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Поиск по названию, контактному лицу, контактам или адресу..."
+            />
           </div>
-          
+
           <div className="flex gap-2">
+            {search && (
+              <Button variant="outline" onClick={reset} className="whitespace-nowrap">
+                Сбросить поиск
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => navigate('/supplies')}
@@ -173,22 +176,22 @@ const Suppliers: React.FC = () => {
       </div>
 
       {/* Таблица поставщиков */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         {isLoading ? (
           <div className="text-center py-12">
             <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
             <p className="text-gray-600 dark:text-gray-400">Загрузка поставщиков...</p>
           </div>
-        ) : filteredSuppliers.length === 0 ? (
+        ) : suppliers.length === 0 ? (
           <div className="text-center py-12">
             <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              {searchTerm ? 'Поставщики не найдены' : 'Нет поставщиков'}
+              {search ? 'Поставщики не найдены' : 'Нет поставщиков'}
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              {searchTerm 
+              {search
                 ? 'Попробуйте изменить параметры поиска'
                 : 'Добавьте первого поставщика'
               }
@@ -199,6 +202,11 @@ const Suppliers: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
+            {isFetching && (
+              <div className="absolute top-0 left-0 right-0 h-1 bg-blue-200 dark:bg-blue-800 overflow-hidden z-20">
+                <div className="h-full bg-blue-500 dark:bg-blue-400 animate-pulse"></div>
+              </div>
+            )}
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-900/50">
                 <tr>
@@ -219,8 +227,8 @@ const Suppliers: React.FC = () => {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredSuppliers.map((supplier) => (
+              <tbody className={`bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 ${isFetching ? 'opacity-70' : ''}`}>
+                {suppliers.map((supplier) => (
                   <tr key={supplier.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -279,6 +287,12 @@ const Suppliers: React.FC = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {data && (
+          <div className="border-t border-gray-200 dark:border-gray-700">
+            <Pagination page={page} totalPages={data.total_pages} total={data.total} onPageChange={setPage} />
           </div>
         )}
       </div>

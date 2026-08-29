@@ -36,6 +36,7 @@ async def create_supply(
 async def list_supplies(
     warehouse_id: Optional[int] = Query(None, description="Фильтр по складу"),
     supplier_id: Optional[int] = Query(None, description="Фильтр по ID поставщика"),
+    search: Optional[str] = Query(None, description="Поиск по названию поставщика"),
     date_from: Optional[date] = Query(None, description="Начальная дата поставки"),
     date_to: Optional[date] = Query(None, description="Конечная дата поставки"),
     limit: int = Query(20, ge=1, le=100),
@@ -46,6 +47,7 @@ async def list_supplies(
         db,
         warehouse_id=warehouse_id,
         supplier_id=supplier_id,
+        search=search,
         date_from=date_from,
         date_to=date_to,
         limit=limit,

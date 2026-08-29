@@ -1,81 +1,89 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { 
-  useGetSuppliesQuery, 
-  useDeleteSupplyMutation, 
-  SupplyFilters 
+import {
+  useGetSuppliesQuery,
+  useDeleteSupplyMutation,
 } from '../../store/api/suppliesApi';
 import { useGetSuppliersQuery } from '../../store/api/suppliersApi';
 import { useGetWarehousesQuery } from '../../store/api/warehouseApi';
+import { useTableUrlState } from '../../hooks/useTableUrlState';
 import Button from '../../components/ui/button/Button';
 import DeleteConfirmModal from '../../components/ui/DeleteConfirmModal';
 import { FilterDatePicker } from '../../components/form/DatePickerVariants';
 import Select from '../../components/form/Select';
 import Label from '../../components/form/Label';
-import Input from '../../components/form/input/InputField';
+import CatalogSearchInput from '../../components/catalog/CatalogSearchInput';
+import Pagination from '../../components/common/Pagination';
 import { formatDateTime } from '../../utils/dateUtils';
+
+const PAGE_SIZE = 20;
+
+interface SupplyFilterValues extends Record<string, string> {
+  warehouse_id: string;
+  supplier_id: string;
+  date_from: string;
+  date_to: string;
+}
 
 const SuppliesManagement: React.FC = () => {
   const navigate = useNavigate();
-  
-  // Состояние фильтров
-  const [filters, setFilters] = useState<SupplyFilters>({
-    warehouse_id: undefined,
-    supplier_id: undefined,
-    date_from: undefined,
-    date_to: undefined,
-    limit: 20,
-    offset: 0
+
+  const { page, search, filters, setPage, setSearch, setFilter, reset } = useTableUrlState<SupplyFilterValues>({
+    prefix: 'supply',
+    defaultSortBy: 'created_at',
+    defaultFilters: {
+      warehouse_id: '',
+      supplier_id: '',
+      date_from: '',
+      date_to: '',
+    },
   });
-  
-  const [searchTerm, setSearchTerm] = useState('');
+
   const [supplyToDelete, setSupplyToDelete] = useState<any>(null);
-  const [page, setPage] = useState(1);
-  
+
   // API запросы
-  const { 
-    data: suppliesResponse, 
-    isLoading: suppliesLoading, 
-    error: suppliesError, 
-    refetch 
+  const {
+    data: suppliesResponse,
+    isLoading: suppliesLoading,
+    isFetching,
+    error: suppliesError,
+    refetch
   } = useGetSuppliesQuery({
-    ...filters,
-    offset: (page - 1) * (filters.limit || 20)
+    warehouse_id: filters.warehouse_id ? Number(filters.warehouse_id) : undefined,
+    supplier_id: filters.supplier_id ? Number(filters.supplier_id) : undefined,
+    search: search || undefined,
+    date_from: filters.date_from || undefined,
+    date_to: filters.date_to || undefined,
+    limit: PAGE_SIZE,
+    offset: (page - 1) * PAGE_SIZE,
   });
-  
+
   const { data: warehouses = [] } = useGetWarehousesQuery();
   const { data: suppliers = [] } = useGetSuppliersQuery();
   const [deleteSupply, { isLoading: isDeleting }] = useDeleteSupplyMutation();
-  
+
   // Данные поставок
   const supplies = suppliesResponse?.items || [];
   const totalSupplies = suppliesResponse?.total || 0;
-  const totalPages = Math.ceil(totalSupplies / (filters.limit || 20));
-  
-  // ✅ СОЗДАЕМ: Опции для Select компонентов
-  const warehouseOptions = React.useMemo(() => 
+  const totalPages = Math.max(1, Math.ceil(totalSupplies / PAGE_SIZE));
+
+  const warehouseOptions = React.useMemo(() =>
     warehouses.map(warehouse => ({
       value: warehouse.id.toString(),
       label: warehouse.name
     }))
   , [warehouses]);
 
-  const supplierOptions = React.useMemo(() => 
+  const supplierOptions = React.useMemo(() =>
     suppliers.map(supplier => ({
       value: supplier.id.toString(),
       label: supplier.name
     }))
   , [suppliers]);
-  
-  // Обработчики
-  const handleFilterChange = useCallback((field: keyof SupplyFilters, value: any) => {
-    setFilters(prev => ({ ...prev, [field]: value }));
-    setPage(1); // Сброс пагинации при изменении фильтров
-  }, []);
-  
+
   const handleDeleteSupply = useCallback(async () => {
     if (!supplyToDelete) return;
-    
+
     try {
       await deleteSupply(supplyToDelete.id).unwrap();
       setSupplyToDelete(null);
@@ -83,25 +91,14 @@ const SuppliesManagement: React.FC = () => {
       console.error('Ошибка при удалении поставки:', error);
     }
   }, [supplyToDelete, deleteSupply]);
-  
-  const clearFilters = useCallback(() => {
-    setFilters({
-      warehouse_id: undefined,
-      supplier_id: undefined,
-      date_from: undefined,
-      date_to: undefined,
-      limit: 20,
-      offset: 0
-    });
-    setSearchTerm('');
-    setPage(1);
-  }, []);
-  
+
+  const hasActiveFilters = !!search || !!filters.warehouse_id || !!filters.supplier_id || !!filters.date_from || !!filters.date_to;
+
   // Вычисление общей стоимости поставки
   const calculateSupplyTotal = (items: any[]) => {
     return items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
   };
-  
+
   // Loading состояние
   if (suppliesLoading && supplies.length === 0) {
     return (
@@ -112,7 +109,7 @@ const SuppliesManagement: React.FC = () => {
       </div>
     );
   }
-  
+
   // Error состояние
   if (suppliesError) {
     return (
@@ -138,7 +135,7 @@ const SuppliesManagement: React.FC = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
       {/* Header */}
@@ -151,7 +148,7 @@ const SuppliesManagement: React.FC = () => {
             Просмотр и управление поставками товаров от поставщиков
           </p>
         </div>
-        
+
         <Button onClick={() => navigate('/supplies/create')}>
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -159,84 +156,80 @@ const SuppliesManagement: React.FC = () => {
           Создать поставку
         </Button>
       </div>
-      
+
       {/* Фильтры */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          {/* ✅ ЗАМЕНЯЕМ: Поиск - используем Input */}
+          {/* Поиск по поставщику */}
           <div>
             <Label>Поиск</Label>
-            <div className="relative">
-              <Input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Поиск по поставщику..."
-                className="pl-10"
-              />
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-            </div>
+            <CatalogSearchInput value={search} onChange={setSearch} placeholder="Поиск по поставщику..." />
           </div>
-          
-          {/* ✅ ЗАМЕНЯЕМ: Склад - используем Select */}
+
+          {/* Склад */}
           <div>
             <Label>Склад</Label>
             <Select
+              key={filters.warehouse_id}
               options={warehouseOptions}
-              onChange={(value) => handleFilterChange('warehouse_id', value ? parseInt(value) : undefined)}
+              defaultValue={filters.warehouse_id}
+              onChange={(value) => setFilter('warehouse_id', value)}
               placeholder="Все склады"
             />
           </div>
-          
-          {/* ✅ ЗАМЕНЯЕМ: Поставщик - используем Select */}
+
+          {/* Поставщик */}
           <div>
             <Label>Поставщик</Label>
             <Select
+              key={filters.supplier_id}
               options={supplierOptions}
-              onChange={(value) => handleFilterChange('supplier_id', value ? parseInt(value) : undefined)}
+              defaultValue={filters.supplier_id}
+              onChange={(value) => setFilter('supplier_id', value)}
               placeholder="Все поставщики"
             />
           </div>
-          
-          {/* ✅ ЗАМЕНЯЕМ: Дата от - используем FilterDatePicker */}
+
+          {/* Дата от */}
           <div>
             <Label>Дата от</Label>
             <FilterDatePicker
               id="supplies-date-from"
               placeholder="Дата от"
-              value={filters.date_from || ''}
-              onChange={(_dates, dateStr) => handleFilterChange('date_from', dateStr)}
+              value={filters.date_from}
+              onChange={(_dates, dateStr) => setFilter('date_from', dateStr)}
             />
           </div>
-          
-          {/* ✅ ЗАМЕНЯЕМ: Дата до - используем FilterDatePicker */}
+
+          {/* Дата до */}
           <div>
             <Label>Дата до</Label>
             <FilterDatePicker
               id="supplies-date-to"
               placeholder="Дата до"
-              value={filters.date_to || ''}
-              onChange={(_dates, dateStr) => handleFilterChange('date_to', dateStr)}
+              value={filters.date_to}
+              onChange={(_dates, dateStr) => setFilter('date_to', dateStr)}
             />
           </div>
         </div>
-        
+
         {/* Кнопка очистки фильтров */}
-        {(filters.warehouse_id || filters.supplier_id || filters.date_from || filters.date_to || searchTerm) && (
+        {hasActiveFilters && (
           <div className="mt-4 flex justify-end">
-            <Button variant="outline" size="sm" onClick={clearFilters}>
+            <Button variant="outline" size="sm" onClick={reset}>
               Очистить фильтры
             </Button>
           </div>
         )}
       </div>
-      
+
       {/* Таблица поставок */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        {isFetching && (
+          <div className="absolute top-0 left-0 right-0 h-1 bg-blue-200 dark:bg-blue-800 overflow-hidden z-20">
+            <div className="h-full bg-blue-500 dark:bg-blue-400 animate-pulse"></div>
+          </div>
+        )}
         {supplies.length === 0 ? (
           <div className="text-center py-12">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -246,7 +239,7 @@ const SuppliesManagement: React.FC = () => {
               Поставки не найдены
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              {Object.values(filters).some(Boolean) || searchTerm
+              {hasActiveFilters
                 ? 'Попробуйте изменить параметры поиска или фильтры'
                 : 'Создайте первую поставку'
               }
@@ -286,7 +279,7 @@ const SuppliesManagement: React.FC = () => {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className={`bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 ${isFetching ? 'opacity-70' : ''}`}>
                 {supplies.map((supply) => (
                   <tr key={supply.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
@@ -327,7 +320,7 @@ const SuppliesManagement: React.FC = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
                         </button>
-                        
+
                         <button
                           onClick={() => navigate(`/supplies/${supply.id}/edit`)}
                           className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
@@ -337,7 +330,7 @@ const SuppliesManagement: React.FC = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
                         </button>
-                        
+
                         <button
                           onClick={() => setSupplyToDelete(supply)}
                           className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
@@ -355,41 +348,14 @@ const SuppliesManagement: React.FC = () => {
             </table>
           </div>
         )}
+
+        {suppliesResponse && (
+          <div className="border-t border-gray-200 dark:border-gray-700">
+            <Pagination page={page} totalPages={totalPages} total={totalSupplies} onPageChange={setPage} />
+          </div>
+        )}
       </div>
-      
-      {/* Пагинация */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-            Показано {Math.min((page - 1) * (filters.limit || 20) + 1, totalSupplies)} - {Math.min(page * (filters.limit || 20), totalSupplies)} из {totalSupplies}
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(page - 1)}
-              disabled={page <= 1}
-            >
-              Назад
-            </Button>
-            
-            <span className="text-sm text-gray-700 dark:text-gray-300">
-              Страница {page} из {totalPages}
-            </span>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(page + 1)}
-              disabled={page >= totalPages}
-            >
-              Далее
-            </Button>
-          </div>
-        </div>
-      )}
-      
+
       {/* Модал подтверждения удаления */}
       <DeleteConfirmModal
         isOpen={!!supplyToDelete}

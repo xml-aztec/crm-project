@@ -18,6 +18,7 @@ async def count_supplies(
     db: AsyncSession,
     warehouse_id: Optional[int] = None,
     supplier_id: Optional[int] = None,
+    search: Optional[str] = None,
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
 ) -> int:
@@ -32,6 +33,9 @@ async def count_supplies(
         filters.append(Supply.delivered_at <= date_to)
 
     stmt = select(func.count(Supply.id))
+    if search:
+        stmt = stmt.join(Supplier, Supply.supplier_id == Supplier.id)
+        filters.append(Supplier.name.ilike(f"%{search}%"))
     if filters:
         stmt = stmt.where(and_(*filters))
 
@@ -126,6 +130,7 @@ async def get_all_supplies(
     db: AsyncSession,
     warehouse_id: Optional[int] = None,
     supplier_id: Optional[int] = None,
+    search: Optional[str] = None,
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
     limit: int = 50,
@@ -145,6 +150,7 @@ async def get_all_supplies(
         db,
         warehouse_id=warehouse_id,
         supplier_id=supplier_id,
+        search=search,
         date_from=date_from,
         date_to=date_to
     )
@@ -161,6 +167,10 @@ async def get_all_supplies(
         .offset(offset)
         .limit(limit)
     )
+
+    if search:
+        query = query.join(Supplier, Supply.supplier_id == Supplier.id)
+        filters.append(Supplier.name.ilike(f"%{search}%"))
 
     if filters:
         query = query.where(and_(*filters))

@@ -1,35 +1,35 @@
-import { useState } from 'react';
 import PageBreadCrumb from "../../components/common/PageBreadCrumb";
+import Pagination from "../../components/common/Pagination";
 import UsersTable from "../../components/users/UsersTable";
-import { useGetAllUsersQuery } from "../../store/api/usersManagementApi";
+import { useGetUsersPaginatedQuery } from "../../store/api/usersManagementApi";
 import { useGetRolesQuery, useGetPositionsQuery } from "../../store/api/rolesPositionsApi";
+import { useTableUrlState } from "../../hooks/useTableUrlState";
+import CatalogSearchInput from "../../components/catalog/CatalogSearchInput";
+
+const PAGE_SIZE = 20;
 
 export default function Users() {
-  const { data: users = [], isLoading: usersLoading, error: usersError } = useGetAllUsersQuery();
-  const { data: roles = [], isLoading: rolesLoading } = useGetRolesQuery();
-  const { data: positions = [], isLoading: positionsLoading } = useGetPositionsQuery();
-  
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [roleFilter, setRoleFilter] = useState('all');
-
-  // Фильтрация пользователей (без должности в фильтрах)
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'active' && user.is_active) ||
-                         (statusFilter === 'inactive' && !user.is_active);
-    
-    const matchesRole = roleFilter === 'all' || 
-                       user.role?.id.toString() === roleFilter ||
-                       user.role_id?.toString() === roleFilter;
-
-    return matchesSearch && matchesStatus && matchesRole;
+  const { page, search, sortBy, sortOrder, filters, setPage, setSearch, setFilter, reset } = useTableUrlState({
+    prefix: 'user',
+    defaultSortBy: 'full_name',
+    defaultFilters: { role_id: '', status: '' },
   });
 
-  const isLoading = usersLoading || rolesLoading || positionsLoading; // Включаем positions в загрузку
+  const { data, isLoading: usersLoading, isFetching, error: usersError } = useGetUsersPaginatedQuery({
+    search: search || undefined,
+    role_id: filters.role_id ? Number(filters.role_id) : undefined,
+    is_active: filters.status === 'active' ? true : filters.status === 'inactive' ? false : undefined,
+    sort_by: sortBy as 'full_name' | 'email' | 'created_at',
+    sort_order: sortOrder,
+    page,
+    page_size: PAGE_SIZE,
+  });
+  const { data: roles = [], isLoading: rolesLoading } = useGetRolesQuery();
+  const { data: positions = [], isLoading: positionsLoading } = useGetPositionsQuery();
+
+  const users = data?.items ?? [];
+  const isLoading = usersLoading || rolesLoading || positionsLoading;
+  const hasActiveFilters = !!search || !!filters.role_id || !!filters.status;
 
   if (usersError) {
     return (
@@ -37,7 +37,7 @@ export default function Users() {
         <PageBreadCrumb pageTitle="Все пользователи" />
         <div className="rounded-2xl border border-red-200 bg-red-50 p-5 dark:border-red-800 dark:bg-red-900/20">
           <p className="text-red-600 dark:text-red-400">
-            Ошибка при загрузке пользователей: {(usersError as any)?.data?.detail || 'Неизвестная ошибка'}
+            Ошибка при загрузке пользователей: {(usersError as { data?: { detail?: string } })?.data?.detail || 'Неизвестная ошибка'}
           </p>
         </div>
       </>
@@ -60,9 +60,9 @@ export default function Users() {
           </div>
           <div className="flex items-center gap-4">
             <div className="text-sm text-gray-500 dark:text-gray-400">
-              Найдено: <span className="font-medium text-gray-900 dark:text-white">{filteredUsers.length}</span> из {users.length}
+              Найдено: <span className="font-medium text-gray-900 dark:text-white">{data?.total ?? 0}</span>
             </div>
-            {isLoading && (
+            {(isLoading || isFetching) && (
               <div className="flex items-center gap-2">
                 <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-brand-500"></div>
                 <span className="text-xs text-gray-500 dark:text-gray-400">Загрузка...</span>
@@ -71,7 +71,7 @@ export default function Users() {
           </div>
         </div>
 
-        {/* Filters and Search - только 3 фильтра (без должности) */}
+        {/* Filters and Search */}
         <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 mb-6">
           <div className="flex items-center gap-2 mb-4">
             <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,28 +79,18 @@ export default function Users() {
             </svg>
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Фильтры</span>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search Input */}
-            <div className="relative">
+            <div>
               <label htmlFor="search" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Поиск пользователей
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                  </svg>
-                </div>
-                <input
-                  type="text"
-                  id="search"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
-                  placeholder="Поиск по имени или email..."
-                />
-              </div>
+              <CatalogSearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder="Поиск по имени или email..."
+              />
             </div>
 
             {/* Status Filter */}
@@ -110,11 +100,11 @@ export default function Users() {
               </label>
               <select
                 id="status"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                value={filters.status}
+                onChange={(e) => setFilter('status', e.target.value)}
+                className="w-full h-11 px-4 border border-gray-300 rounded-lg bg-transparent focus:ring-2 focus:ring-brand-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               >
-                <option value="all">Все статусы</option>
+                <option value="">Все статусы</option>
                 <option value="active">Активные</option>
                 <option value="inactive">Неактивные</option>
               </select>
@@ -127,12 +117,12 @@ export default function Users() {
               </label>
               <select
                 id="role"
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
+                value={filters.role_id}
+                onChange={(e) => setFilter('role_id', e.target.value)}
                 disabled={rolesLoading}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
+                className="w-full h-11 px-4 border border-gray-300 rounded-lg bg-transparent focus:ring-2 focus:ring-brand-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
               >
-                <option value="all">Все роли</option>
+                <option value="">Все роли</option>
                 {roles.map(role => (
                   <option key={role.id} value={role.id.toString()}>{role.name}</option>
                 ))}
@@ -141,14 +131,10 @@ export default function Users() {
           </div>
 
           {/* Clear Filters Button */}
-          {(searchTerm || statusFilter !== 'all' || roleFilter !== 'all') && (
+          {hasActiveFilters && (
             <div className="mt-4 flex justify-end">
               <button
-                onClick={() => {
-                  setSearchTerm('');
-                  setStatusFilter('all');
-                  setRoleFilter('all');
-                }}
+                onClick={reset}
                 className="px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
               >
                 Сбросить фильтры
@@ -156,14 +142,17 @@ export default function Users() {
             </div>
           )}
         </div>
-        
-        {/* Передаем positions в таблицу */}
-        <UsersTable 
-          users={filteredUsers} 
+
+        <UsersTable
+          users={users}
           isLoading={usersLoading}
           roles={roles}
           positions={positions}
         />
+
+        {data && (
+          <Pagination page={page} totalPages={data.total_pages} total={data.total} onPageChange={setPage} />
+        )}
       </div>
     </>
   );

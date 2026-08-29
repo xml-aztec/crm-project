@@ -19,3 +19,10 @@ class SupplierOut(SupplierBase):
     model_config = {
         "from_attributes": True
     }
+
+class SupplierPage(BaseModel):
+    items: list[SupplierOut]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int

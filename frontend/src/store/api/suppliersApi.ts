@@ -23,6 +23,21 @@ export interface UpdateSupplierRequest {
   address?: string;
 }
 
+export interface SupplierPage {
+  items: Supplier[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface SuppliersPaginationParams {
+  search?: string;
+  sort_order?: 'asc' | 'desc';
+  page?: number;
+  page_size?: number;
+}
+
 // API для поставщиков
 export const suppliersApi = createApi({
   reducerPath: 'suppliersApi',
@@ -41,6 +56,22 @@ export const suppliersApi = createApi({
       query: () => 'suppliers/',
       providesTags: ['Supplier'],
       keepUnusedDataFor: 300, // 5 минут
+    }),
+
+    // Получить поставщиков с серверной пагинацией и поиском
+    getSuppliersPaginated: builder.query<SupplierPage, SuppliersPaginationParams | void>({
+      query: (params) => {
+        const search = new URLSearchParams();
+        if (params) {
+          Object.entries(params).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+              search.append(key, String(value));
+            }
+          });
+        }
+        return `suppliers/paginated?${search.toString()}`;
+      },
+      providesTags: ['Supplier'],
     }),
 
     // Получить поставщика по ID
@@ -82,6 +113,7 @@ export const suppliersApi = createApi({
 
 export const {
   useGetSuppliersQuery,
+  useGetSuppliersPaginatedQuery,
   useGetSupplierByIdQuery,
   useCreateSupplierMutation,
   useUpdateSupplierMutation,

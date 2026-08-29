@@ -15,13 +15,13 @@ export const rolesPositionsApi = createApi({
   endpoints: (builder) => ({
     // Получение всех ролей
     getRoles: builder.query<Role[], void>({
-      query: () => '/roles',
+      query: () => '/roles/',
       providesTags: ['Roles']
     }),
     
     // Получение всех должностей
     getPositions: builder.query<Position[], void>({
-      query: () => '/positions',
+      query: () => '/positions/',
       providesTags: ['Positions']
     }),
   }),

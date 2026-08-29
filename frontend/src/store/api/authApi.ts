@@ -47,13 +47,13 @@ export const authApi = createApi({
   endpoints: (builder) => ({
     // Получение списка позиций
     getPositions: builder.query<Position[], void>({
-      query: () => '/positions',
+      query: () => '/positions/',
       providesTags: ['Positions']
     }),
     
     // Получение списка ролей
     getRoles: builder.query<Role[], void>({
-      query: () => '/roles',
+      query: () => '/roles/',
       providesTags: ['Roles']
     }),
     

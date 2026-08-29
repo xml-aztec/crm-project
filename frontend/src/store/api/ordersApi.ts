@@ -333,7 +333,7 @@ export const ordersApi = createApi({
 
     createOrder: builder.mutation<Order, CreateOrderRequest>({
       query: (data) => ({
-        url: '/orders',
+        url: '/orders/',
         method: 'POST',
         body: data,
       }),
@@ -418,12 +418,12 @@ export const ordersApi = createApi({
 
     // Справочники
     getOrderStatuses: builder.query<OrderStatus[], void>({
-      query: () => '/order-statuses',
+      query: () => '/order-statuses/',
       providesTags: ['OrderStatus'],
     }),
 
     getCustomers: builder.query<Customer[], void>({
-      query: () => '/customers',
+      query: () => '/customers/',
       providesTags: ['Customer'],
     }),
 
