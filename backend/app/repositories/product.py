@@ -162,9 +162,15 @@ async def get_by_code(db: AsyncSession, code: str) -> Optional[Product]:
     return None
 
 
+POSTGRES_INT_MAX = 2147483647
+
+
 def _scan_lookup_conditions(code: str):
     conditions = [Product.sku == code, Product.barcode == code]
-    if code.isdigit():
+    # EAN-13/UPC штрихкоды тоже состоят только из цифр и могут быть длиннее,
+    # чем помещается в PostgreSQL INTEGER (id) — без этой проверки asyncpg
+    # падает с DataError вместо аккуратного "товар не найден".
+    if code.isdigit() and int(code) <= POSTGRES_INT_MAX:
         conditions.append(Product.id == int(code))
     return conditions
 
