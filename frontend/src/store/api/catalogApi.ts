@@ -233,6 +233,11 @@ export const catalogApi = createApi({
       invalidatesTags: ['Product'],
     }),
 
+    scanProduct: builder.query<Product, string>({
+      query: (code) => `products/scan/${encodeURIComponent(code)}`,
+      providesTags: (_, __, code) => [{ type: 'Product', id: `scan-${code}` }],
+    }),
+
     getProductQRCode: builder.query<Blob, number>({
       query: (id) => ({
         url: `products/${id}/qr`,
@@ -495,6 +500,7 @@ export const catalogApi = createApi({
 export const {
   useGetProductsQuery,
   useGetProductQuery,
+  useLazyScanProductQuery,
   useCreateProductMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,

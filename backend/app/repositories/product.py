@@ -128,6 +128,47 @@ async def get_by_id(db: AsyncSession, product_id: int) -> Optional[Product]:
 
     return product
 
+
+async def _attach_computed_fields(db: AsyncSession, product: Product) -> Product:
+    product.qr_code = generate_qr_base64(product.sku or str(product.id))
+    stock_query = await db.execute(
+        select(func.coalesce(func.sum(ProductStock.quantity), 0))
+        .where(ProductStock.product_id == product.id)
+    )
+    product.available_quantity = stock_query.scalar()
+    return product
+
+
+async def get_by_code(db: AsyncSession, code: str) -> Optional[Product]:
+    """Ищет товар по отсканированному коду: сначала SKU, затем штрихкод,
+    и наконец по ID (если код состоит только из цифр — так закодированы
+    QR-коды товаров без SKU)."""
+    code = code.strip()
+    if not code:
+        return None
+
+    base_query = select(Product).options(
+        selectinload(Product.category),
+        selectinload(Product.subcategory),
+        selectinload(Product.brand),
+    )
+
+    for condition in _scan_lookup_conditions(code):
+        result = await db.execute(base_query.where(condition))
+        product = result.scalar_one_or_none()
+        if product:
+            return await _attach_computed_fields(db, product)
+
+    return None
+
+
+def _scan_lookup_conditions(code: str):
+    conditions = [Product.sku == code, Product.barcode == code]
+    if code.isdigit():
+        conditions.append(Product.id == int(code))
+    return conditions
+
+
 async def create(db: AsyncSession, data: ProductCreate):
     if data.barcode and not validate_ean13(data.barcode):
         raise HTTPException(status_code=400, detail="Невалидный EAN‑13 штрихкод")

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { 
   useCreateProductMutation, 
   useGetBrandsQuery, 
@@ -36,7 +36,10 @@ interface FormErrors {
 
 export default function CreateProduct() {
   const navigate = useNavigate();
-  
+  const [searchParams] = useSearchParams();
+
+  // Предзаполнение из сканера штрихкодов/QR (см. components/scanner):
+  // при "товар не найден" ссылка на создание передаёт отсканированный код.
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     description: '',
@@ -46,8 +49,8 @@ export default function CreateProduct() {
     category_id: '',
     subcategory_id: '',
     brand_id: '',
-    sku: '',
-    barcode: '',
+    sku: searchParams.get('sku') || '',
+    barcode: searchParams.get('barcode') || '',
   });
 
   const [errors, setErrors] = useState<FormErrors>({});

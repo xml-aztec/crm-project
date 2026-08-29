@@ -212,6 +212,23 @@ async def import_products_excel(
 
 
 @router.get(
+    "/scan/{code}",
+    response_model=ProductRead,
+    summary="Найти товар по отсканированному коду",
+    description="Ищет товар по SKU, штрихкоду или ID (если код состоит только из цифр). Используется сканером QR-кодов/штрихкодов."
+)
+async def scan_product(
+    code: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+    __: User = Depends(require_permission("products.read")),
+):
+    product = await repo.get_by_code(db, code)
+    if not product:
+        raise HTTPException(status_code=404, detail="Товар не найден")
+    return product
+
+@router.get(
     "/{product_id}",
     response_model=ProductRead,
     summary="Получить товар по ID",
