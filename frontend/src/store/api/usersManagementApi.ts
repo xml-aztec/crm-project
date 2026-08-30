@@ -25,7 +25,9 @@ export interface PendingUser {
   full_name: string;
   email: string;
   phone?: string;
-  position_id: number;
+  // Должность больше не задаётся при регистрации — всегда null до одобрения,
+  // администратор выбирает её в форме одобрения (см. PendingUsersTable).
+  position_id: number | null;
   role_id: number;
   position?: {
     id: number;
@@ -105,11 +107,13 @@ export const usersManagementApi = createApi({
       providesTags: (_result, _error, id) => [{ type: 'Users', id }]
     }),
 
-    // Одобрение пользователя
-    approveUser: builder.mutation<{ success: boolean; message: string }, number>({
-      query: (id) => ({
+    // Одобрение пользователя — должность больше не запрашивается при
+    // регистрации, поэтому администратор выбирает её здесь.
+    approveUser: builder.mutation<UserRead, { id: number; position_id: number }>({
+      query: ({ id, position_id }) => ({
         url: `/users/${id}/approve`,
-        method: 'PUT'
+        method: 'PUT',
+        body: { position_id },
       }),
       invalidatesTags: ['Users', 'PendingUsers']
     }),

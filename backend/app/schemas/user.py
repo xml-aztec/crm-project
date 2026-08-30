@@ -11,12 +11,18 @@ class UserBase(BaseModel):
     salary_base: Optional[int] = None
 
 class UserRegister(BaseModel):
-    """Публичная регистрация: роль и зарплата не выбираются клиентом — назначаются сервером."""
+    """Публичная регистрация: роль, зарплата и должность не выбираются клиентом —
+    роль назначается сервером, должность выставляет администратор при одобрении
+    заявки (см. UserApprove)."""
     email: EmailStr
     full_name: Optional[str] = None
     phone: Optional[str] = None
-    position_id: Optional[int] = None
     password: str
+
+class UserApprove(BaseModel):
+    """Тело запроса на одобрение заявки — администратор выбирает должность,
+    т.к. при регистрации она больше не запрашивается."""
+    position_id: int
 
 class UserRead(UserBase):
     id: int

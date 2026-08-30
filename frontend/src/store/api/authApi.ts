@@ -2,23 +2,11 @@ import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQueryWithReauth } from './baseQuery';
 
 // Типы данных для запросов и ответов
-export interface Position {
-  id: number;
-  name: string;
-  description?: string;
-}
-
-export interface Role {
-  id: number;
-  name: string;
-  description?: string;
-}
-
 export interface RegisterRequest {
   full_name: string;
   email: string;
+  phone: string;
   password: string;
-  position_id: number;
 }
 
 export interface RegisterResponse {
@@ -48,7 +36,6 @@ export interface LoginRequest {
 export const authApi = createApi({
   reducerPath: 'authApi',
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['Positions', 'Roles'],
   endpoints: (builder) => ({
     // Вход в систему — FastAPI's OAuth2PasswordRequestForm требует
     // form-urlencoded тело с полями username/password, не JSON.
@@ -74,18 +61,6 @@ export const authApi = createApi({
       }),
     }),
 
-    // Получение списка позиций
-    getPositions: builder.query<Position[], void>({
-      query: () => '/positions/',
-      providesTags: ['Positions']
-    }),
-    
-    // Получение списка ролей
-    getRoles: builder.query<Role[], void>({
-      query: () => '/roles/',
-      providesTags: ['Roles']
-    }),
-    
     // Регистрация нового пользователя
     register: builder.mutation<RegisterResponse, RegisterRequest>({
       query: (credentials) => ({
@@ -119,8 +94,6 @@ export const authApi = createApi({
 export const {
   useLoginMutation,
   useLogoutMutation,
-  useGetPositionsQuery,
-  useGetRolesQuery,
   useRegisterMutation,
   useForgotPasswordMutation,
   useResetPasswordMutation,

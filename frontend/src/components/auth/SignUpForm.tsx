@@ -1,14 +1,11 @@
 import { useState, ChangeEvent, FormEvent, useCallback } from "react";
-import { Link } from "react-router"; 
+import { Link } from "react-router";
 import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
 import Button from "../ui/button/Button";
-import { 
-  useGetPositionsQuery, 
-  useRegisterMutation 
-} from "../../store/api/authApi";
+import { useRegisterMutation } from "../../store/api/authApi";
 
 // Структуры данных и константы без изменений
 interface FormData {
@@ -16,7 +13,6 @@ interface FormData {
   email: string;
   password: string;
   phone: string;
-  position_id: number;
 }
 
 interface ValidationErrors {
@@ -24,7 +20,6 @@ interface ValidationErrors {
   email?: string;
   password?: string;
   phone?: string;
-  position_id?: string;
   terms?: string;
   general?: string;
 }
@@ -50,9 +45,8 @@ const ERROR_MESSAGES = {
 
 export default function SignUpForm() {
   // Хуки и состояния (без изменений)
-  const { data: positions = [], isLoading: isPositionsLoading } = useGetPositionsQuery();
   const [register, { isLoading: isSubmitting, isSuccess }] = useRegisterMutation();
-  
+
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isChecked, setIsChecked] = useState<boolean>(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
@@ -61,16 +55,15 @@ export default function SignUpForm() {
     email: "",
     password: "",
     phone: "",
-    position_id: 0
   });
 
   // Функции обработчиков без изменений (handleChange, validateField, validateForm, isFormValid)
   const handleChange = useCallback((e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    
+
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'position_id' ? Number(value) : value
+      [name]: value
     }));
 
     if (errors[name as keyof ValidationErrors]) {
@@ -106,10 +99,6 @@ export default function SignUpForm() {
         if (!value) return ERROR_MESSAGES.REQUIRED;
         if (typeof value === 'string' && !VALIDATION_RULES.PHONE_REGEX.test(value.trim()))
           return ERROR_MESSAGES.PHONE_INVALID;
-        break;
-      
-      case 'position_id':
-        if (!value || value === 0) return ERROR_MESSAGES.REQUIRED;
         break;
     }
     return undefined;
@@ -332,41 +321,9 @@ export default function SignUpForm() {
                 </div>
               </div>
               
-              {/* Должность - исправлен цвет плейсхолдера для темной темы */}
-              <div>
-                <Label>
-                  Должность <span className="text-error-500">*</span>
-                </Label>
-                <select
-                  id="position_id"
-                  name="position_id"
-                  value={formData.position_id}
-                  onChange={handleChange}
-                  disabled={isSubmitting || isPositionsLoading}
-                  // Добавляем условный класс для цвета текста при value=0
-                  className={`w-full h-11 rounded-lg border bg-transparent px-3 py-2 text-sm outline-none transition-all 
-                    ${formData.position_id === 0 ? 'text-gray-500 dark:text-gray-300' : ''} 
-                    ${errors.position_id 
-                    ? 'border-error-500 bg-error-50 dark:border-error-500 dark:bg-error-900/20' 
-                    : 'border-gray-200 hover:border-brand-500 dark:border-gray-700 dark:hover:border-brand-500'} 
-                    disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  {/* Убираем класс с option, т.к. он часто игнорируется браузерами */}
-                  <option value={0}>Выберите должность</option>
-                  {positions.map((position) => (
-                    <option key={position.id} value={position.id}>
-                      {position.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.position_id && (
-                  <p className="mt-1 text-xs text-error-500">{errors.position_id}</p>
-                )}
-              </div>
-              
-              {/* Краткая заметка о роли */}
+              {/* Краткая заметка о роли и должности */}
               <div className="text-xs text-gray-500 dark:text-gray-400">
-                <span className="font-medium">Примечание:</span> При регистрации вам будет автоматически назначена роль "Менеджер"
+                <span className="font-medium">Примечание:</span> При регистрации вам будет автоматически назначена роль "Менеджер". Должность администратор укажет при одобрении заявки.
               </div>
               
               {/* Согласие с правилами */}
@@ -409,7 +366,7 @@ export default function SignUpForm() {
                 const form = document.querySelector('form');
                 if (form) form.requestSubmit();
               }}
-              disabled={isSubmitting || !isFormValid() || isPositionsLoading}
+              disabled={isSubmitting || !isFormValid()}
             >
               {isSubmitting ? "Отправка..." : "Зарегистрироваться"}
             </Button>

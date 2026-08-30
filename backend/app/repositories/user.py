@@ -218,7 +218,9 @@ async def create_user(db: AsyncSession, user_data: UserRegister, role_id: int):
         full_name=user_data.full_name,
         phone=user_data.phone,
         role_id=role_id,
-        position_id=user_data.position_id,
+        # position_id намеренно не задаётся здесь — должность больше не
+        # запрашивается при регистрации, её выставляет администратор в
+        # approve_user() при одобрении заявки.
     )
     db.add(db_user)
     await db.flush()
@@ -260,11 +262,12 @@ async def list_pending_users(db: AsyncSession):
     result = await db.execute(select(User).where(User.is_approved == False))
     return result.scalars().all()
 
-async def approve_user(db: AsyncSession, user_id: int):
+async def approve_user(db: AsyncSession, user_id: int, position_id: int):
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user:
         user.is_approved = True
+        user.position_id = position_id
         await db.commit()
         await db.refresh(user)
     return user

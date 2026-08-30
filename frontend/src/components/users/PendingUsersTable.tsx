@@ -22,11 +22,26 @@ export default function PendingUsersTable({ users, isLoading, roles, positions }
   const [approveUser] = useApproveUserMutation();
   const [deletePendingUser] = useDeletePendingUserMutation();
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  // Должность больше не приходит с заявкой — админ выбирает её здесь, перед
+  // одобрением. Ключ — id заявки, значение — выбранный id должности (0 = не выбрано).
+  const [selectedPositions, setSelectedPositions] = useState<Record<number, number>>({});
+
+  const handlePositionChange = (userId: number, positionId: number) => {
+    setSelectedPositions(prev => ({ ...prev, [userId]: positionId }));
+  };
 
   const handleApprove = async (id: number) => {
+    const positionId = selectedPositions[id];
+    if (!positionId) return;
+
     setActionLoading(id);
     try {
-      await approveUser(id).unwrap();
+      await approveUser({ id, position_id: positionId }).unwrap();
+      setSelectedPositions(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     } catch (error) {
       console.error('Ошибка при одобрении пользователя:', error);
     } finally {
@@ -54,15 +69,6 @@ export default function PendingUsersTable({ users, isLoading, roles, positions }
     return 'Не указано';
   };
 
-
-  const getPositionName = (user: PendingUser) => {
-    if (user.position?.name) return user.position.name;
-    if (user.position_id) {
-      const position = positions.find(p => p.id === user.position_id);
-      return position?.name || 'Не указано';
-    }
-    return 'Не указано';
-  };
 
   if (isLoading) {
     return (
@@ -101,7 +107,7 @@ export default function PendingUsersTable({ users, isLoading, roles, positions }
                 isHeader
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Должность
+                Должность (выбрать для одобрения)
               </TableCell>
               <TableCell
                 isHeader
@@ -160,9 +166,21 @@ export default function PendingUsersTable({ users, isLoading, roles, positions }
                   {getRoleName(user)}
                 </TableCell>
 
-                {/* Должность - используем helper функцию */}
+                {/* Должность выбирается администратором перед одобрением */}
                 <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                  {getPositionName(user)}
+                  <select
+                    value={selectedPositions[user.id] ?? 0}
+                    onChange={(e) => handlePositionChange(user.id, Number(e.target.value))}
+                    disabled={actionLoading === user.id}
+                    className="w-full min-w-[160px] rounded-lg border border-gray-200 bg-transparent px-2 py-1.5 text-sm outline-none transition-all hover:border-brand-500 disabled:opacity-50 disabled:cursor-not-allowed dark:border-gray-700 dark:hover:border-brand-500"
+                  >
+                    <option value={0}>Выберите должность</option>
+                    {positions.map((position) => (
+                      <option key={position.id} value={position.id}>
+                        {position.name}
+                      </option>
+                    ))}
+                  </select>
                 </TableCell>
 
                 {/* Дата подачи */}
@@ -177,9 +195,9 @@ export default function PendingUsersTable({ users, isLoading, roles, positions }
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleApprove(user.id)}
-                      disabled={actionLoading === user.id}
+                      disabled={actionLoading === user.id || !selectedPositions[user.id]}
                       className="flex items-center justify-center w-8 h-8 text-green-600 bg-green-100 rounded-lg hover:bg-green-200 dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:text-green-400 disabled:opacity-50 transition-colors"
-                      title="Одобрить заявку"
+                      title={selectedPositions[user.id] ? "Одобрить заявку" : "Сначала выберите должность"}
                     >
                       {actionLoading === user.id ? (
                         <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>

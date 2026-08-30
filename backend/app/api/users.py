@@ -2,10 +2,12 @@ from typing import List, Literal, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from app.repositories import user as user_repo
 from app.schemas.user import (
+    UserApprove,
     UserDetailedStats,
     UserOut,
     UserPage,
@@ -272,15 +274,24 @@ async def delete_user(
     "/{user_id}/approve",
     response_model=UserRead,
     summary="Подтверждение пользователя",
-    description="Одобряет регистрацию пользователя и делает его активным. Только для администраторов."
+    description="""
+    Одобряет регистрацию пользователя и делает его активным. Только для администраторов.
+
+    Должность больше не указывается заявителем при регистрации — администратор
+    выбирает её здесь, в теле запроса.
+    """
 )
 async def approve_user(
     user_id: int,
+    data: UserApprove,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(is_admin),
 ):
-    user = await user_repo.approve_user(db, user_id)
+    try:
+        user = await user_repo.approve_user(db, user_id, data.position_id)
+    except IntegrityError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Некорректная должность")
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
     await send_approval_email(background_tasks, user.email, user.full_name)
