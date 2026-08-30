@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
-  useGetNotificationsQuery,
+  useGetNotificationsPaginatedQuery,
+  useGetUnreadCountQuery,
   useMarkReadMutation,
   useMarkAllReadMutation,
   type AppNotification,
@@ -19,12 +20,14 @@ function typeIcon(type: string | null): string {
   switch (type) {
     case 'order': return '🛒';
     case 'user': return '👤';
+    case 'task_reminder': return '⏰';
     default: return '🔔';
   }
 }
 
 function getLink(notif: AppNotification): string | null {
   if (notif.type === 'order' && notif.entity_id) return `/orders/${notif.entity_id}`;
+  if (notif.type === 'task_reminder' && notif.entity_id) return `/calendar?task=${notif.entity_id}`;
   if (notif.type === 'user') return '/';
   return null;
 }
@@ -37,16 +40,21 @@ interface Props {
 export default function NotificationDropdown({ isOpen, onClose }: Props) {
   const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [page, setPage] = useState(1);
 
-  const { data: notifications = [], isLoading } = useGetNotificationsQuery(undefined, {
+  const { data, isLoading, isFetching } = useGetNotificationsPaginatedQuery(page, {
     pollingInterval: 30000,
     skip: false,
   });
+  const notifications = data?.items ?? [];
+  const hasMore = data ? page < data.total_pages : false;
+
+  const { data: unreadData } = useGetUnreadCountQuery(undefined, { pollingInterval: 30000 });
 
   const [markRead] = useMarkReadMutation();
   const [markAllRead, { isLoading: isMarkingAll }] = useMarkAllReadMutation();
 
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
+  const unreadCount = unreadData?.count ?? 0;
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -57,6 +65,10 @@ export default function NotificationDropdown({ isOpen, onClose }: Props) {
     if (isOpen) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (isOpen) setPage(1);
+  }, [isOpen]);
 
   const handleNotifClick = async (notif: AppNotification) => {
     if (!notif.is_read) {
@@ -142,6 +154,18 @@ export default function NotificationDropdown({ isOpen, onClose }: Props) {
               ))
             )}
           </ul>
+
+          {hasMore && (
+            <div className="border-t border-gray-100 p-2 dark:border-gray-700">
+              <button
+                onClick={() => setPage((p) => p + 1)}
+                disabled={isFetching}
+                className="w-full rounded-lg py-2 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-700/50"
+              >
+                {isFetching ? 'Загрузка...' : 'Показать ещё'}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

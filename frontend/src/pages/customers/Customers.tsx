@@ -6,6 +6,7 @@ import CatalogSearchInput from '../../components/catalog/CatalogSearchInput';
 import Button from '../../components/ui/button/Button';
 import Alert from '../../components/ui/alert/Alert';
 import CustomerModal from '../../components/customers/CustomerModal';
+import TaskModal from '../../components/tasks/TaskModal';
 import {
   useGetCustomersPaginatedQuery,
   useCreateCustomerMutation,
@@ -57,6 +58,7 @@ export default function Customers() {
   // Состояния модального окна
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
   // Состояние для алертов
@@ -434,11 +436,19 @@ export default function Customers() {
             setEditingCustomer(null);
           }}
           onSubmit={editingCustomer ? handleUpdateCustomer : handleCreateCustomer}
+          onScheduleTask={() => setIsTaskModalOpen(true)}
           customer={editingCustomer}
           isLoading={isCreating || isUpdating}
           customerTypes={customerTypes}
         />
       )}
+
+      <TaskModal
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        initialCustomerId={editingCustomer?.id}
+        initialCustomerLabel={editingCustomer?.name}
+      />
     </>
   );
 }

@@ -82,3 +82,30 @@
 
 - 388 строк тестовых пользователей (`*-test-<uuid>@example.com`), накопленные в локальной dev-БД за предыдущие прогоны тестов — не относится к текущей задаче, не трогалось.
 - Форматирование `black` не применялось ко всей кодовой базе (145 файлов "would reformat") — `black --check` подтверждён рабочим после мажорного бампа 25→26, но массовое переформатирование не входило в scope.
+
+## 2026-08-31 — Личные задачи/напоминания и движок уведомлений
+
+Реализовано по согласованному плану (`.claude/plans/gentle-leaping-wigderson.md`): личные задачи (без назначения другим сотрудникам), привязка к клиенту/заказу, встроенный (без Redis/Celery) фоновый планировщик напоминаний, email+in-app уведомления с настраиваемыми предпочтениями по типу события.
+
+### Добавлено — бэкенд
+
+- **Модели**: `Task` (`backend/app/models/task.py` — владелец, срок, напоминание, статус/приоритет, необязательные `customer_id`/`order_id`, атомарная метка `reminder_sent_at`), `NotificationType` (расширяемый справочник типов события — новый тип добавляется строкой в БД, без изменения кода) и `NotificationPreference` (email/in_app по типу, с дефолтами из `NotificationType`, если у пользователя нет своей записи). В `Notification` добавлен `read_at` (рядом с существующим `is_read`, оба поддерживаются синхронно) — существующие продюсеры уведомлений (`api/users.py`, `api/orders.py`) не тронуты.
+- **API**: `backend/app/api/tasks.py` — CRUD задач текущего пользователя с фильтрами (статус/даты/клиент/заказ), `is_task_owner_or_admin` (по образцу `is_order_owner_or_admin`, без записи в RBAC-матрицу — задачи личные, как `is_self_or_admin`), плюс `?user_id=` для админа. `backend/app/api/notifications.py` дополнен пагинацией и `GET`/`PUT /notifications/preferences`.
+- **Фоновая обработка напоминаний**: встроенный `AsyncIOScheduler` (APScheduler) в `lifespan` (`backend/app/main.py`) — интервал задаётся `TASK_REMINDER_INTERVAL_MINUTES`, без отдельного процесса/брокера. Идемпотентность — атомарный `UPDATE ... WHERE reminder_sent_at IS NULL ... FOR UPDATE SKIP LOCKED` в `task_repo.claim_due_reminders`, а не блокировка на уровне планировщика. Служебный `POST /tasks/reminders/process` (заголовок `X-Reminder-Token`, сверяется с `TASK_REMINDER_TOKEN`) вызывает ту же функцию `process_due_reminders`, что и планировщик. Email напоминаний — новая `send_task_reminder_email` в `utils/email.py` с собственным retry (в отличие от `_send_safe`, т.к. джоба планировщика не имеет доступа к `BackgroundTasks`, который работает только внутри HTTP-запроса).
+- **Миграция** `4b27405321b7_add_tasks_and_notification_preferences.py` — только новые таблицы/колонка, проверена на пустой БД (полная цепочка миграций + пустой diff после) и накатана на dev-БД.
+- **Тесты**: `tests/test_tasks.py` (CRUD, владение, фильтр по `user_id` для админа, привязка к клиенту/заказу), `tests/test_task_reminders.py` (идемпотентность `claim_due_reminders` и `process_due_reminders`, независимое управление каналами email/in_app, токен служебного эндпоинта).
+
+### Добавлено — фронтенд
+
+- `store/api/tasksApi.ts` (новый RTK Query срез), `store/api/notificationsApi.ts` дополнен пагинацией (infinite-scroll через `serializeQueryArgs`/`merge`) и предпочтениями.
+- `components/tasks/TaskModal.tsx` (создание/редактирование задачи с пресетами напоминания), `components/tasks/MyTasksList.tsx` (Просрочено/Сегодня/Предстоящие).
+- `pages/Calendar.tsx` — из read-only в полноценный CRUD (`@fullcalendar/interaction`: клик по дню создаёт, drag-and-drop переносит, клик по событию редактирует; цвет по статусу/приоритету).
+- Кнопка «Запланировать задачу/звонок» в `CustomerModal.tsx` (только для уже сохранённого клиента) и на `OrderDetailsPage.tsx`, с автоподстановкой `customer_id`/`order_id`.
+- `pages/config/Notifications.tsx` — была статической заглушкой-роадмапом без единой живой строчки, заменена на таблицу переключателей email/in_app по типам.
+- Колокольчик (`layout/AppHeader.tsx`) переведён на `GET /notifications/unread-count` вместо подсчёта на клиенте по неполному списку; `NotificationDropdown.tsx` — на пагинированный эндпоинт с «Показать ещё».
+- Дата/время задач вводятся и показываются в часовом поясе Бишкека (`utils/dateUtils.ts::isoToDatetimeLocalValue`/`datetimeLocalValueToIso`, поверх уже существующих, но ранее нигде не использованных `utcToBishkek`/`bishkekToUtc`) — той же логике, что и остальной календарь/даты в проекте, а не локальному времени браузера.
+
+### Найдено и исправлено попутно
+
+- 🐛 Стейл `alembic_version` в dev-БД (`a1b2c3d4e5f6`, указывал на ревизию, удалённую при сквоше baseline 2026-08-30) — вручную выправлен на текущий head перед генерацией новой миграции.
+- Автогенерация миграции попутно показала несвязанный дрифт схемы dev-БД (недостающие индексы на `orders`/`cash_flows`/`order_items`, несоответствие уникального ограничения `permissions.code`) — не относится к этой задаче, не включено в миграцию (см. комментарий в файле миграции).

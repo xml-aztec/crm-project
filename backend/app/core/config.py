@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     RESEND_API_KEY: Optional[str] = None
     MAIL_FROM: Optional[str] = "onboarding@resend.dev"
 
+    # Фоновая обработка напоминаний о задачах (см. app/scheduler/jobs.py).
+    # TASK_REMINDER_TOKEN защищает служебный POST /tasks/reminders/process —
+    # без него ручной/внешний запуск обработки недоступен (эндпоинт вернёт 403).
+    TASK_REMINDER_TOKEN: Optional[str] = None
+    TASK_REMINDER_INTERVAL_MINUTES: int = 2
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

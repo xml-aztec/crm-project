@@ -30,7 +30,7 @@ async def init_db():
         product_stock, branch, supply, supply_item, supplier, payroll,
         cashflow, cashflow_category, cashflow_type, kpi_rule, budget,
         cash_gap_forecast, stock_log, notification, order_history,
-        password_reset_token
+        password_reset_token, task, notification_type, notification_preference
     )
     from app.rbac import models as rbac_models  # noqa: F401
     async with engine.begin() as conn:

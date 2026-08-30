@@ -1,13 +1,54 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db
 from app.models.user import User
 from app.repositories import notification as repo
-from app.schemas.notification import NotificationOut, UnreadCountOut
+from app.repositories import notification_preference as pref_repo
+from app.schemas.notification import NotificationOut, NotificationPage, UnreadCountOut
+from app.schemas.notification_preference import NotificationPreferenceOut, NotificationPreferenceUpdate
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
+
+
+@router.get("/paginated", response_model=NotificationPage, summary="Мои уведомления (с пагинацией)")
+async def get_notifications_paginated(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+):
+    items, total, total_pages = await repo.get_paginated(db, current_user.id, page, page_size)
+    return {"items": items, "total": total, "page": page, "page_size": page_size, "total_pages": total_pages}
+
+
+@router.get(
+    "/preferences", response_model=List[NotificationPreferenceOut], summary="Мои настройки уведомлений"
+)
+async def get_notification_preferences(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await pref_repo.get_effective_preferences(db, current_user.id)
+
+
+@router.put(
+    "/preferences", response_model=List[NotificationPreferenceOut], summary="Обновить настройки уведомлений"
+)
+async def update_notification_preferences(
+    updates: List[NotificationPreferenceUpdate],
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    for update in updates:
+        try:
+            await pref_repo.upsert_preference(
+                db, current_user.id, update.notification_type_code, update.channel, update.enabled
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return await pref_repo.get_effective_preferences(db, current_user.id)
 
 
 @router.get("", response_model=List[NotificationOut], summary="Мои уведомления")

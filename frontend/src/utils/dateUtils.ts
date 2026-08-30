@@ -238,3 +238,25 @@ export const bishkekToUtc = (localDate: Date): Date => {
   ) - (BISHKEK_OFFSET_HOURS * 60 * 60 * 1000);
   return new Date(utcMs);
 };
+
+const pad = (n: number): string => String(n).padStart(2, '0');
+
+/**
+ * UTC ISO-строка от бэкенда -> значение для <input type="datetime-local">,
+ * показывающее время Бишкека (не локальное время браузера/ОС — см. комментарий
+ * к utcToBishkek о баге двойного смещения).
+ */
+export const isoToDatetimeLocalValue = (isoString: string): string => {
+  const bishkek = utcToBishkek(new Date(isoString));
+  return `${bishkek.getFullYear()}-${pad(bishkek.getMonth() + 1)}-${pad(bishkek.getDate())}T${pad(
+    bishkek.getHours()
+  )}:${pad(bishkek.getMinutes())}`;
+};
+
+/**
+ * Значение <input type="datetime-local"> (трактуется как время Бишкека) ->
+ * UTC ISO-строка для отправки на бэкенд.
+ */
+export const datetimeLocalValueToIso = (value: string): string => {
+  return bishkekToUtc(new Date(value)).toISOString();
+};

@@ -8,6 +8,7 @@ import Button from '../../components/ui/button/Button';
 import StatusDropdown from '../../components/orders/StatusDropdown';
 import ConfirmationBadge from '../../components/orders/ConfirmationBadge';
 import OrderStockLogsSummary from '../../components/stock/OrderStockLogsSummary';
+import TaskModal from '../../components/tasks/TaskModal';
 import { formatDateTime, formatDate, formatTime } from '../../utils/dateUtils';
 
 const Icons = {
@@ -224,6 +225,7 @@ export default function OrderDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isProductsExpanded, setIsProductsExpanded] = useState(true);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const { isAdmin } = useRoleAccess();
   const orderId = parseInt(id || '0');
 
@@ -332,6 +334,13 @@ export default function OrderDetailsPage() {
               <Button onClick={handlers.print} className="flex items-center gap-2">
                 <Icons.Print />
                 Печать
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsTaskModalOpen(true)}
+                className="flex items-center gap-2"
+              >
+                Запланировать задачу
               </Button>
             </div>
           </div>
@@ -619,6 +628,15 @@ export default function OrderDetailsPage() {
           </ol>
         )}
       </div>
+
+      <TaskModal
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        initialOrderId={order.id}
+        initialOrderLabel={`Заказ #${order.id}`}
+        initialCustomerId={order.customer_id ?? undefined}
+        initialCustomerLabel={order.customer?.name}
+      />
     </div>
   );
 }

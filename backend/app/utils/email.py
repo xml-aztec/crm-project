@@ -70,3 +70,39 @@ async def _send_safe(to_email: str, subject: str, html: str, template_name: str)
         )
     except Exception:
         logger.warning("email_send_failed", template=template_name)
+
+
+async def send_task_reminder_email(
+    to_email: str, task_title: str, due_at, max_retries: int = 2
+) -> bool:
+    """Используется фоновой обработкой напоминаний (app/scheduler/jobs.py), а
+    не через BackgroundTasks.add_task — та работает только внутри цикла
+    HTTP-запрос/ответ, а джоба планировщика вне его. Поэтому здесь нужен
+    собственный retry с бэкоффом: единственный шанс отправить письмо для
+    конкретного напоминания, т.к. задача уже атомарно помечена отправленной
+    (см. claim_due_reminders) и повторно не попадёт в обработку."""
+    if not _resend_ready():
+        return False
+
+    html = _jinja_env.get_template("email_task_reminder.html").render(
+        task_title=task_title, due_at=f"{due_at:%d.%m.%Y %H:%M}", base_url=settings.BASE_URL
+    )
+
+    for attempt in range(max_retries + 1):
+        try:
+            await asyncio.to_thread(
+                resend.Emails.send,
+                {
+                    "from": settings.MAIL_FROM,
+                    "to": [to_email],
+                    "subject": f"Напоминание: {task_title}",
+                    "html": html,
+                },
+            )
+            return True
+        except Exception:
+            if attempt < max_retries:
+                await asyncio.sleep(2 ** attempt)
+            else:
+                logger.warning("task_reminder_email_failed", to_email=to_email, attempts=attempt + 1)
+    return False

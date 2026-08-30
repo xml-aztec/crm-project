@@ -11,7 +11,8 @@ class Notification(Base):
     title = Column(String, nullable=False)
     message = Column(String, nullable=True)
     is_read = Column(Boolean, default=False, nullable=False)
-    type = Column(String, nullable=True)      # "order", "user", "system"
+    read_at = Column(DateTime(timezone=True), nullable=True)
+    type = Column(String, nullable=True)      # "order", "user", "system", "task_reminder"
     entity_id = Column(Integer, nullable=True)  # e.g. order_id or user_id
     created_at = Column(DateTime, server_default=func.now())
 

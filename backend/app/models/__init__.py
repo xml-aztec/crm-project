@@ -11,6 +11,8 @@ from app.models.customer_type import CustomerType
 from app.models.kpi_rule import KpiRule
 from app.models.monthly_target import MonthlyTarget
 from app.models.notification import Notification
+from app.models.notification_preference import NotificationPreference
+from app.models.notification_type import NotificationType
 from app.models.order import Order
 from app.models.order_history import OrderHistory
 from app.models.order_item import OrderItem
@@ -27,5 +29,6 @@ from app.models.subcategory import Subcategory
 from app.models.supplier import Supplier
 from app.models.supply import Supply
 from app.models.supply_item import SupplyItem
+from app.models.task import Task
 from app.models.user import User
 from app.models.warehouse import Warehouse

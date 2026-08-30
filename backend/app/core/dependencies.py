@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.models.user import User
 from app.repositories import user as user_repo
 from app.repositories import order as order_repo
+from app.repositories import task as task_repo
 from app.rbac.service import user_is_admin
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -77,5 +78,20 @@ async def is_order_owner_or_admin(
 
     if not await user_is_admin(current_user, db) and order.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Нет доступа к заказу")
+
+    return current_user
+
+async def is_task_owner_or_admin(
+    task_id: int = Path(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> User:
+    task = await task_repo.get_task_by_id(db, task_id)
+
+    if not task:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+
+    if not await user_is_admin(current_user, db) and task.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Нет доступа к задаче")
 
     return current_user

@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +18,27 @@ async def get_user_notifications(db: AsyncSession, user_id: int, limit: int = 30
     return list(result.scalars().all())
 
 
+async def get_paginated(
+    db: AsyncSession, user_id: int, page: int = 1, page_size: int = 20
+) -> tuple[list[Notification], int, int]:
+    total = await db.scalar(
+        select(func.count(Notification.id)).where(Notification.user_id == user_id)
+    )
+    total = total or 0
+
+    offset = (page - 1) * page_size
+    result = await db.execute(
+        select(Notification)
+        .where(Notification.user_id == user_id)
+        .order_by(Notification.created_at.desc())
+        .offset(offset)
+        .limit(page_size)
+    )
+    items = list(result.scalars().all())
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    return items, total, total_pages
+
+
 async def get_unread_count(db: AsyncSession, user_id: int) -> int:
     count = await db.scalar(
         select(func.count(Notification.id))
@@ -31,6 +54,7 @@ async def mark_read(db: AsyncSession, notification_id: int, user_id: int) -> Not
     )
     if notif:
         notif.is_read = True
+        notif.read_at = datetime.now(timezone.utc)
         await db.commit()
     return notif
 
@@ -40,8 +64,10 @@ async def mark_all_read(db: AsyncSession, user_id: int) -> None:
         select(Notification)
         .where(Notification.user_id == user_id, Notification.is_read == False)
     )
+    now = datetime.now(timezone.utc)
     for notif in result.scalars().all():
         notif.is_read = True
+        notif.read_at = now
     await db.commit()
 
 

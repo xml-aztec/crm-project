@@ -138,6 +138,8 @@ layout/                  → AppLayout, AppSidebar, AppHeader, Backdrop
 | ABC / XYZ analysis | `repositories/analytics.py` | `components/ecommerce/` |
 | Supply PDF with QR | `utils/pdf.py` + `templates/supply_invoice.html` | `store/api/suppliesApi.ts` |
 | Stock restore on order cancel | `utils/stock.py::restore_stock_for_order` | — |
+| Personal tasks/reminders + calendar CRUD | `api/tasks.py` + `repositories/task.py` | `pages/Calendar.tsx` + `components/tasks/` |
+| Reminder delivery (email + in-app) | `scheduler/jobs.py` (embedded `AsyncIOScheduler`, started in `main.py` lifespan) + `repositories/notification_preference.py` | `components/header/NotificationDropdown.tsx` + `pages/config/Notifications.tsx` |
 
 ### Database
 

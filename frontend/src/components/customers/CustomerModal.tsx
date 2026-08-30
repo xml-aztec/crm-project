@@ -8,6 +8,7 @@ interface CustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: CreateCustomerRequest | UpdateCustomerRequest) => void;
+  onScheduleTask?: () => void;
   customer?: Customer | null;
   isLoading?: boolean;
   customerTypes: CustomerType[];
@@ -17,6 +18,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
+  onScheduleTask,
   customer,
   isLoading = false,
   customerTypes = []
@@ -277,7 +279,15 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
               </div>
 
               {/* Кнопки */}
-              <div className="flex justify-end gap-3 pt-6">
+              <div className="flex items-center justify-between gap-3 pt-6">
+                {customer?.id && onScheduleTask ? (
+                  <Button type="button" variant="outline" onClick={onScheduleTask} disabled={isLoading}>
+                    Запланировать задачу/звонок
+                  </Button>
+                ) : (
+                  <span />
+                )}
+                <div className="flex gap-3">
                 <Button
                   type="button"
                   variant="outline"
@@ -299,6 +309,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
                   )}
                   {customer ? 'Сохранить' : 'Создать'}
                 </Button>
+                </div>
               </div>
             </form>
           </div>

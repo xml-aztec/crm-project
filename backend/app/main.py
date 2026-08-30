@@ -2,6 +2,7 @@ import time
 import uuid
 import sentry_sdk
 import structlog
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -12,8 +13,10 @@ from app.core.limiter import limiter
 from app.core.database import init_db, SessionLocal
 from app.core.config import settings
 from app.core.logging_config import configure_logging
+from app.scheduler.jobs import process_due_reminders
 from app.utils.init_admin_user import init_admin_user
 from app.utils.init_cashflow_types import init_cash_flow_types
+from app.utils.init_notification_types import init_notification_types
 from app.utils.init_order_statuses import init_order_statuses
 from app.utils.init_roles import init_roles
 from app.utils.init_positions import init_positions
@@ -26,6 +29,7 @@ from app.api import (
     roles, positions, cashflow_meta, budgets, cash_gaps,
     analytics, supply_analytics, stock_logs, cashflows,
     monthly_targets, kpi_rules, payrolls, customers, notifications, rbac,
+    tasks,
 )
 
 configure_logging()
@@ -65,8 +69,27 @@ async def lifespan(app: FastAPI):
         await init_cash_flow_types(session)
         await init_positions(session)
         await migrate_users_to_rbac_roles(session)
+        await init_notification_types(session)
+
+    # Встроенный планировщик — не отдельный процесс/брокер, а джоба на том же
+    # asyncio event loop uvicorn (в проекте один воркер, см. docker-entrypoint.sh),
+    # что достаточно для лёгкого коммерческого проекта без Redis/Celery.
+    # Идемпотентность обеспечивается на уровне БД в claim_due_reminders, а не
+    # настройками планировщика — coalesce/max_instances здесь просто доп. подстраховка.
+    scheduler = AsyncIOScheduler(timezone="UTC")
+    scheduler.add_job(
+        process_due_reminders,
+        "interval",
+        minutes=settings.TASK_REMINDER_INTERVAL_MINUTES,
+        id="task_reminders",
+        coalesce=True,
+        max_instances=1,
+    )
+    scheduler.start()
 
     yield
+
+    scheduler.shutdown(wait=False)
 
 app = FastAPI(
     title="CRM System",
@@ -131,3 +154,4 @@ app.include_router(payrolls.router)
 app.include_router(customers.router)
 app.include_router(notifications.router)
 app.include_router(rbac.router)
+app.include_router(tasks.router)

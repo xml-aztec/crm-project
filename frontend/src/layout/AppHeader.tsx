@@ -5,7 +5,7 @@ import { useSidebar } from "../context/SidebarContext";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import NotificationDropdown from "../components/header/NotificationDropdown";
 import UserDropdown from "../components/header/UserDropdown";
-import { useGetNotificationsQuery } from "../store/api/notificationsApi";
+import { useGetUnreadCountQuery } from "../store/api/notificationsApi";
 
 const AppHeader: React.FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
@@ -13,8 +13,8 @@ const AppHeader: React.FC = () => {
 
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
 
-  const { data: notifications = [] } = useGetNotificationsQuery(undefined, { pollingInterval: 30000 });
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
+  const { data: unreadData } = useGetUnreadCountQuery(undefined, { pollingInterval: 30000 });
+  const unreadCount = unreadData?.count ?? 0;
 
   const handleToggle = () => {
     if (window.innerWidth >= 1024) {

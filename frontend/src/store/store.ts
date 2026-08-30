@@ -45,6 +45,7 @@ import { userStatsApi } from './api/userStatsApi';
 import { analyticsApi } from './api/analyticsApi';
 import { notificationsApi } from './api/notificationsApi';
 import { rbacApi } from './api/rbacApi';
+import { tasksApi } from './api/tasksApi';
 
 const persistConfig = {
   key: 'leadflow',
@@ -83,6 +84,7 @@ const rootReducer = combineReducers({
   [analyticsApi.reducerPath]: analyticsApi.reducer,
   [notificationsApi.reducerPath]: notificationsApi.reducer,
   [rbacApi.reducerPath]: rbacApi.reducer,
+  [tasksApi.reducerPath]: tasksApi.reducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
@@ -174,6 +176,7 @@ export const store = configureStore({
       analyticsApi.middleware,
       notificationsApi.middleware,
       rbacApi.middleware,
+      tasksApi.middleware,
     ),
   devTools: import.meta.env.DEV,
 });
