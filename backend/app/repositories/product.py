@@ -88,13 +88,21 @@ async def get_filtered(
     result = await db.execute(query.order_by(Product.name))
     products = result.scalars().all()
 
+    # Один агрегирующий запрос на весь список вместо SUM(...) на каждый товар —
+    # раньше это было N+1: отдельный SELECT SUM в цикле на каждый product.id.
+    product_ids = [product.id for product in products]
+    quantities_by_product_id: dict[int, int] = {}
+    if product_ids:
+        stock_result = await db.execute(
+            select(ProductStock.product_id, func.coalesce(func.sum(ProductStock.quantity), 0))
+            .where(ProductStock.product_id.in_(product_ids))
+            .group_by(ProductStock.product_id)
+        )
+        quantities_by_product_id = dict(stock_result.all())
+
     filtered_products = []
     for product in products:
-        stock_query = await db.execute(
-            select(func.coalesce(func.sum(ProductStock.quantity), 0))
-            .where(ProductStock.product_id == product.id)
-        )
-        available_quantity = stock_query.scalar()
+        available_quantity = quantities_by_product_id.get(product.id, 0)
         product.available_quantity = available_quantity
         product.qr_code = generate_qr_base64(product.sku or str(product.id))
 

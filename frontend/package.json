@@ -22,7 +22,6 @@
     "@rollup/pluginutils": "^4.2.1",
     "@tailwindcss/node": "^4.3.0",
     "apexcharts": "^4.1.0",
-    "axios": "^1.9.0",
     "clsx": "^2.1.1",
     "flatpickr": "^4.6.13",
     "html5-qrcode": "^2.3.8",

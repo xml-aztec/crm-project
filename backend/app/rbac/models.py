@@ -20,8 +20,10 @@ class Permission(Base):
 
 class RbacRole(Base):
     """RBAC role with granular permissions. Separate from the legacy `roles` table
-    (app.models.role.Role), which is still the source of truth for access checks
-    until Stage C is approved."""
+    (app.models.role.Role): as of Stage D, RBAC assignments are the source of
+    truth for access checks (see app.rbac.service.user_is_admin). The legacy
+    table still drives which system RbacRole a user is synced into
+    (see sync_rbac_role_for_user) but is no longer read directly for access."""
 
     __tablename__ = "rbac_roles"
 

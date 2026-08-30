@@ -5,7 +5,11 @@ export const baseQuery = fetchBaseQuery({
   baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
   credentials: 'include',
   prepareHeaders: (headers) => {
-    headers.set('Content-Type', 'application/json');
+    // Не перезаписываем Content-Type, если конкретный запрос уже задал свой
+    // (например, /auth/login отправляет form-urlencoded для OAuth2PasswordRequestForm).
+    if (!headers.get('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
     return headers;
   },
 });

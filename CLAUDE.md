@@ -97,7 +97,7 @@ utils/        → pdf.py (pdfkit + jinja2), barcode_utils.py (QR), stock.py,
 templates/    → Jinja2 HTML for PDF generation (supply invoices)
 ```
 
-**Startup sequence** (`main.py` lifespan): `init_db()` → seed roles → seed admin user → seed order statuses → seed cashflow types. The DB schema is currently created via `Base.metadata.create_all` — Alembic migrations exist but the single `baseline` migration is empty.
+**Startup sequence** (`main.py` lifespan): `init_db()` → seed roles → seed admin user → seed order statuses → seed cashflow types → seed positions → migrate users to RBAC roles. On every boot the DB schema is created/verified via `Base.metadata.create_all` (idempotent — only creates missing tables); in deployed environments `docker-entrypoint.sh` runs `alembic upgrade head` (or a create_all+stamp fallback for pre-migration databases) before the app starts, so Alembic is the actual source of truth for schema changes there.
 
 **Authentication flow**: `POST /auth/login` sets an httpOnly JWT cookie (`access_token`). All protected routes use `Depends(get_current_user)` from `core/dependencies.py`, which reads the cookie and validates the JWT. Admin-only routes additionally use `Depends(is_admin)`.
 
@@ -155,10 +155,14 @@ The following issues from earlier audits have been **fixed**:
 - ~~`secure=False` on JWT cookie~~ — now `secure=is_https`, computed from `settings.BASE_URL.startswith("https://")`.
 - ~~`echo=True` in the SQLAlchemy engine~~ — now `echo=False`.
 - ~~`get_db()` duplicated~~ — both `api/auth.py` and `api/users.py` import it from `core/dependencies`.
+- ~~Empty `baseline` Alembic migration~~ — `alembic/versions/85a67bec609b_baseline.py` now creates the full current schema from nothing (regenerated with `alembic revision --autogenerate` against an empty DB and verified driftless against the current models). It replaces the old empty baseline plus the 9 incremental migrations that had been stacked on top of it assuming those tables already existed — that chain could never run end-to-end on a genuinely empty database. `docker-entrypoint.sh` still special-cases pre-existing databases that were provisioned via `create_all` before this fix (no `alembic_version` row) by stamping them to head instead of replaying history — see the comment there.
+- ~~`PasswordResetToken` model missing from `app/models/__init__.py`~~ — it exists as its own file but wasn't imported, so Alembic's metadata (`from app.models import *` in `env.py`) didn't know about the `password_reset_tokens` table; a future autogenerate would have generated a migration to drop it. Now imported alongside the other models.
+- ~~CI failing on every push (`poetry install --with dev` → `backend does not contain any element`)~~ — `pyproject.toml`'s `packages = [{ include = "backend" }]` resolved relative to `backend/pyproject.toml` itself, i.e. to the nonexistent `backend/backend/`. Fixed to `{ include = "app" }` (the actual importable package) and reproduced/verified fixed in a clean virtualenv.
+- ~~84 known vulnerabilities across 20 backend packages / 3 high-severity frontend~~ (`docs/known-issues.md` #10) — down to 3 backend advisories with no available fix (`pdfkit`, one `ecdsa` wontfix, `pip` itself) and 0 frontend. See `docs/known-issues.md` and `CHANGELOG.md` (2026-08-30 entry) for the full list of version bumps (`fastapi` 0.115→0.141, `cryptography` →50.0.1, `pillow` →12.3.0, `react-router` →7.18.3, etc.) and verification steps.
 
 Remaining / newly found:
 
-1. **The DB schema is created via `Base.metadata.create_all`**, not Alembic — the single `baseline` migration is empty, so there is no safe migration path against a live database. This is the highest-risk gap; write a real baseline migration (`alembic revision --autogenerate`) before relying on Alembic for schema changes.
+1. **The test suite never actually creates its database schema.** `tests/conftest.py` drives the app through `httpx.AsyncClient(transport=ASGITransport(app=app))`, which only forwards `http`-type ASGI scopes — it never sends the `lifespan` protocol, so `main.py`'s `init_db()` (and all the startup seeding) never runs. Verified locally: every test that touches the DB fails with `relation "users" does not exist` against a genuinely fresh Postgres. This was previously masked by the CI `poetry install` failure (CI never got far enough to run pytest) — now that CI can actually run, this will surface there too. Fix is probably wrapping the app in `asgi-lifespan`'s `LifespanManager` (or an equivalent fixture that calls `init_db()`) in `conftest.py`.
 
 ---
 

@@ -1,5 +1,5 @@
-"""RBAC FastAPI dependencies. Not wired into any router yet (Stage C) —
-follows the same style as app.core.dependencies.is_admin."""
+"""RBAC FastAPI dependencies, wired into routers as of Stage D — follows the
+same style as app.core.dependencies.is_admin."""
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 

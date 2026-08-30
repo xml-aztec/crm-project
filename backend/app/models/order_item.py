@@ -14,7 +14,3 @@ class OrderItem(Base):
 
     order = relationship("Order", back_populates="items")
     product = relationship("Product", lazy="selectin")
-
-    # @property
-    # def product_name(self) -> str:
-    #     return self.product.name if self.product else ""

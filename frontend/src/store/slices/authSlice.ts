@@ -1,6 +1,15 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { authService } from '../../api/axios';
+import { authApi } from '../api/authApi';
+import { userApi } from '../api/userApi';
 import { UserRead, ApiError } from '../../types/auth';
+
+// Общая форма ошибки, которую бросает `.unwrap()` для RTK Query мутации/запроса
+// (FetchBaseQueryError) — либо {status, data}, либо сериализованная JS-ошибка.
+interface UnwrappedQueryError {
+  status?: number;
+  data?: { detail?: string };
+  message?: string;
+}
 
 interface AuthState {
   user: UserRead | null;
@@ -21,12 +30,13 @@ const initialState: AuthState = {
 // Логин пользователя
 export const loginUser = createAsyncThunk(
   'auth/login',
-  async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
+  async ({ email, password }: { email: string; password: string }, { dispatch, rejectWithValue }) => {
     try {
-      const response = await authService.login(email, password);
+      const response = await dispatch(authApi.endpoints.login.initiate({ email, password })).unwrap();
       return response;
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || 'Ошибка входа в систему';
+    } catch (error: unknown) {
+      const err = error as UnwrappedQueryError;
+      const errorMessage = err.data?.detail || 'Ошибка входа в систему';
       return rejectWithValue(errorMessage);
     }
   }
@@ -35,20 +45,21 @@ export const loginUser = createAsyncThunk(
 // Получение данных текущего пользователя
 export const fetchCurrentUser = createAsyncThunk(
   'auth/fetchCurrentUser',
-  async (_, { rejectWithValue, getState }) => {
+  async (_, { dispatch, rejectWithValue, getState }) => {
     try {
       const state = getState() as { auth: AuthState };
       if (state.auth.initialized && state.auth.user) {
         return state.auth.user;
       }
 
-      const user = await authService.getCurrentUser();
-      return user;
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || 'Ошибка при получении данных пользователя';
-      return rejectWithValue({ 
-        message: errorMessage, 
-        status: error.response?.status 
+      const user = await dispatch(userApi.endpoints.getCurrentUser.initiate()).unwrap();
+      return user as unknown as UserRead;
+    } catch (error: unknown) {
+      const err = error as UnwrappedQueryError;
+      const errorMessage = err.data?.detail || 'Ошибка при получении данных пользователя';
+      return rejectWithValue({
+        message: errorMessage,
+        status: err.status
       });
     }
   }
@@ -60,8 +71,8 @@ export const logoutUser = createAsyncThunk(
   async (_, { dispatch }) => {
     try {
       // Вызываем серверную ручку для завершения сессии
-      await authService.logout();
-    } catch (error: any) {
+      await dispatch(authApi.endpoints.logout.initiate()).unwrap();
+    } catch (error: unknown) {
       // Логируем ошибку сервера, но продолжаем локальную очистку
       if (import.meta.env.DEV) {
         console.warn('Ошибка при выходе на сервере:', error);

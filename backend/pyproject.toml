@@ -6,14 +6,13 @@ authors = ["xml-aztec <asankozhoevn@gmail.com>"]
 readme = "README.md"
 
 packages = [
-  { include = "backend" }
+  { include = "app" }
 ]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-fastapi = {extras = ["all"], version = "^0.115.12"}
+fastapi = {extras = ["all"], version = "^0.141.1"}
 sqlalchemy = "^2.0.41"
-aiosqlite = "^0.21.0"
 asyncpg = "^0.30.0"
 greenlet = "^3.2.2"
 pydantic = "^2.11.5"
@@ -22,9 +21,12 @@ alembic = "^1.16.1"
 passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 bcrypt = "^3.2.0"
 python-jose = {extras = ["cryptography"], version = "^3.5.0"}
+# Пиним явно (иначе тянется транзитивно через python-jose[cryptography] без
+# нижней границы) — используется для подписи JWT, было 9 известных advisory
+# на 45.0.3.
+cryptography = "^50.0.1"
 qrcode = "^8.2"
-pillow = "^11.3.0"
-weasyprint = "^65.1"
+pillow = "^12.3.0"
 jinja2 = "^3.1.6"
 pdfkit = "^1.0.0"
 structlog = "^24.4.0"
@@ -35,11 +37,11 @@ openpyxl = "^3.1.5"
 
 
 [tool.poetry.group.dev.dependencies]
-black = "^25.1.0"
+black = "^26.3.1"
 isort = "^6.0.1"
 mypy = "^1.15.0"
-pytest = "^8.3.0"
-pytest-asyncio = "^0.24.0"
+pytest = "^9.0.3"
+pytest-asyncio = "^1.4.0"
 httpx = "^0.28.0"
 
 [tool.pytest.ini_options]

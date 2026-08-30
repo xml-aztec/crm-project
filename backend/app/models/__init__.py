@@ -15,6 +15,7 @@ from app.models.order import Order
 from app.models.order_history import OrderHistory
 from app.models.order_item import OrderItem
 from app.models.order_status import OrderStatus
+from app.models.password_reset_token import PasswordResetToken
 from app.models.payment_method import PaymentMethod
 from app.models.payroll import Payroll
 from app.models.position import Position

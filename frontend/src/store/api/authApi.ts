@@ -39,12 +39,41 @@ export interface MessageResponse {
   message: string;
 }
 
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
 // Создание API с использованием RTK Query
 export const authApi = createApi({
   reducerPath: 'authApi',
   baseQuery: baseQueryWithReauth,
   tagTypes: ['Positions', 'Roles'],
   endpoints: (builder) => ({
+    // Вход в систему — FastAPI's OAuth2PasswordRequestForm требует
+    // form-urlencoded тело с полями username/password, не JSON.
+    login: builder.mutation<MessageResponse, LoginRequest>({
+      query: ({ email, password }) => {
+        const body = new URLSearchParams();
+        body.append('username', email);
+        body.append('password', password);
+        return {
+          url: '/auth/login',
+          method: 'POST',
+          body,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        };
+      },
+    }),
+
+    // Выход из системы
+    logout: builder.mutation<MessageResponse, void>({
+      query: () => ({
+        url: '/auth/logout',
+        method: 'POST',
+      }),
+    }),
+
     // Получение списка позиций
     getPositions: builder.query<Position[], void>({
       query: () => '/positions/',
@@ -88,6 +117,8 @@ export const authApi = createApi({
 
 // Экспорт хуков для использования в компонентах
 export const {
+  useLoginMutation,
+  useLogoutMutation,
   useGetPositionsQuery,
   useGetRolesQuery,
   useRegisterMutation,
