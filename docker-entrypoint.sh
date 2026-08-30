@@ -16,7 +16,22 @@ if [ -z "$(alembic current 2>/dev/null)" ]; then
     python -c "import asyncio; from app.core.database import init_db; asyncio.run(init_db())"
     alembic stamp head
 else
-    alembic upgrade head
+    # БД, которая уже проходила через СТАРУЮ (до сквоша 2026-08-30) цепочку
+    # миграций, хранит в alembic_version ревизию, которой больше нет в
+    # alembic/versions/ (файлы удалены при сквоше) — `alembic current` в
+    # этом случае не возвращает пусто (печатает "FAILED: Can't locate
+    # revision..." прямо в stdout), так что верхняя проверка её не ловит, и
+    # `alembic upgrade head` падает сразу с той же ошибкой. Восстанавливаемся:
+    # штампуем известный текущий baseline с --purge (сбрасывает alembic_version
+    # без попытки резолвить старую/битую ревизию — таблицы baseline на этой БД
+    # уже есть) и затем даём alembic реально накатить всё, что появилось после
+    # baseline, обычным DDL — а не через create_all, который не умеет
+    # добавлять новые колонки (например, notifications.read_at) на уже
+    # существующие таблицы.
+    if ! alembic upgrade head; then
+        alembic stamp 85a67bec609b --purge
+        alembic upgrade head
+    fi
 fi
 
 # --proxy-headers: доверяем X-Forwarded-Proto от nginx (127.0.0.1), иначе
