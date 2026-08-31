@@ -56,6 +56,7 @@ export default function Products() {
 
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState<'filtered' | 'all' | null>(null);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [importResult, setImportResult] = useState<ExcelImportResult | null>(null);
   const [previewResult, setPreviewResult] = useState<ImportPreviewResult | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -242,7 +243,7 @@ export default function Products() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
           {Object.values(filters).some(value => value !== undefined && value !== '') && (
             <Button
               onClick={handleClearFilters}
@@ -253,56 +254,102 @@ export default function Products() {
             </Button>
           )}
 
-          <Button
-            onClick={handleDownloadTemplate}
-            variant="outline"
-            size="sm"
-            disabled={downloadingTemplate}
-          >
-            {downloadingTemplate ? 'Скачивание...' : 'Скачать шаблон'}
-          </Button>
+          {/* Сегментированная группа: Шаблон / Экспорт (сплит-кнопка) / Импорт */}
+          <div className="flex items-center rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shrink-0">
+            <button
+              type="button"
+              onClick={handleDownloadTemplate}
+              disabled={downloadingTemplate}
+              className="flex items-center gap-2 h-[42px] px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 disabled:opacity-60 whitespace-nowrap"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 2v6h6" />
+              </svg>
+              {downloadingTemplate ? 'Скачивание...' : 'Шаблон'}
+            </button>
 
-          <Button
-            onClick={() => handleExport('filtered')}
-            variant="outline"
-            size="sm"
-            disabled={exporting !== null}
-            title="Экспортировать товары с учётом текущих фильтров и поиска"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            {exporting === 'filtered' ? 'Экспорт...' : 'Экспорт (с фильтрами)'}
-          </Button>
+            <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700" />
 
-          <Button
-            onClick={() => handleExport('all')}
-            variant="outline"
-            size="sm"
-            disabled={exporting !== null}
-            title="Экспортировать весь каталог, без учёта фильтров"
-          >
-            {exporting === 'all' ? 'Экспорт...' : 'Экспорт всё'}
-          </Button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsExportMenuOpen((v) => !v)}
+                disabled={exporting !== null}
+                className="flex items-center gap-2 h-[42px] px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 disabled:opacity-60 whitespace-nowrap"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                {exporting !== null ? 'Экспорт...' : 'Экспорт'}
+                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx"
-            className="hidden"
-            onChange={handleImportFile}
-          />
-          <Button
-            onClick={() => fileInputRef.current?.click()}
-            variant="outline"
-            size="sm"
-            disabled={previewing}
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12" />
-            </svg>
-            {previewing ? 'Проверка файла...' : 'Импорт из Excel'}
-          </Button>
+              {isExportMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsExportMenuOpen(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-72 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg p-1.5 z-50">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsExportMenuOpen(false);
+                        handleExport('filtered');
+                      }}
+                      className="w-full flex items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                    >
+                      <svg className="w-4 h-4 mt-0.5 text-blue-600 dark:text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h18M6 8h12M9 12h6" />
+                      </svg>
+                      <span>
+                        <span className="block text-sm font-semibold text-gray-900 dark:text-white">С учётом фильтров</span>
+                        <span className="block text-xs text-gray-500 dark:text-gray-400">Найдено {filteredProducts.length} товаров</span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsExportMenuOpen(false);
+                        handleExport('all');
+                      }}
+                      className="w-full flex items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                    >
+                      <svg className="w-4 h-4 mt-0.5 text-gray-500 dark:text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth={2} />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9h18M9 21V9" />
+                      </svg>
+                      <span>
+                        <span className="block text-sm font-semibold text-gray-900 dark:text-white">Весь каталог</span>
+                        <span className="block text-xs text-gray-500 dark:text-gray-400">{products.length} товаров · .xlsx</span>
+                      </span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700" />
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx"
+              className="hidden"
+              onChange={handleImportFile}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={previewing}
+              className="flex items-center gap-2 h-[42px] px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 disabled:opacity-60 whitespace-nowrap"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12" />
+              </svg>
+              {previewing ? 'Проверка файла...' : 'Импорт'}
+            </button>
+          </div>
 
           <Button onClick={handleCreateProduct}>
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

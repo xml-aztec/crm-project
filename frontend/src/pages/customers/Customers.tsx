@@ -64,6 +64,7 @@ export default function Customers() {
   const [deleteCustomer, { isLoading: isDeleting }] = useDeleteCustomerMutation();
   const [exportExcel] = useExportCustomersExcelMutation();
   const [exporting, setExporting] = useState<'filtered' | 'all' | null>(null);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
   const customers = data?.items ?? [];
 
@@ -222,27 +223,65 @@ export default function Customers() {
                 <span className="text-xs text-gray-500 dark:text-gray-400">Загрузка...</span>
               </div>
             )}
-            <Button
-              onClick={() => handleExport('filtered')}
-              variant="outline"
-              size="sm"
-              disabled={exporting !== null}
-              title="Экспортировать клиентов с учётом текущих фильтров и поиска"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              {exporting === 'filtered' ? 'Экспорт...' : 'Экспорт в Excel (с фильтрами)'}
-            </Button>
-            <Button
-              onClick={() => handleExport('all')}
-              variant="outline"
-              size="sm"
-              disabled={exporting !== null}
-              title="Экспортировать всех клиентов, без учёта фильтров"
-            >
-              {exporting === 'all' ? 'Экспорт...' : 'Экспорт всё'}
-            </Button>
+            {/* Экспорт — сплит-кнопка (тот же паттерн, что и в Каталоге товаров) */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsExportMenuOpen((v) => !v)}
+                disabled={exporting !== null}
+                className="flex items-center gap-2 h-9 px-4 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 disabled:opacity-60 whitespace-nowrap"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                {exporting !== null ? 'Экспорт...' : 'Экспорт'}
+                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+
+              {isExportMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsExportMenuOpen(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-72 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg p-1.5 z-50">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsExportMenuOpen(false);
+                        handleExport('filtered');
+                      }}
+                      className="w-full flex items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                    >
+                      <svg className="w-4 h-4 mt-0.5 text-blue-600 dark:text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h18M6 8h12M9 12h6" />
+                      </svg>
+                      <span>
+                        <span className="block text-sm font-semibold text-gray-900 dark:text-white">С учётом фильтров</span>
+                        <span className="block text-xs text-gray-500 dark:text-gray-400">Найдено {data?.total ?? 0} клиентов</span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsExportMenuOpen(false);
+                        handleExport('all');
+                      }}
+                      className="w-full flex items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                    >
+                      <svg className="w-4 h-4 mt-0.5 text-gray-500 dark:text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth={2} />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9h18M9 21V9" />
+                      </svg>
+                      <span>
+                        <span className="block text-sm font-semibold text-gray-900 dark:text-white">Весь список</span>
+                        <span className="block text-xs text-gray-500 dark:text-gray-400">Без учёта фильтров и поиска · .xlsx</span>
+                      </span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
             <Button onClick={openCreateModal}>
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
