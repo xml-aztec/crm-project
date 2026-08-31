@@ -29,7 +29,7 @@ from app.api import (
     roles, positions, cashflow_meta, budgets, cash_gaps,
     analytics, supply_analytics, stock_logs, cashflows,
     monthly_targets, kpi_rules, payrolls, customers, notifications, rbac,
-    tasks,
+    tasks, search,
 )
 
 configure_logging()
@@ -155,3 +155,4 @@ app.include_router(customers.router)
 app.include_router(notifications.router)
 app.include_router(rbac.router)
 app.include_router(tasks.router)
+app.include_router(search.router)

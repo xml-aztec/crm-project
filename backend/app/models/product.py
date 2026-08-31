@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Computed, Index, Integer, String, Float, Boolean, ForeignKey, UniqueConstraint
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -18,10 +19,20 @@ class Product(Base):
     subcategory_id = Column(Integer, ForeignKey("subcategories.id", ondelete="SET NULL"), nullable=True)
     brand_id = Column(Integer, ForeignKey("brands.id", ondelete="SET NULL"), nullable=True)
 
+    # Полнотекстовый поиск (см. app/api/search.py).
+    search_vector = Column(
+        TSVECTOR,
+        Computed(
+            "to_tsvector('russian', coalesce(name,'') || ' ' || coalesce(sku,'') || ' ' || coalesce(barcode,''))",
+            persisted=True,
+        ),
+    )
+
     category = relationship("Category")
     subcategory = relationship("Subcategory", back_populates="products")
     brand = relationship("Brand", back_populates="products")
 
     __table_args__ = (
         UniqueConstraint("sku", name="uq_product_sku"),
+        Index("ix_products_search_vector", "search_vector", postgresql_using="gin"),
     )

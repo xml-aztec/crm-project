@@ -44,15 +44,15 @@ const PAGE_SIZE = 20;
 
 export default function Products() {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<ProductFilters>({
-    search: '',
+  const [filters, setFilters] = useState<ProductFilters>(() => ({
+    search: new URLSearchParams(window.location.search).get('search') || '',
     brand_id: '',
     subcategory_id: '',
     category_id: '',
     in_stock: '',
     price_min: '',
     price_max: '',
-  });
+  }));
 
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState<'filtered' | 'all' | null>(null);

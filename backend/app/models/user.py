@@ -1,4 +1,5 @@
-from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Boolean, Column, Computed, Index, Integer, String, ForeignKey, DateTime
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 from datetime import datetime, timezone
@@ -24,8 +25,21 @@ class User(Base):
 
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+    # Полнотекстовый поиск по сотрудникам (см. app/api/search.py).
+    search_vector = Column(
+        TSVECTOR,
+        Computed(
+            "to_tsvector('russian', coalesce(full_name,'') || ' ' || coalesce(email,''))",
+            persisted=True,
+        ),
+    )
+
     payrolls = relationship("Payroll", back_populates="user", cascade="all, delete-orphan", foreign_keys=[Payroll.user_id])
     role = relationship("Role", back_populates="users")
     position = relationship("Position", back_populates="users")
     monthly_targets = relationship("MonthlyTarget", back_populates="manager", cascade="all, delete-orphan")
     branch = relationship("Branch")
+
+    __table_args__ = (
+        Index("ix_users_search_vector", "search_vector", postgresql_using="gin"),
+    )
