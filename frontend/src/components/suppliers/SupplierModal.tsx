@@ -23,8 +23,8 @@ const SupplierModal: React.FC<SupplierModalProps> = ({
     <div className="fixed inset-0 z-[99999] overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         {/* Backdrop */}
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-25 transition-opacity"
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
           onClick={onCancel}
         />
         

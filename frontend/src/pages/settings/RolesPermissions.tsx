@@ -184,7 +184,7 @@ const RoleEditorModal: React.FC<{
   return (
     <div className="fixed inset-0 z-[99999] overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="fixed inset-0 bg-black opacity-50" onClick={onClose} />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
         <div className="relative bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl shadow-2xl my-8">
           <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">
             {isCreate ? 'Создать роль' : `Роль: ${role.name}`}

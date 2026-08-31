@@ -188,7 +188,7 @@ export default function QuickCustomerForm({ isOpen, onClose, onSuccess }: QuickC
     <div className="fixed inset-0 z-[99999] overflow-y-auto">
       <div className="flex min-h-full items-center justify-center p-4">
         <div 
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity" 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
           onClick={onClose} 
         />
         

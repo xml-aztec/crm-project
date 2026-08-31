@@ -120,7 +120,7 @@ const BranchForm: React.FC<BranchFormProps> = ({ isOpen, onClose, onSubmit, bran
   return (
     <div className="fixed inset-0 z-[99999] overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="fixed inset-0 bg-black/50 transition-opacity" onClick={onClose} />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={onClose} />
         
         <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md z-[10000]">
           <div className="p-6">
@@ -185,7 +185,7 @@ const BranchForm: React.FC<BranchFormProps> = ({ isOpen, onClose, onSubmit, bran
                       ? 'border-red-300 dark:border-red-600' 
                       : 'border-gray-300 dark:border-gray-600'
                   }`}
-                  placeholder="Например: г. Алматы, ул. Абая 1"
+                  placeholder="Например: г. Бишкек, ул. Манаса 123"
                   maxLength={200}
                   required
                 />

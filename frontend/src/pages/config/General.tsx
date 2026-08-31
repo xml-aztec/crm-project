@@ -104,7 +104,7 @@ const General: React.FC = () => {
                 type="text"
                 value={formData.company_name}
                 onChange={(e) => handleChange('company_name', e.target.value)}
-                placeholder="Например, ООО «Рога и копыта»"
+                placeholder="Название компании"
               />
             </div>
 

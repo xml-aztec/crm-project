@@ -233,7 +233,7 @@ const PaymentMethods: React.FC = () => {
       {isModalOpen && (
         <div className="fixed inset-0 z-[99999] overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black opacity-50" onClick={resetForm}></div>
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={resetForm}></div>
             <div className="relative bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md shadow-2xl">
               <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">
                 {editingMethod ? 'Редактировать способ оплаты' : 'Добавить способ оплаты'}

@@ -126,7 +126,7 @@ const AddStockForm: React.FC<AddStockFormProps> = ({
   return (
     <div className="fixed inset-0 z-[99999] overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="fixed inset-0 bg-black/50 transition-opacity" onClick={onClose} />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={onClose} />
         
         <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md z-[100000]">
           <div className="p-6">

@@ -41,7 +41,7 @@ export default function OrderDetails({ orderId, onClose }: OrderDetailsProps) {
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div className="bg-white dark:bg-gray-800 rounded-lg p-6">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="text-center mt-4 text-gray-600 dark:text-gray-400">Загрузка...</p>
@@ -52,7 +52,7 @@ export default function OrderDetails({ orderId, onClose }: OrderDetailsProps) {
 
   if (error || !orderDetails) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div className="bg-white dark:bg-gray-800 rounded-lg p-6">
           <p className="text-center text-red-600 dark:text-red-400">
             Ошибка загрузки данных заказа
@@ -69,7 +69,7 @@ export default function OrderDetails({ orderId, onClose }: OrderDetailsProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">

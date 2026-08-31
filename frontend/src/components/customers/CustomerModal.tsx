@@ -137,7 +137,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
     >
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/70 transition-opacity backdrop-blur-sm" 
+        className="fixed inset-0 bg-black/50 transition-opacity backdrop-blur-sm"
         onClick={onClose}
         style={{ zIndex: 999999 }}
       ></div>
