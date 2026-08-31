@@ -1,10 +1,19 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { OrderFilters } from '../../store/api/ordersApi';
+import { OrderFilters, useExportOrdersExcelMutation } from '../../store/api/ordersApi';
 import OrdersStats from '../../components/orders/OrdersStats';
 import OrdersFilters from '../../components/orders/OrdersFilters';
 import OrdersTable from '../../components/orders/OrdersTable';
 import Button from '../../components/ui/button/Button';
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 const statusTabs = [
   { id: 'all', label: 'Все заказы', count: 0 },
@@ -50,6 +59,22 @@ export default function AllOrders() {
     navigate(`/orders/${order.id}/edit`);
   };
 
+  const [exportExcel, { isLoading: isExporting }] = useExportOrdersExcelMutation();
+
+  const handleExport = async () => {
+    try {
+      const result = await exportExcel({
+        date_from: filters.date_from || undefined,
+        date_to: filters.date_to || undefined,
+        status_id: filters.status_id || undefined,
+        customer_name: filters.customer_name || undefined,
+      }).unwrap();
+      downloadBlob(result, 'orders_export.xlsx');
+    } catch {
+      // Обработка ошибки без алерта
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Заголовок */}
@@ -62,9 +87,19 @@ export default function AllOrders() {
             Управление заказами и их статусами
           </p>
         </div>
-        <Button onClick={() => navigate('/orders/create')} className="sm:shrink-0 w-full sm:w-auto">
-          Создать заказ
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button
+            onClick={handleExport}
+            variant="outline"
+            disabled={isExporting}
+            title="Экспортировать заказы с учётом текущих фильтров"
+          >
+            {isExporting ? 'Экспорт...' : 'Экспорт в Excel'}
+          </Button>
+          <Button onClick={() => navigate('/orders/create')} className="sm:shrink-0 w-full sm:w-auto">
+            Создать заказ
+          </Button>
+        </div>
       </div>
 
       {/* Статистика */}

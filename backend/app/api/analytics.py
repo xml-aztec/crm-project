@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+import asyncio
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from datetime import datetime
@@ -23,6 +24,7 @@ from app.schemas.analytics import (
 from app.core.dependencies import get_current_user, get_db, is_admin
 from app.repositories import analytics as repo
 from app.rbac.service import user_is_admin
+from app.utils.pdf import render_pnl_pdf
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
@@ -218,6 +220,29 @@ async def pnl_report(
     _: User = Depends(is_admin),
 ):
     return await repo.get_pnl_report(db, year, month)
+
+
+@router.get(
+    "/pnl/export-pdf",
+    summary="Экспорт P&L отчёта в PDF",
+    description="PDF за тот же месяц/год и с теми же данными, что и экранный отчёт /analytics/pnl."
+)
+async def export_pnl_pdf(
+    year: int = Query(..., ge=2020, le=2100),
+    month: int = Query(..., ge=1, le=12),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(is_admin),
+):
+    data = await repo.get_pnl_report(db, year, month)
+    report = PnLReport(**data)
+    # pdfkit шеллится в wkhtmltopdf и блокирует поток — уводим в отдельный
+    # поток, чтобы не держать event loop на время рендера.
+    pdf_bytes = await asyncio.to_thread(render_pnl_pdf, report)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=pnl_{year}_{month:02d}.pdf"},
+    )
 
 
 @router.get(

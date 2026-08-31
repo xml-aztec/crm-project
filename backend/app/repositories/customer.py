@@ -1,6 +1,7 @@
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy.orm import selectinload
 from app.models.customer import Customer
 from app.schemas.customer import CustomerCreate, CustomerUpdate
 
@@ -55,6 +56,33 @@ async def get_paginated(
 
     total_pages = max(1, (total + page_size - 1) // page_size)
     return items, total, total_pages
+
+
+async def get_export_rows(
+    db: AsyncSession,
+    *,
+    search: Optional[str] = None,
+    customer_type_id: Optional[int] = None,
+) -> list[Customer]:
+    """Клиенты для экспорта в Excel — те же фильтры, что и в get_paginated,
+    без пагинации и сортировки."""
+    filters = []
+    if search:
+        pattern = f"%{search}%"
+        filters.append(or_(
+            Customer.name.ilike(pattern),
+            Customer.email.ilike(pattern),
+            Customer.phone.ilike(pattern),
+        ))
+    if customer_type_id is not None:
+        filters.append(Customer.customer_type_id == customer_type_id)
+
+    query = select(Customer).options(selectinload(Customer.customer_type)).order_by(Customer.name)
+    if filters:
+        query = query.where(and_(*filters))
+
+    result = await db.execute(query)
+    return list(result.scalars().all())
 
 async def get_by_id(db: AsyncSession, customer_id: int):
     result = await db.execute(select(Customer).where(Customer.id == customer_id))

@@ -111,6 +111,28 @@ export const cashflowApi = createApi({
       },
       providesTags: ['CashflowEntry'],
     }),
+
+    exportCashflowPdf: builder.mutation<Blob, CashflowFilters>({
+      queryFn: async (filters) => {
+        try {
+          const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+          const params = new URLSearchParams();
+          if (filters.from_date) params.append('from_date', filters.from_date);
+          if (filters.to_date) params.append('to_date', filters.to_date);
+          if (filters.type_name) params.append('type_name', filters.type_name);
+          if (filters.category_name) params.append('category_name', filters.category_name);
+          const response = await fetch(`${baseUrl}/cash-flows/export-pdf?${params.toString()}`, {
+            credentials: 'include',
+          });
+          if (!response.ok) {
+            return { error: { status: response.status, data: 'Не удалось экспортировать отчёт' } };
+          }
+          return { data: await response.blob() };
+        } catch (e) {
+          return { error: { status: 'FETCH_ERROR', error: String(e) } };
+        }
+      },
+    }),
   }),
 });
 
@@ -124,4 +146,5 @@ export const {
   useUpdateCashflowTypeMutation,
   useDeleteCashflowTypeMutation,
   useGetCashflowEntriesQuery,
+  useExportCashflowPdfMutation,
 } = cashflowApi;

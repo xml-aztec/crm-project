@@ -211,6 +211,84 @@ async def get_orders(
     return result.scalars().all()
 
 
+async def get_export_rows(
+    db: AsyncSession,
+    current_user: User,
+    *,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
+    manager_id: Optional[int] = None,
+    status_id: Optional[int] = None,
+    customer_name: Optional[str] = None,
+) -> list[dict]:
+    """Заказы для экспорта в Excel — одна строка на заказ (сводно, без
+    разворачивания по позициям). Те же фильтры и то же ограничение доступа
+    (не-админ видит только свои неотменённые заказы), что и в get_orders,
+    без пагинации."""
+    query = (
+        select(Order)
+        .options(
+            selectinload(Order.items),
+            joinedload(Order.customer),
+            joinedload(Order.user),
+            selectinload(Order.payment_method),
+            joinedload(Order.status),
+            joinedload(Order.branch),
+        )
+        .order_by(Order.id.desc())
+    )
+
+    filters = []
+
+    if not await user_is_admin(current_user, db):
+        filters.append(Order.user_id == current_user.id)
+
+        cancelled_status_result = await db.execute(
+            select(OrderStatus.id).where(OrderStatus.name == "Отменен")
+        )
+        cancelled_status_id = cancelled_status_result.scalar_one_or_none()
+        if cancelled_status_id is not None:
+            filters.append(Order.status_id != cancelled_status_id)
+    else:
+        if manager_id:
+            filters.append(Order.user_id == manager_id)
+
+    if status_id:
+        filters.append(Order.status_id == status_id)
+
+    if customer_name:
+        filters.append(func.lower(Customer.name).ilike(f"%{customer_name.lower()}%"))
+
+    if date_from:
+        filters.append(Order.created_at >= datetime.combine(date_from, time.min, tzinfo=timezone.utc))
+
+    if date_to:
+        filters.append(Order.created_at <= datetime.combine(date_to, time.max, tzinfo=timezone.utc))
+
+    if filters:
+        query = query.join(Order.customer).where(*filters)
+
+    result = await db.execute(query)
+    orders = result.scalars().unique().all()
+
+    rows = []
+    for order in orders:
+        rows.append({
+            "id": order.id,
+            "created_at": order.created_at,
+            "customer_name": order.customer.name if order.customer else "",
+            "manager_name": order.user.full_name if order.user else "",
+            "status_name": order.status.name if order.status else "",
+            "payment_method": order.payment_method.name if order.payment_method else "",
+            "items_count": len(order.items),
+            "total_price": order.finalized_total_price if order.finalized_total_price is not None else order.total_price,
+            "delivery_date": order.delivery_date,
+            "delivery_address": order.delivery_address,
+            "branch_name": order.branch.name if order.branch else "",
+        })
+    return rows
+
+
 async def confirm_order(
     db: AsyncSession,
     order_id: int,

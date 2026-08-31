@@ -12,6 +12,7 @@ import {
   useCreateCustomerMutation,
   useUpdateCustomerMutation,
   useDeleteCustomerMutation,
+  useExportCustomersExcelMutation,
   Customer,
 } from '../../store/api/customersApi';
 import { useGetCustomerTypesQuery } from '../../store/api/customerTypesApi';
@@ -33,6 +34,15 @@ interface AlertState {
 
 const PAGE_SIZE = 20;
 
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function Customers() {
   const { page, search, sortBy, sortOrder, filters, setPage, setSearch, setSort, setFilter, reset } = useTableUrlState({
     prefix: 'customer',
@@ -52,8 +62,28 @@ export default function Customers() {
   const [createCustomer, { isLoading: isCreating }] = useCreateCustomerMutation();
   const [updateCustomer, { isLoading: isUpdating }] = useUpdateCustomerMutation();
   const [deleteCustomer, { isLoading: isDeleting }] = useDeleteCustomerMutation();
+  const [exportExcel] = useExportCustomersExcelMutation();
+  const [exporting, setExporting] = useState<'filtered' | 'all' | null>(null);
 
   const customers = data?.items ?? [];
+
+  const handleExport = async (mode: 'filtered' | 'all') => {
+    setExporting(mode);
+    try {
+      const params = mode === 'filtered'
+        ? {
+            search: search || undefined,
+            customer_type_id: filters.customer_type_id ? Number(filters.customer_type_id) : undefined,
+          }
+        : undefined;
+      const result = await exportExcel(params).unwrap();
+      downloadBlob(result, 'customers_export.xlsx');
+    } catch {
+      // Обработка ошибки без алерта
+    } finally {
+      setExporting(null);
+    }
+  };
 
   // Состояния модального окна
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -192,6 +222,27 @@ export default function Customers() {
                 <span className="text-xs text-gray-500 dark:text-gray-400">Загрузка...</span>
               </div>
             )}
+            <Button
+              onClick={() => handleExport('filtered')}
+              variant="outline"
+              size="sm"
+              disabled={exporting !== null}
+              title="Экспортировать клиентов с учётом текущих фильтров и поиска"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              {exporting === 'filtered' ? 'Экспорт...' : 'Экспорт в Excel (с фильтрами)'}
+            </Button>
+            <Button
+              onClick={() => handleExport('all')}
+              variant="outline"
+              size="sm"
+              disabled={exporting !== null}
+              title="Экспортировать всех клиентов, без учёта фильтров"
+            >
+              {exporting === 'all' ? 'Экспорт...' : 'Экспорт всё'}
+            </Button>
             <Button onClick={openCreateModal}>
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Отчёт по движению денежных средств</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 20mm;
+      }
+      body {
+        font-family: "DejaVu Sans", Arial, sans-serif;
+        font-size: 12px;
+        margin: 0;
+        padding: 40px;
+        color: #222;
+        background: #fff;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      h1 {
+        font-weight: 700;
+        font-size: 22px;
+        margin-bottom: 4px;
+        text-align: center;
+        color: #004080;
+      }
+      .period {
+        text-align: center;
+        font-size: 14px;
+        color: #555;
+        margin-bottom: 25px;
+      }
+      .summary {
+        display: table;
+        width: 100%;
+        margin-bottom: 25px;
+        page-break-inside: avoid;
+      }
+      .summary .card {
+        display: table-cell;
+        width: 33.33%;
+        text-align: center;
+        padding: 14px 10px;
+        border: 1px solid #e0e7f1;
+      }
+      .summary .card .label {
+        font-size: 11px;
+        color: #777;
+        margin-bottom: 4px;
+      }
+      .summary .card .value {
+        font-size: 17px;
+        font-weight: 700;
+      }
+      .summary .card.income .value { color: #16a34a; }
+      .summary .card.expense .value { color: #dc2626; }
+      .summary .card.balance .value { color: #004080; }
+      table.entries {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      table.entries thead {
+        background-color: #e0e7f1;
+        color: #004080;
+        font-weight: 600;
+      }
+      table.entries th, table.entries td {
+        border: 1px solid #aaa;
+        padding: 6px 10px;
+        vertical-align: middle;
+      }
+      table.entries th { text-align: left; white-space: nowrap; }
+      table.entries td.right, table.entries th.right { text-align: right; white-space: nowrap; }
+      table.entries tbody tr:nth-child(even) { background-color: #f9fafd; }
+      table.entries tr { page-break-inside: avoid; }
+      .footer {
+        margin-top: 30px;
+        font-size: 11px;
+        color: #9ca3af;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Отчёт по движению денежных средств</h1>
+    <div class="period">{{ period_label }}</div>
+
+    <div class="summary">
+      <div class="card income">
+        <div class="label">Доходы</div>
+        <div class="value">{{ "{:,.0f}".format(total_income).replace(",", " ") }} сом</div>
+      </div>
+      <div class="card expense">
+        <div class="label">Расходы</div>
+        <div class="value">{{ "{:,.0f}".format(total_expense).replace(",", " ") }} сом</div>
+      </div>
+      <div class="card balance">
+        <div class="label">{{ "Баланс" if balance >= 0 else "Дефицит" }}</div>
+        <div class="value">{{ "{:,.0f}".format(balance|abs).replace(",", " ") }} сом</div>
+      </div>
+    </div>
+
+    <table class="entries">
+      <thead>
+        <tr>
+          <th>Дата</th>
+          <th>Тип</th>
+          <th>Категория</th>
+          <th class="right">Сумма</th>
+          <th>Описание</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in entries %}
+        <tr>
+          <td>{{ entry.date.strftime("%d.%m.%Y") }}</td>
+          <td>{{ "Доход" if entry.type.name == "income" else "Расход" }}</td>
+          <td>{{ entry.category.name if entry.category else "" }}</td>
+          <td class="right">{{ "{:,.0f}".format(entry.amount).replace(",", " ") }}</td>
+          <td>{{ entry.description or "" }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" style="text-align:center;color:#9ca3af;">Нет операций за выбранный период</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="footer">
+      Сформировано {{ generated_at }} — LeadFlow CRM
+    </div>
+  </body>
+</html>

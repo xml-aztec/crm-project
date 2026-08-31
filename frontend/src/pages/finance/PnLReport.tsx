@@ -2,7 +2,17 @@ import React, { useState } from 'react';
 import Chart from 'react-apexcharts';
 import { ApexOptions } from 'apexcharts';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
-import { useGetPnlReportQuery, useGetPnlYearlyQuery } from '../../store/api/analyticsApi';
+import Button from '../../components/ui/button/Button';
+import { useGetPnlReportQuery, useGetPnlYearlyQuery, useExportPnlPdfMutation } from '../../store/api/analyticsApi';
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 const MONTH_NAMES = [
   'Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
@@ -61,6 +71,16 @@ const PnLReport: React.FC = () => {
 
   const { data: report, isLoading, isError } = useGetPnlReportQuery({ year, month });
   const { data: yearlyData = [] } = useGetPnlYearlyQuery({ year });
+  const [exportPdf, { isLoading: isExporting }] = useExportPnlPdfMutation();
+
+  const handleExport = async () => {
+    try {
+      const result = await exportPdf({ year, month }).unwrap();
+      downloadBlob(result, `pnl_${year}_${String(month).padStart(2, '0')}.pdf`);
+    } catch {
+      // Обработка ошибки без алерта
+    }
+  };
 
   const chartOptions: ApexOptions = {
     chart: {
@@ -139,6 +159,9 @@ const PnLReport: React.FC = () => {
               <option key={y} value={y}>{y}</option>
             ))}
           </select>
+          <Button onClick={handleExport} variant="outline" size="sm" disabled={isExporting || !report}>
+            {isExporting ? 'Экспорт...' : 'Экспорт в PDF'}
+          </Button>
         </div>
       </div>
 

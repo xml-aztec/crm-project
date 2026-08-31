@@ -42,6 +42,23 @@ export const analyticsApi = createApi({
     getMonthlyTargetSummary: builder.query<MonthlyTargetSummary, void>({
       query: () => 'analytics/monthly-target-summary',
     }),
+    exportPnlPdf: builder.mutation<Blob, { year: number; month: number }>({
+      queryFn: async ({ year, month }) => {
+        try {
+          const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+          const response = await fetch(
+            `${baseUrl}/analytics/pnl/export-pdf?year=${year}&month=${month}`,
+            { credentials: 'include' }
+          );
+          if (!response.ok) {
+            return { error: { status: response.status, data: 'Не удалось экспортировать отчёт' } };
+          }
+          return { data: await response.blob() };
+        } catch (e) {
+          return { error: { status: 'FETCH_ERROR', error: String(e) } };
+        }
+      },
+    }),
   }),
 });
 
@@ -49,4 +66,5 @@ export const {
   useGetPnlReportQuery,
   useGetPnlYearlyQuery,
   useGetMonthlyTargetSummaryQuery,
+  useExportPnlPdfMutation,
 } = analyticsApi;

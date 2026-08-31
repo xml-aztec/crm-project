@@ -1,6 +1,7 @@
 from datetime import date
 from typing import Optional
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Path, Query, Response, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import SessionLocal
 from app.core.dependencies import get_current_user, get_db, is_order_owner_or_admin
@@ -19,6 +20,9 @@ from app.schemas.order import (
 )
 from app.schemas.order_history import OrderHistoryOut
 from app.schemas.stock_log import StockLogOut
+from app.utils.excel_orders import build_export_workbook
+
+EXCEL_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 async def _notify_admins_new_order(order_id: int, manager_name: str) -> None:
@@ -102,6 +106,36 @@ async def list_orders(
         date_to=date_to,
         status_id=status_id,
         customer_name=customer_name,
+    )
+
+
+@router.get(
+    "/export-excel",
+    summary="Экспорт заказов в Excel",
+    description="Скачивает заказы в формате .xlsx, одна строка на заказ (сводно). Те же фильтры и то же ограничение доступа, что и у списка заказов (админ — все, менеджер — только свои неотменённые)."
+)
+async def export_orders_excel(
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    status_id: Optional[int] = Query(None),
+    customer_name: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    __: User = Depends(require_permission("orders.read")),
+):
+    rows = await repo.get_export_rows(
+        db,
+        current_user,
+        date_from=date_from,
+        date_to=date_to,
+        status_id=status_id,
+        customer_name=customer_name,
+    )
+    buf = build_export_workbook(rows)
+    return StreamingResponse(
+        buf,
+        media_type=EXCEL_MEDIA_TYPE,
+        headers={"Content-Disposition": "attachment; filename=orders_export.xlsx"},
     )
 
 

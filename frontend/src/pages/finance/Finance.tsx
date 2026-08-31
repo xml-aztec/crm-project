@@ -2,8 +2,18 @@ import React, { useState, useMemo } from 'react';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import {
   useGetCashflowEntriesQuery,
+  useExportCashflowPdfMutation,
   type CashflowEntry,
 } from '../../store/api/cashflowApi';
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -74,6 +84,21 @@ const Finance: React.FC = () => {
     type_name: typeFilter || undefined,
   });
 
+  const [exportPdf, { isLoading: isExporting }] = useExportCashflowPdfMutation();
+
+  const handleExport = async () => {
+    try {
+      const result = await exportPdf({
+        from_date: fromDate || undefined,
+        to_date: toDate || undefined,
+        type_name: typeFilter || undefined,
+      }).unwrap();
+      downloadBlob(result, 'cashflow_report.pdf');
+    } catch {
+      // Обработка ошибки без алерта
+    }
+  };
+
   const { totalIncome, totalExpense, balance } = useMemo(() => {
     let inc = 0;
     let exp = 0;
@@ -137,6 +162,13 @@ const Finance: React.FC = () => {
             className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             Сбросить
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={isExporting}
+            className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+          >
+            {isExporting ? 'Экспорт...' : 'Экспорт в PDF'}
           </button>
         </div>
 

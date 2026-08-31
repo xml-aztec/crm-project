@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>P&amp;L отчёт — {{ month_name }} {{ year }}</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 20mm;
+      }
+      body {
+        font-family: "DejaVu Sans", Arial, sans-serif;
+        font-size: 13px;
+        margin: 0;
+        padding: 40px;
+        color: #222;
+        background: #fff;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      h1 {
+        font-weight: 700;
+        font-size: 24px;
+        margin-bottom: 4px;
+        text-align: center;
+        color: #004080;
+      }
+      .period {
+        text-align: center;
+        font-size: 15px;
+        color: #555;
+        margin-bottom: 30px;
+      }
+      table.statement {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 14px;
+      }
+      table.statement td {
+        padding: 12px 14px;
+        border-bottom: 1px solid #e0e7f1;
+      }
+      table.statement td.label {
+        color: #333;
+      }
+      table.statement td.value {
+        text-align: right;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+      tr.section-total td {
+        font-weight: 700;
+        background-color: #e0e7f1;
+        color: #004080;
+      }
+      tr.net-profit td {
+        font-weight: 700;
+        font-size: 17px;
+        background-color: #004080;
+        color: #fff;
+        border-bottom: none;
+      }
+      tr.margin td {
+        font-size: 12px;
+        color: #777;
+        border-bottom: none;
+        padding-top: 2px;
+      }
+      .footer {
+        margin-top: 60px;
+        font-size: 12px;
+        color: #9ca3af;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Отчёт о прибылях и убытках (P&amp;L)</h1>
+    <div class="period">{{ month_name }} {{ year }}</div>
+
+    <table class="statement">
+      <tr>
+        <td class="label">Выручка</td>
+        <td class="value">{{ "{:,.2f}".format(revenue).replace(",", " ") }} сом</td>
+      </tr>
+      <tr>
+        <td class="label">Себестоимость проданных товаров (COGS)</td>
+        <td class="value">− {{ "{:,.2f}".format(cogs).replace(",", " ") }} сом</td>
+      </tr>
+      <tr class="section-total">
+        <td class="label">Валовая прибыль</td>
+        <td class="value">{{ "{:,.2f}".format(gross_profit).replace(",", " ") }} сом</td>
+      </tr>
+      <tr class="margin">
+        <td class="label">Валовая маржа</td>
+        <td class="value">{{ "%.1f"|format(gross_margin_percent) }}%</td>
+      </tr>
+      <tr>
+        <td class="label">Расходы на зарплату</td>
+        <td class="value">− {{ "{:,.2f}".format(payroll_total).replace(",", " ") }} сом</td>
+      </tr>
+      <tr class="net-profit">
+        <td class="label">Чистая прибыль</td>
+        <td class="value">{{ "{:,.2f}".format(net_profit).replace(",", " ") }} сом</td>
+      </tr>
+      <tr class="margin">
+        <td class="label">Чистая маржа</td>
+        <td class="value">{{ "%.1f"|format(net_margin_percent) }}%</td>
+      </tr>
+    </table>
+
+    <div class="footer">
+      Сформировано {{ generated_at }} — LeadFlow CRM
+    </div>
+  </body>
+</html>

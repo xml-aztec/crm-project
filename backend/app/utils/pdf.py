@@ -1,9 +1,12 @@
 import pdfkit
+from datetime import date, datetime
 from jinja2 import Environment, FileSystemLoader
 from pathlib import Path
 import qrcode
 from io import BytesIO
 import base64
+from app.models.cashflow import CashFlow
+from app.schemas.analytics import PnLReport
 from app.schemas.supply import SupplyOut
 from app.core.config import settings
 
@@ -11,6 +14,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 TEMPLATE_DIR = BASE_DIR / "templates"
 
 env = Environment(loader=FileSystemLoader(str(TEMPLATE_DIR)))
+
+PDF_OPTIONS = {
+    'page-size': 'A4',
+    'encoding': 'UTF-8',
+    'quiet': '',
+}
+
+MONTH_NAMES_RU = [
+    "января", "февраля", "марта", "апреля", "мая", "июня",
+    "июля", "августа", "сентября", "октября", "ноября", "декабря",
+]
 
 
 def generate_qr_base64(data: str) -> str:
@@ -67,3 +81,58 @@ def render_supply_pdf(supply: SupplyOut) -> bytes:
 
     pdf_bytes = pdfkit.from_string(html_content, False, options=options)
     return pdf_bytes
+
+
+def render_pnl_pdf(report: PnLReport) -> bytes:
+    """Тот же repo.get_pnl_report, что и экранный отчёт (app/api/analytics.py),
+    так что PDF не может разойтись с тем, что видно на странице."""
+    template = env.get_template("pnl_report.html")
+    html_content = template.render(
+        year=report.year,
+        month=report.month,
+        month_name=MONTH_NAMES_RU[report.month - 1],
+        revenue=report.revenue,
+        cogs=report.cogs,
+        gross_profit=report.gross_profit,
+        gross_margin_percent=report.gross_margin_percent,
+        payroll_total=report.payroll_total,
+        net_profit=report.net_profit,
+        net_margin_percent=report.net_margin_percent,
+        generated_at=datetime.now().strftime("%d.%m.%Y %H:%M"),
+    )
+    return pdfkit.from_string(html_content, False, options=PDF_OPTIONS)
+
+
+def render_cashflow_pdf(
+    entries: list[CashFlow],
+    from_date: date | None,
+    to_date: date | None,
+    type_name: str | None,
+) -> bytes:
+    """Те же записи и та же арифметика итогов (доходы/расходы/баланс), что и
+    на экране (frontend/src/pages/finance/Finance.tsx), чтобы PDF не мог
+    разойтись с тем, что видно на странице."""
+    total_income = sum(e.amount for e in entries if e.type.name == "income")
+    total_expense = sum(e.amount for e in entries if e.type.name != "income")
+
+    if from_date and to_date:
+        period_label = f"{from_date.strftime('%d.%m.%Y')} — {to_date.strftime('%d.%m.%Y')}"
+    elif from_date:
+        period_label = f"с {from_date.strftime('%d.%m.%Y')}"
+    elif to_date:
+        period_label = f"по {to_date.strftime('%d.%m.%Y')}"
+    else:
+        period_label = "Весь период"
+    if type_name:
+        period_label += f" · {'Доходы' if type_name == 'income' else 'Расходы'}"
+
+    template = env.get_template("cashflow_report.html")
+    html_content = template.render(
+        entries=entries,
+        period_label=period_label,
+        total_income=total_income,
+        total_expense=total_expense,
+        balance=total_income - total_expense,
+        generated_at=datetime.now().strftime("%d.%m.%Y %H:%M"),
+    )
+    return pdfkit.from_string(html_content, False, options=PDF_OPTIONS)

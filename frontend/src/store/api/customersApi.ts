@@ -113,6 +113,30 @@ export const customersApi = createApi({
       }),
       invalidatesTags: [{ type: 'Customer', id: 'LIST' }],
     }),
+    exportCustomersExcel: builder.mutation<Blob, Record<string, string | number | undefined> | void>({
+      queryFn: async (filters) => {
+        try {
+          const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+          const search = new URLSearchParams();
+          if (filters) {
+            Object.entries(filters).forEach(([key, value]) => {
+              if (value !== undefined && value !== null && value !== '') {
+                search.append(key, String(value));
+              }
+            });
+          }
+          const response = await fetch(`${baseUrl}/customers/export-excel?${search.toString()}`, {
+            credentials: 'include',
+          });
+          if (!response.ok) {
+            return { error: { status: response.status, data: 'Не удалось экспортировать клиентов' } };
+          }
+          return { data: await response.blob() };
+        } catch (e) {
+          return { error: { status: 'FETCH_ERROR', error: String(e) } };
+        }
+      },
+    }),
   }),
 });
 
@@ -123,4 +147,5 @@ export const {
   useCreateCustomerMutation,
   useUpdateCustomerMutation,
   useDeleteCustomerMutation,
+  useExportCustomersExcelMutation,
 } = customersApi;

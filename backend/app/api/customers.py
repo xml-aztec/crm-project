@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Literal, Optional
 
@@ -6,6 +7,9 @@ from app.core.dependencies import get_current_user, get_db
 from app.rbac.dependencies import require_permission
 from app.repositories import customer as repo
 from app.schemas.customer import CustomerCreate, CustomerPage, CustomerRead, CustomerUpdate
+from app.utils.excel_customers import build_export_workbook
+
+EXCEL_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 router = APIRouter(prefix="/customers", tags=["Customers"])
 
@@ -48,6 +52,25 @@ async def list_customers_paginated(
         page_size=page_size,
     )
     return CustomerPage(items=items, total=total, page=page, page_size=page_size, total_pages=total_pages)
+
+@router.get(
+    "/export-excel",
+    dependencies=[Depends(get_current_user), Depends(require_permission("customers.read"))],
+    summary="Экспорт клиентов в Excel",
+    description="Скачивает клиентов в формате .xlsx. Поддерживает те же фильтры, что и список клиентов; без фильтров экспортирует всех клиентов."
+)
+async def export_customers_excel(
+    db: AsyncSession = Depends(get_db),
+    search: Optional[str] = Query(None),
+    customer_type_id: Optional[int] = Query(None),
+):
+    customers = await repo.get_export_rows(db, search=search, customer_type_id=customer_type_id)
+    buf = build_export_workbook(customers)
+    return StreamingResponse(
+        buf,
+        media_type=EXCEL_MEDIA_TYPE,
+        headers={"Content-Disposition": "attachment; filename=customers_export.xlsx"},
+    )
 
 @router.get(
     "/{customer_id}",
