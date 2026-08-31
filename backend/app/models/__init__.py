@@ -1,3 +1,4 @@
+from app.models.app_settings import AppSettings
 from app.models.branch import Branch
 from app.models.brand import Brand
 from app.models.budget import Budget

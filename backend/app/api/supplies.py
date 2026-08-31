@@ -80,7 +80,7 @@ async def download_supply_pdf(supply_id: int, db: AsyncSession = Depends(get_db)
     if not supply:
         raise HTTPException(status_code=404, detail="Поставка не найдена")
 
-    pdf_bytes = render_supply_pdf(SupplyOut.model_validate(supply))
+    pdf_bytes = await render_supply_pdf(db, SupplyOut.model_validate(supply))
     return Response(content=pdf_bytes, media_type="application/pdf", headers={
         "Content-Disposition": f"attachment; filename=supply_{supply_id}.pdf"
     })

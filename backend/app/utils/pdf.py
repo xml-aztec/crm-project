@@ -5,7 +5,9 @@ from pathlib import Path
 import qrcode
 from io import BytesIO
 import base64
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.cashflow import CashFlow
+from app.repositories import app_settings as app_settings_repo
 from app.schemas.analytics import PnLReport
 from app.schemas.supply import SupplyOut
 from app.core.config import settings
@@ -39,7 +41,9 @@ def generate_qr_base64(data: str) -> str:
     return f"data:image/png;base64,{base64_img}"
 
 
-def render_supply_pdf(supply: SupplyOut) -> bytes:
+async def render_supply_pdf(db: AsyncSession, supply: SupplyOut) -> bytes:
+    company = await app_settings_repo.get_settings(db)
+
     supply_data = supply.model_dump()
 
     items_list = [
@@ -57,7 +61,9 @@ def render_supply_pdf(supply: SupplyOut) -> bytes:
     qr_code = generate_qr_base64(qr_url)
 
     supplier = supply_data.get("supplier", {})
-    created_user = supply_data.get("created_user", {})
+    # .get(..., {}) не спасает, если ключ есть, но значение None (создавший
+    # пользователь удалён — created_by у поставок SET NULL при удалении).
+    created_user = supply_data.get("created_user") or {}
 
     template = env.get_template("supply_invoice.html")
     html_content = template.render(
@@ -70,7 +76,11 @@ def render_supply_pdf(supply: SupplyOut) -> bytes:
         supplier_contact_person=supplier.get("contact_person", ""),
         supplier_contact_info=supplier.get("contact_info", ""),
         supplier_address=supplier.get("address", ""),
-        created_user_full_name=created_user.get("full_name", "")
+        created_user_full_name=created_user.get("full_name", ""),
+        company_name=company.company_name,
+        company_logo_url=company.company_logo_url,
+        company_address=company.company_address,
+        company_phone=company.company_phone,
     )
 
     options = {

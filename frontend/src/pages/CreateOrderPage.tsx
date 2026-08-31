@@ -10,6 +10,7 @@ import { useGetCustomersQuery, Customer } from '../store/api/customersApi';
 import { useCreateOrderMutation } from '../store/api/ordersApi';
 import { useGetPaymentMethodsQuery } from '../store/api/paymentMethodsApi';
 import { useGetWarehousesQuery, Warehouse } from '../store/api/warehouseApi';
+import { useGetAppSettingsQuery } from '../store/api/appSettingsApi';
 import Button from '../components/ui/button/Button';
 import QuickCustomerForm from '../components/orders/QuickCustomerForm';
 import { getNowInBishkek } from '../utils/dateUtils';
@@ -62,6 +63,7 @@ export default function CreateOrderPage() {
   const customerInputRef = useRef<HTMLInputElement>(null);
 
   const { data: warehouses = [] } = useGetWarehousesQuery();
+  const { data: appSettings } = useGetAppSettingsQuery();
   const { data: products = [] } = useGetProductsQuery();
   const { data: brands = [] } = useGetBrandsQuery();
   const { data: customers = [], refetch: refetchCustomers } = useGetCustomersQuery();
@@ -79,12 +81,17 @@ export default function CreateOrderPage() {
     installment_months: null
   });
 
-  // Один склад в системе — выбираем его автоматически, чтобы не заставлять кликать.
+  // Склад по умолчанию из общих настроек — приоритетнее автовыбора при
+  // единственном складе в системе, чтобы не заставлять кликать каждый раз.
   useEffect(() => {
-    if (warehouses.length === 1 && !orderData.warehouse_id) {
+    if (orderData.warehouse_id) return;
+
+    if (appSettings?.default_warehouse_id) {
+      setOrderData(prev => ({ ...prev, warehouse_id: appSettings.default_warehouse_id!.toString() }));
+    } else if (warehouses.length === 1) {
       setOrderData(prev => ({ ...prev, warehouse_id: warehouses[0].id.toString() }));
     }
-  }, [warehouses, orderData.warehouse_id]);
+  }, [warehouses, appSettings, orderData.warehouse_id]);
 
   // Фокус на поиск клиента сразу при открытии страницы.
   useEffect(() => {

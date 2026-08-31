@@ -118,6 +118,19 @@
         title="QR-код с ссылкой на поставку"
       />
     </div>
+    {% if company_name or company_address or company_phone or company_logo_url %}
+    <div class="info" role="contentinfo" aria-label="Реквизиты компании" style="margin-bottom: 15px;">
+      {% if company_logo_url %}
+      <img src="{{ company_logo_url }}" alt="{{ company_name or '' }}" style="max-height: 48px; margin-bottom: 8px;" />
+      {% endif %} {% if company_name %}
+      <p><strong>{{ company_name }}</strong></p>
+      {% endif %} {% if company_address %}
+      <p>{{ company_address }}</p>
+      {% endif %} {% if company_phone %}
+      <p>{{ company_phone }}</p>
+      {% endif %}
+    </div>
+    {% endif %}
     <h1>Накладная поставки №{{ supply.id }}</h1>
     <div class="info" role="contentinfo" aria-label="Информация о поставщике">
       <p><strong>Поставщик:</strong> {{ supplier_name }}</p>
