@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -32,14 +32,26 @@ const Calendar: React.FC = () => {
   const { data } = useGetTasksPaginatedQuery({
     date_from: range.from,
     date_to: range.to,
-    page_size: 200,
+    // Максимум на бэкенде — 100 (Query(..., le=100)); 200 здесь давало 422 на
+    // каждый рендер, а раз запрос не резолвился, data оставался undefined и
+    // events (см. ниже) пересобирался в новый пустой массив на каждый рендер —
+    // это и раскручивало бесконечный цикл обновлений внутри FullCalendar
+    // (React error #185).
+    page_size: 100,
   });
   const [updateTask] = useUpdateTaskMutation();
 
-  const tasks = (data?.items ?? []).filter((t) => showCancelled || t.status !== "cancelled");
+  const tasks = useMemo(
+    () => (data?.items ?? []).filter((t) => showCancelled || t.status !== "cancelled"),
+    [data, showCancelled]
+  );
 
   const handleDatesSet = useCallback((arg: DatesSetArg) => {
-    setRange({ from: toDateOnly(arg.start), to: toDateOnly(arg.end) });
+    const from = toDateOnly(arg.start);
+    const to = toDateOnly(arg.end);
+    // FullCalendar может звать datesSet повторно с тем же диапазоном — не
+    // обновляем состояние (и не триггерим лишний рендер), если он не изменился.
+    setRange((prev) => (prev.from === from && prev.to === to ? prev : { from, to }));
   }, []);
 
   const handleDateClick = useCallback((arg: DateClickArg) => {
@@ -70,14 +82,18 @@ const Calendar: React.FC = () => {
 
   const closeModal = () => setModalState({ open: false, task: null });
 
-  const events = tasks.map((task) => ({
-    id: String(task.id),
-    title: task.title,
-    start: task.due_at,
-    backgroundColor: STATUS_COLORS[task.status][task.priority],
-    borderColor: STATUS_COLORS[task.status][task.priority],
-    textColor: task.status === "cancelled" ? "#6b7280" : "#ffffff",
-  }));
+  const events = useMemo(
+    () =>
+      tasks.map((task) => ({
+        id: String(task.id),
+        title: task.title,
+        start: task.due_at,
+        backgroundColor: STATUS_COLORS[task.status][task.priority],
+        borderColor: STATUS_COLORS[task.status][task.priority],
+        textColor: task.status === "cancelled" ? "#6b7280" : "#ffffff",
+      })),
+    [tasks]
+  );
 
   return (
     <>
