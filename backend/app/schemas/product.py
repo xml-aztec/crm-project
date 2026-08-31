@@ -1,6 +1,8 @@
 import re
 from pydantic import BaseModel, field_validator
-from typing import Optional
+from typing import List, Optional
+
+from app.schemas.product_image import ProductImageOut
 
 class ProductBase(BaseModel):
     name: str
@@ -32,8 +34,9 @@ class ProductCreate(ProductBase):
 
 class ProductRead(ProductBase):
     id: int
-    qr_code: Optional[str] = None 
-    available_quantity: Optional[int] = 0 
+    qr_code: Optional[str] = None
+    available_quantity: Optional[int] = 0
+    images: List[ProductImageOut] = []
 
     class Config:
         orm_mode = True

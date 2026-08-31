@@ -31,6 +31,12 @@ class Product(Base):
     category = relationship("Category")
     subcategory = relationship("Subcategory", back_populates="products")
     brand = relationship("Brand", back_populates="products")
+    images = relationship(
+        "ProductImage",
+        back_populates="product",
+        order_by="ProductImage.position",
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         UniqueConstraint("sku", name="uq_product_sku"),

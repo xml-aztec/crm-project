@@ -177,8 +177,11 @@ export default function CreateProduct() {
         barcode: formData.barcode.trim() || '', // ✅ ИСПРАВЛЯЕМ: Всегда строка
       };
 
-      await createProduct(productData).unwrap();
-      navigate('/catalog/products');
+      const created = await createProduct(productData).unwrap();
+      // Изображения привязываются к уже существующему товару (ключи в R2
+      // вида products/{product_id}/...) — сразу ведём на страницу редактирования,
+      // где можно их добавить, вместо возврата в список.
+      navigate(`/catalog/products/${created.id}/edit`);
     } catch (error: any) {
       if (error?.status === 422 && error?.data?.detail) {
         const serverErrors: FormErrors = {};

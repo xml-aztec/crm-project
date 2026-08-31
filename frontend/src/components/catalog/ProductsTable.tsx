@@ -247,20 +247,40 @@ export default function ProductsTable({ products, isLoading = false, brandsMap =
                 >
                   {/* Название и основная информация */}
                   <td className="px-6 py-4">
-                    <div className="max-w-xs">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white mb-1">
-                        {product.name}
+                    <div className="flex items-start gap-3 max-w-xs">
+                      {(() => {
+                        const primaryImage =
+                          product.images?.find((img) => img.is_primary) || product.images?.[0];
+                        return primaryImage ? (
+                          <img
+                            src={primaryImage.thumbnail_url}
+                            alt=""
+                            loading="lazy"
+                            className="w-12 h-12 rounded-lg object-cover shrink-0 border border-gray-200 dark:border-gray-700"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg shrink-0 bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-500">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M4 8h16M4 4h16a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z" />
+                            </svg>
+                          </div>
+                        );
+                      })()}
+                      <div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                          {product.name}
+                        </div>
+                        {product.description && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+                            {product.description}
+                          </div>
+                        )}
+                        {product.brand_id && (
+                          <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                            {brandsMap[product.brand_id] ?? `Бренд #${product.brand_id}`}
+                          </div>
+                        )}
                       </div>
-                      {product.description && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
-                          {product.description}
-                        </div>
-                      )}
-                      {product.brand_id && (
-                        <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                          {brandsMap[product.brand_id] ?? `Бренд #${product.brand_id}`}
-                        </div>
-                      )}
                     </div>
                   </td>
 

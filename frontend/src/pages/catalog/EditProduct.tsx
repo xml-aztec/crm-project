@@ -11,6 +11,7 @@ import Button from '../../components/ui/button/Button';
 import Label from '../../components/form/Label';
 import Input from '../../components/form/input/InputField';
 import Select from '../../components/form/Select';
+import ProductImageManager from '../../components/catalog/ProductImageManager';
 
 interface ProductFormData {
   name: string;
@@ -543,6 +544,8 @@ export default function EditProduct() {
           </Button>
         </div>
       </form>
+
+      <ProductImageManager productId={productId} images={product.images || []} />
     </div>
   );
 }

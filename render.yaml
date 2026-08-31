@@ -28,3 +28,16 @@ services:
       # BASE_URL / FRONTEND_URL: не заданы намеренно — Settings подхватит их
       # из RENDER_EXTERNAL_URL, который Render прокидывает автоматически
       # (см. backend/app/core/config.py::_default_urls_from_render).
+      # Хранилище изображений товаров (Cloudflare R2) — задать вручную в
+      # Render dashboard. Бакет должен быть настроен на публичное чтение и
+      # с CORS, разрешающим PUT/GET с домена фронтенда (см. app/utils/storage.py).
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        sync: false
+      - key: R2_PUBLIC_URL
+        sync: false

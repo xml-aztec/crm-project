@@ -9,6 +9,16 @@ import type {
   BulkStatusResult,
 } from '../../types/catalog';
 
+export interface ProductImage {
+  id: number;
+  product_id: number;
+  thumbnail_url: string;
+  full_url: string;
+  position: number;
+  is_primary: boolean;
+  created_at: string;
+}
+
 export interface Product {
   id: number;
   name: string;
@@ -19,10 +29,33 @@ export interface Product {
   category_id: number;
   subcategory_id: number;
   brand_id: number;
-  sku: string;                   
-  barcode: string;            
-  qr_code: string;              
-  available_quantity: number;  
+  sku: string;
+  barcode: string;
+  qr_code: string;
+  available_quantity: number;
+  images: ProductImage[];
+}
+
+export interface PresignImageRequest {
+  productId: number;
+  filename: string;
+  content_type: string;
+  file_size: number;
+}
+
+export interface PresignImageResponse {
+  upload_url: string;
+  key: string;
+}
+
+export interface ConfirmImageRequest {
+  productId: number;
+  key: string;
+}
+
+export interface ReorderImagesRequest {
+  productId: number;
+  image_ids: number[];
 }
 
 // Re-exported so existing `import { Category } from '.../catalogApi'`-style code keeps working;
@@ -231,6 +264,48 @@ export const catalogApi = createApi({
         method: 'DELETE',
       }),
       invalidatesTags: ['Product'],
+    }),
+
+    presignProductImage: builder.mutation<PresignImageResponse, PresignImageRequest>({
+      query: ({ productId, ...data }) => ({
+        url: `products/${productId}/images/presign`,
+        method: 'POST',
+        body: data,
+      }),
+    }),
+
+    confirmProductImage: builder.mutation<ProductImage, ConfirmImageRequest>({
+      query: ({ productId, key }) => ({
+        url: `products/${productId}/images/confirm`,
+        method: 'POST',
+        body: { key },
+      }),
+      invalidatesTags: (_, __, { productId }) => [{ type: 'Product', id: productId }, 'Product'],
+    }),
+
+    reorderProductImages: builder.mutation<ProductImage[], ReorderImagesRequest>({
+      query: ({ productId, image_ids }) => ({
+        url: `products/${productId}/images/reorder`,
+        method: 'PATCH',
+        body: { image_ids },
+      }),
+      invalidatesTags: (_, __, { productId }) => [{ type: 'Product', id: productId }, 'Product'],
+    }),
+
+    setProductImagePrimary: builder.mutation<ProductImage[], { productId: number; imageId: number }>({
+      query: ({ productId, imageId }) => ({
+        url: `products/${productId}/images/${imageId}/primary`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: (_, __, { productId }) => [{ type: 'Product', id: productId }, 'Product'],
+    }),
+
+    deleteProductImage: builder.mutation<void, { productId: number; imageId: number }>({
+      query: ({ productId, imageId }) => ({
+        url: `products/${productId}/images/${imageId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_, __, { productId }) => [{ type: 'Product', id: productId }, 'Product'],
     }),
 
     scanProduct: builder.query<Product, string>({
@@ -504,6 +579,11 @@ export const {
   useCreateProductMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,
+  usePresignProductImageMutation,
+  useConfirmProductImageMutation,
+  useReorderProductImagesMutation,
+  useSetProductImagePrimaryMutation,
+  useDeleteProductImageMutation,
   useGetProductQRCodeQuery,
   useDownloadProductQRCodeMutation,
   useGetCategoriesQuery,

@@ -23,6 +23,7 @@ from app.models.payment_method import PaymentMethod
 from app.models.payroll import Payroll
 from app.models.position import Position
 from app.models.product import Product
+from app.models.product_image import ProductImage
 from app.models.product_stock import ProductStock
 from app.models.role import Role
 from app.models.stock_log import StockLog

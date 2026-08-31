@@ -1,5 +1,6 @@
 import csv
 import io
+import structlog
 from dataclasses import dataclass, field
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +14,10 @@ from app.models.product import Product
 from app.models.product_stock import ProductStock
 from app.models.subcategory import Subcategory
 from app.schemas.product import ProductCreate
+from app.utils import storage
 from app.utils.barcode_utils import generate_qr_base64, validate_ean13, generate_sku
+
+logger = structlog.get_logger()
 
 
 def _build_filters(
@@ -73,6 +77,7 @@ async def get_filtered(
         selectinload(Product.category),
         selectinload(Product.subcategory),
         selectinload(Product.brand),
+        selectinload(Product.images),
     )
 
     filters = _build_filters(
@@ -122,6 +127,7 @@ async def get_by_id(db: AsyncSession, product_id: int) -> Optional[Product]:
             selectinload(Product.category),
             selectinload(Product.subcategory),
             selectinload(Product.brand),
+            selectinload(Product.images),
         )
     )
     product = result.scalar_one_or_none()
@@ -159,6 +165,7 @@ async def get_by_code(db: AsyncSession, code: str) -> Optional[Product]:
         selectinload(Product.category),
         selectinload(Product.subcategory),
         selectinload(Product.brand),
+        selectinload(Product.images),
     )
 
     for condition in _scan_lookup_conditions(code):
@@ -200,11 +207,16 @@ async def create(db: AsyncSession, data: ProductCreate):
 
     db.add(new_product)
     await db.commit()
-    await db.refresh(new_product)
-    return new_product
+    # Через get_by_id, а не db.refresh(): images — relationship с
+    # cascade="all, delete-orphan", и даже присвоение ей пустого списка
+    # сначала лениво подгружает текущую коллекцию для diff'а, что вне
+    # async-контекста при сериализации ответа падает с MissingGreenlet.
+    return await get_by_id(db, new_product.id)
 
 async def update(db: AsyncSession, product_id: int, data: dict):
-    query = await db.execute(select(Product).where(Product.id == product_id))
+    query = await db.execute(
+        select(Product).where(Product.id == product_id).options(selectinload(Product.images))
+    )
     product = query.scalar_one_or_none()
     if not product:
         return None
@@ -219,6 +231,21 @@ async def update(db: AsyncSession, product_id: int, data: dict):
 async def delete(db: AsyncSession, product_id: int):
     product = await get_by_id(db, product_id)
     if product:
+        keys = [
+            key
+            for image in product.images
+            for key in (storage.key_from_public_url(image.thumbnail_url), storage.key_from_public_url(image.full_url))
+            if key
+        ]
+        if keys:
+            try:
+                await storage.delete_objects(keys)
+            except Exception:
+                # Не блокируем удаление товара из-за временного сбоя
+                # хранилища — записи product_images всё равно удалятся
+                # каскадно на уровне БД (ON DELETE CASCADE).
+                logger.warning("product_image_r2_cleanup_failed", product_id=product_id)
+
         await db.delete(product)
         await db.commit()
 

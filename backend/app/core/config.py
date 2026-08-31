@@ -23,6 +23,18 @@ class Settings(BaseSettings):
     TASK_REMINDER_TOKEN: Optional[str] = None
     TASK_REMINDER_INTERVAL_MINUTES: int = 2
 
+    # Хранилище изображений товаров (Cloudflare R2, S3-совместимое, см.
+    # app/utils/storage.py). Опционально — если не задано, эндпоинты
+    # изображений вернут понятную 500 при обращении, а не сломают запуск
+    # приложения (тот же принцип, что и у RESEND_API_KEY выше).
+    R2_ACCOUNT_ID: Optional[str] = None
+    R2_ACCESS_KEY_ID: Optional[str] = None
+    R2_SECRET_ACCESS_KEY: Optional[str] = None
+    R2_BUCKET_NAME: Optional[str] = None
+    # Публичный базовый URL бакета (r2.dev или кастомный домен) — используется
+    # для построения/разбора ссылок на объекты, без подписанных ссылок на показ.
+    R2_PUBLIC_URL: Optional[str] = None
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
