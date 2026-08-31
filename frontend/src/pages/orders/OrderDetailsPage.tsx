@@ -8,6 +8,8 @@ import Button from '../../components/ui/button/Button';
 import StatusDropdown from '../../components/orders/StatusDropdown';
 import ConfirmationBadge from '../../components/orders/ConfirmationBadge';
 import OrderStockLogsSummary from '../../components/stock/OrderStockLogsSummary';
+import OrderReturnsSummary from '../../components/orders/OrderReturnsSummary';
+import ReturnModal from '../../components/orders/ReturnModal';
 import TaskModal from '../../components/tasks/TaskModal';
 import { formatDateTime, formatDate, formatTime } from '../../utils/dateUtils';
 
@@ -219,6 +221,10 @@ const ACTION_META: Record<string, { label: string; icon: string; color: string }
   confirmed:     { label: 'Подтверждён',         icon: '✅', color: 'text-green-600 dark:text-green-400' },
   unconfirmed:   { label: 'Подтверждение снято', icon: '🔄', color: 'text-orange-600 dark:text-orange-400' },
   status_changed:{ label: 'Статус изменён',      icon: '📋', color: 'text-purple-600 dark:text-purple-400' },
+  return_requested: { label: 'Возврат оформлен (ожидает подтверждения)', icon: '↩️', color: 'text-orange-600 dark:text-orange-400' },
+  return_completed: { label: 'Возврат выполнен', icon: '↩️', color: 'text-blue-600 dark:text-blue-400' },
+  return_approved:  { label: 'Возврат подтверждён', icon: '↩️', color: 'text-green-600 dark:text-green-400' },
+  return_rejected:  { label: 'Возврат отклонён', icon: '↩️', color: 'text-red-600 dark:text-red-400' },
 };
 
 export default function OrderDetailsPage() {
@@ -226,6 +232,7 @@ export default function OrderDetailsPage() {
   const navigate = useNavigate();
   const [isProductsExpanded, setIsProductsExpanded] = useState(true);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const { isAdmin } = useRoleAccess();
   const orderId = parseInt(id || '0');
 
@@ -342,6 +349,15 @@ export default function OrderDetailsPage() {
               >
                 Запланировать задачу
               </Button>
+              {order.confirmed && order.status?.name !== 'Отменен' && (
+                <Button
+                  variant="outline"
+                  onClick={() => setIsReturnModalOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  Оформить возврат
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -521,6 +537,7 @@ export default function OrderDetailsPage() {
           </InfoCard>
           
           {order.confirmed && <OrderStockLogsSummary orderId={order.id} />}
+          {order.confirmed && <OrderReturnsSummary orderId={order.id} />}
 
           {order.user && (
             <InfoCard icon={<Icons.User />} title="Информация о заказе">
@@ -637,6 +654,14 @@ export default function OrderDetailsPage() {
         initialCustomerId={order.customer_id ?? undefined}
         initialCustomerLabel={order.customer?.name}
       />
+
+      {isReturnModalOpen && (
+        <ReturnModal
+          isOpen={isReturnModalOpen}
+          onClose={() => setIsReturnModalOpen(false)}
+          order={order}
+        />
+      )}
     </div>
   );
 }

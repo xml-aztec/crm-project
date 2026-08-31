@@ -11,6 +11,10 @@ class ProductStock(Base):
     warehouse_id = Column(Integer, ForeignKey("warehouses.id", ondelete="CASCADE"), nullable=False)
     quantity = Column(Integer, nullable=False, default=0)
     reserved = Column(Integer, nullable=False, default=0, server_default='0')
+    # Возвращённый брак — отдельный, недоступный для продажи учёт (см.
+    # app/utils/stock.py::apply_return_stock_effect). Не смешивается с
+    # quantity, чтобы бракованный товар не попадал в продаваемый остаток.
+    defective_quantity = Column(Integer, nullable=False, default=0, server_default='0')
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     product = relationship("Product")

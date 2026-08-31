@@ -166,8 +166,11 @@ const navItems: NavItem[] = [
   {
     icon: <OrdersIcon />,
     name: "Заказы",
-    path: "/orders",
     requiredPermission: "orders.read",
+    subItems: [
+      { name: "Все заказы", path: "/orders", pro: false },
+      { name: "Возвраты", path: "/returns", pro: false },
+    ],
   },
   {
     icon: <WarehouseIcon />,

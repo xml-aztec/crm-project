@@ -23,6 +23,7 @@ interface Stock {
   quantity: number;
   reserved: number;
   available: number;
+  defective_quantity: number;
   updated_at: string;
 }
 
@@ -593,6 +594,9 @@ const WarehouseInventory: React.FC = () => {
                     Доступно
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Брак
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Статус
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -637,6 +641,9 @@ const WarehouseInventory: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-700 dark:text-blue-300 font-semibold">
                       {stock.available ?? stock.quantity}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 dark:text-red-400 font-medium">
+                      {stock.defective_quantity ?? 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStockLevelBadge(stock.quantity)}

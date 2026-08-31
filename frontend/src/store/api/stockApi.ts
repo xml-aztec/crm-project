@@ -7,6 +7,7 @@ export interface Stock {
   quantity: number;
   reserved: number;
   available: number;
+  defective_quantity: number;
   updated_at: string;
   product?: {
     id: number;

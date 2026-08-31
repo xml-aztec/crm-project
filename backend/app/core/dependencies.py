@@ -11,7 +11,7 @@ from app.models.user import User
 from app.repositories import user as user_repo
 from app.repositories import order as order_repo
 from app.repositories import task as task_repo
-from app.rbac.service import user_is_admin
+from app.rbac.service import user_is_admin, user_is_manager_or_admin
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -53,6 +53,17 @@ async def is_admin(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Доступ разрешен только администраторам."
+        )
+    return current_user
+
+async def is_manager_or_admin(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not await user_is_manager_or_admin(current_user, db):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Подтверждать или отклонять возврат может только менеджер или администратор."
         )
     return current_user
 

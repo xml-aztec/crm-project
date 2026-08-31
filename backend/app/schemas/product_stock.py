@@ -13,6 +13,7 @@ class ProductStockCreate(ProductStockBase):
 class ProductStockOut(ProductStockBase):
     id: int
     reserved: int = 0
+    defective_quantity: int = 0
     updated_at: datetime
 
     @computed_field

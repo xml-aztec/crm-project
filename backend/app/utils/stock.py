@@ -118,6 +118,39 @@ async def check_stock_before_order_creation(
             )
 
 
+async def apply_return_stock_effect(
+    db: AsyncSession,
+    warehouse_id: int,
+    product_id: int,
+    quantity: int,
+    condition: str,
+):
+    """Применяет эффект возврата на склад: годный товар — обратно в
+    продаваемый остаток (та же механика, что и restore_stock_for_order),
+    брак — в отдельный defective_quantity, не увеличивая доступный для
+    продажи остаток. Без внутреннего commit — вызывающий код (создание/
+    подтверждение возврата) коммитит один раз после применения всех позиций
+    возврата и записи в историю заказа."""
+    if condition == "resalable":
+        await db.execute(
+            update(ProductStock)
+            .where(
+                ProductStock.product_id == product_id,
+                ProductStock.warehouse_id == warehouse_id
+            )
+            .values(quantity=ProductStock.quantity + quantity)
+        )
+    else:
+        await db.execute(
+            update(ProductStock)
+            .where(
+                ProductStock.product_id == product_id,
+                ProductStock.warehouse_id == warehouse_id
+            )
+            .values(defective_quantity=ProductStock.defective_quantity + quantity)
+        )
+
+
 async def deduct_stock_for_order(db: AsyncSession, order: Order):
     await db.refresh(order, ["items", "warehouse"])
 

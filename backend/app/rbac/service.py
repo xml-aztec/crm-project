@@ -242,3 +242,19 @@ async def user_is_admin(user: User, db: AsyncSession) -> bool:
     (`sync_rbac_role_for_user`, called from registration and admin updates)
     guaranteed every user always has a matching RBAC assignment."""
     return await is_rbac_admin(user.id, db)
+
+
+async def user_is_manager_or_admin(user: User, db: AsyncSession) -> bool:
+    """Used to gate the return-approval workflow: staff-created returns need
+    sign-off from a Manager or Admin, while Manager/Admin-created returns
+    apply immediately (see app/repositories/order_return.py)."""
+    result = await db.execute(
+        select(RbacUserRole.user_id)
+        .join(RbacRole, RbacRole.id == RbacUserRole.role_id)
+        .where(
+            RbacUserRole.user_id == user.id,
+            RbacRole.name.in_(["Admin", "Manager"]),
+            RbacRole.is_system.is_(True),
+        )
+    )
+    return result.first() is not None

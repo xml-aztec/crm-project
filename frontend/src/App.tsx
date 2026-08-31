@@ -24,7 +24,8 @@ import RequireAuth from "./components/auth/RequireAuth";
 import RequirePermission from "./components/auth/RequirePermission";
 import AllOrders from './pages/orders/AllOrders';
 import CreateOrderPage from './pages/CreateOrderPage';
-import OrderDetailsPage from './pages/orders/OrderDetailsPage'; 
+import OrderDetailsPage from './pages/orders/OrderDetailsPage';
+import ReturnsManagement from './pages/returns/ReturnsManagement';
 import Products from './pages/catalog/Products';
 import CreateProduct from './pages/catalog/CreateProduct';
 import Categories from './pages/catalog/Categories';
@@ -95,6 +96,7 @@ const AppWithRedux = () => {
           <Route path="/orders" element={<RequirePermission permission="orders.read"><AllOrders /></RequirePermission>} />
           <Route path="/orders/create" element={<RequirePermission permission="orders.read"><CreateOrderPage /></RequirePermission>} />
           <Route path="/orders/:id" element={<RequirePermission permission="orders.read"><OrderDetailsPage /></RequirePermission>} />
+          <Route path="/returns" element={<RequirePermission permission="orders.read"><ReturnsManagement /></RequirePermission>} />
 
           {/* Warehouse Management Pages */}
           <Route path="/warehouses" element={<RequirePermission permission="stock.read"><Warehouses /></RequirePermission>} />
