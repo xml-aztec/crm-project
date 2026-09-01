@@ -482,7 +482,7 @@ export default function EditProduct() {
                 <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.sku}</p>
               )}
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Автоматически генерируется бэкендом, если не указан
+                Автоматически генерируется, если не указан
               </p>
             </div>
 

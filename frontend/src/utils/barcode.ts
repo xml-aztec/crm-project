@@ -37,7 +37,7 @@ export function isValidBarcode(value: string): boolean {
 }
 
 export const BARCODE_FORMATS_HINT =
-  'Опционально. Поддерживаются EAN-13, EAN-8, UPC-A/E, Code128, Code39, Code93, Codabar, ITF';
+  'Опционально.';
 
 export const BARCODE_VALIDATION_ERROR =
   'Недопустимый штрихкод. Поддерживаются EAN-13, EAN-8, UPC-A/E, Code128, Code39, Code93, Codabar, ITF';
