@@ -116,10 +116,14 @@ export default function ScannerModal({ isOpen, onClose }: ScannerModalProps) {
     }
     const config = {
       fps: 10,
+      // html5-qrcode кадрирует видео строго по границам qrbox перед
+      // декодированием (это не просто визуальная рамка) — прежняя почти
+      // квадратная рамка обрезала длинные 1D-штрихкоды (EAN/UPC/Code128 и
+      // т.п.), не давая декодеру увидеть код целиком.
       qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-        const size = Math.floor(minEdge * 0.7);
-        return { width: size, height: Math.floor(size * 0.55) };
+        const width = Math.floor(viewfinderWidth * 0.85);
+        const height = Math.floor(Math.min(viewfinderHeight * 0.5, width * 0.6));
+        return { width, height };
       },
     };
 
