@@ -14,6 +14,7 @@ import Button from '../../components/ui/button/Button';
 import Label from '../../components/form/Label';
 import Input from '../../components/form/input/InputField';
 import Select from '../../components/form/Select';
+import { isValidBarcode, BARCODE_FORMATS_HINT, BARCODE_VALIDATION_ERROR } from '../../utils/barcode';
 
 interface ProductFormData {
   name: string;
@@ -106,9 +107,7 @@ export default function CreateProduct() {
   };
 
   const handleBarcodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Ограничиваем ввод только цифрами и до 13 символов
-    const value = e.target.value.replace(/\D/g, '').slice(0, 13);
-    handleInputChange('barcode', value);
+    handleInputChange('barcode', e.target.value.slice(0, 48));
   };
 
   // ✅ Валидация
@@ -137,9 +136,8 @@ export default function CreateProduct() {
 
     // Проверка штрихкода
     if (formData.barcode && formData.barcode.trim()) {
-      const barcode = formData.barcode.trim();
-      if (!/^\d{13}$/.test(barcode)) {
-        newErrors.barcode = 'Штрихкод должен содержать ровно 13 цифр (формат EAN-13)';
+      if (!isValidBarcode(formData.barcode)) {
+        newErrors.barcode = BARCODE_VALIDATION_ERROR;
       }
     }
 
@@ -436,7 +434,7 @@ export default function CreateProduct() {
 
             {/* Штрихкод */}
             <div>
-              <Label>Штрихкод (EAN-13)</Label>
+              <Label>Штрихкод</Label>
               <input
                 type="text"
                 value={formData.barcode}
@@ -444,14 +442,14 @@ export default function CreateProduct() {
                 className={`w-full px-4 py-3 border rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                   errors.barcode ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
                 }`}
-                placeholder="1234567890123"
+                placeholder="Например, 4780123456782"
                 disabled={isCreating}
               />
               {errors.barcode && (
                 <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.barcode}</p>
               )}
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Опционально. Формат: 13 цифр
+                {BARCODE_FORMATS_HINT}
               </p>
             </div>
           </div>

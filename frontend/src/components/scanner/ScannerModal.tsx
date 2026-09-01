@@ -47,10 +47,11 @@ function playSuccessBeep() {
   }
 }
 
-/** Штрихкоды EAN-13 — 13 цифр; всё остальное (буквенно-цифровой SKU
- * или числовой ID из QR-кода) предзаполняем как SKU при создании товара. */
+/** Чисто цифровые коды длиной 6–14 — это EAN-13/EAN-8/UPC-A/UPC-E/ITF-14;
+ * всё остальное (буквенно-цифровой SKU, Code128/39 или числовой ID из
+ * QR-кода) предзаполняем как SKU при создании товара. */
 function isLikelyBarcode(code: string) {
-  return /^\d{13}$/.test(code);
+  return /^\d{6,14}$/.test(code);
 }
 
 interface ScannerModalProps {

@@ -1,8 +1,8 @@
-import re
 from pydantic import BaseModel, field_validator
 from typing import List, Optional
 
 from app.schemas.product_image import ProductImageOut
+from app.utils.barcode_utils import validate_barcode
 
 class ProductBase(BaseModel):
     name: str
@@ -18,15 +18,15 @@ class ProductBase(BaseModel):
 
     @field_validator("barcode")
     @classmethod
-    def validate_barcode(cls, v):
+    def check_barcode(cls, v):
         if v is None or v == "":
-            return None  
-        if not re.fullmatch(r"\d{13}", v):
-            raise ValueError("Штрихкод должен содержать 13 цифр (EAN-13)")
-        digits = list(map(int, v))
-        checksum = (10 - sum(digits[i] if i % 2 == 0 else digits[i] * 3 for i in range(12)) % 10) % 10
-        if digits[12] != checksum:
-            raise ValueError("Недействительный штрихкод: неверная контрольная сумма")
+            return None
+        v = v.strip()
+        if not validate_barcode(v):
+            raise ValueError(
+                "Недопустимый штрихкод. Поддерживаются EAN-13, EAN-8, UPC-A/E, "
+                "Code128, Code39, Code93, Codabar, ITF"
+            )
         return v
 
 class ProductCreate(ProductBase):
@@ -54,15 +54,15 @@ class ProductUpdate(BaseModel):
 
     @field_validator("barcode")
     @classmethod
-    def validate_barcode(cls, v):
+    def check_barcode(cls, v):
         if v is None or v == "":
             return None
-        if not re.fullmatch(r"\d{13}", v):
-            raise ValueError("Штрихкод должен содержать 13 цифр (EAN-13)")
-        digits = list(map(int, v))
-        checksum = (10 - sum(digits[i] if i % 2 == 0 else digits[i] * 3 for i in range(12)) % 10) % 10
-        if digits[12] != checksum:
-            raise ValueError("Недействительный штрихкод: неверная контрольная сумма")
+        v = v.strip()
+        if not validate_barcode(v):
+            raise ValueError(
+                "Недопустимый штрихкод. Поддерживаются EAN-13, EAN-8, UPC-A/E, "
+                "Code128, Code39, Code93, Codabar, ITF"
+            )
         return v
 
     class Config:

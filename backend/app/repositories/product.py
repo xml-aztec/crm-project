@@ -15,7 +15,7 @@ from app.models.product_stock import ProductStock
 from app.models.subcategory import Subcategory
 from app.schemas.product import ProductCreate
 from app.utils import storage
-from app.utils.barcode_utils import generate_qr_base64, validate_ean13, generate_sku
+from app.utils.barcode_utils import generate_qr_base64, validate_barcode, generate_sku
 
 logger = structlog.get_logger()
 
@@ -191,8 +191,8 @@ def _scan_lookup_conditions(code: str):
 
 
 async def create(db: AsyncSession, data: ProductCreate):
-    if data.barcode and not validate_ean13(data.barcode):
-        raise HTTPException(status_code=400, detail="Невалидный EAN‑13 штрихкод")
+    if data.barcode and not validate_barcode(data.barcode):
+        raise HTTPException(status_code=400, detail="Невалидный штрихкод")
 
     sku = data.sku or generate_sku()
 
@@ -483,8 +483,8 @@ async def validate_import_rows(db: AsyncSession, rows: list[dict]) -> list[Impor
             if brand_id is None:
                 errors.append(f'бренд "{brand_name}" не найден')
 
-        if barcode and not validate_ean13(barcode):
-            errors.append("некорректный штрихкод (ожидается EAN-13, 13 цифр)")
+        if barcode and not validate_barcode(barcode):
+            errors.append("некорректный штрихкод (поддерживаются EAN-13, EAN-8, UPC-A/E, Code128, Code39, Code93, Codabar, ITF)")
 
         if sku:
             if sku in seen_skus_in_file:
