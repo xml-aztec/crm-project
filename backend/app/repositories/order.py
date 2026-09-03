@@ -14,7 +14,7 @@ from app.models.product import Product
 from app.models.product_stock import ProductStock
 from app.models.user import User
 from app.models.warehouse import Warehouse
-from app.utils.orders import recalculate_order_total
+from app.utils.orders import price_order_item, recalculate_order_total
 from app.utils.stock import (
     check_stock_before_order_creation,
     deduct_stock_for_order,
@@ -64,8 +64,18 @@ async def get_order_by_id(db: AsyncSession, order_id: int, current_user: User) -
     if not order:
         return None
 
+    # Единственное место, где решается «видит ли этот пользователь этот
+    # заказ» — сюда приходят и GET /orders/{id}, и зависимость
+    # is_order_owner_or_admin. Раньше проверка была инвертирована: условие
+    # срабатывало при order.user_id == current_user.id, то есть владельцу
+    # свой отменённый заказ закрывали, а постороннему отдавали любой чужой
+    # (проверки владения не было вовсе). Списочный get_orders ниже всегда
+    # ограничивал не-админа своими и неотменёнными — здесь повторяем то же
+    # правило.
     if not await user_is_admin(current_user, db):
-        if order.status and order.status.name == "Отменен" and order.user_id == current_user.id:
+        if order.user_id != current_user.id:
+            raise HTTPException(403, detail="Нет доступа к заказу")
+        if order.status and order.status.name == "Отменен":
             raise HTTPException(403, detail="Вы не можете просматривать отменённый заказ")
 
     return order
@@ -108,30 +118,34 @@ async def create_order(
     await db.flush()
 
     for item in items_data:
-        unit_price = item.unit_price
-
-        if unit_price is None:
-            result = await db.execute(
-                select(Product.price).where(Product.id == item.product_id)
-            )
-            product_price = result.scalar_one_or_none()
-            if product_price is None:
-                raise HTTPException(404, detail=f"Товар id={item.product_id} не найден")
-            unit_price = product_price
+        # Цена целиком на сервере: из каталога, со скидкой в допустимом
+        # диапазоне. Присланные клиентом unit_price/final_price больше не
+        # используются (и отсутствуют в схеме) — см. price_order_item.
+        unit_price, final_price = await price_order_item(
+            db,
+            product_id=item.product_id,
+            quantity=item.quantity,
+            discount_percent=getattr(item, "discount_percent", None),
+        )
 
         db.add(OrderItem(
             order_id=order.id,
             product_id=item.product_id,
             quantity=item.quantity,
             unit_price=unit_price,
-            final_price=item.final_price,
+            final_price=final_price,
         ))
 
     await history_repo.add_entry(db, order.id, "created", "Заказ создан", user_id=current_user.id)
-    await db.commit()
 
-    # Резервируем остатки для нового заказа
+    # Резерв берётся в ТОЙ ЖЕ транзакции, что и сам заказ. Раньше здесь стоял
+    # commit(), а reserve_stock_for_order коммитила отдельно после него —
+    # заказ мог существовать без резерва, а блокировки строк, взятые в
+    # check_stock_before_order_creation, снимались до того, как резерв
+    # применён, что и открывало окно для гонки.
+    await db.flush()
     await reserve_stock_for_order(db, order.id)
+    await db.commit()
 
     result = await db.execute(
         select(Order)
@@ -204,8 +218,17 @@ async def get_orders(
         # Конец дня — включительно по 23:59:59.999999, иначе весь день выпадает из выборки.
         filters.append(Order.created_at <= datetime.combine(date_to, time.max, tzinfo=timezone.utc))
 
+    # Соединение с клиентом нужно ТОЛЬКО для фильтра по его имени. Раньше
+    # здесь стоял безусловный внутренний join при любом непустом filters, а
+    # для не-админа фильтр есть всегда (по user_id) — из-за чего заказы с
+    # customer_id = NULL пропадали из списка целиком. Именно такие заказы
+    # остаются после удаления клиента (FK ondelete="SET NULL"), то есть
+    # сохранённые намеренно данные были недоступны в интерфейсе.
+    if customer_name:
+        query = query.join(Order.customer)
+
     if filters:
-        query = query.join(Order.customer).where(*filters)
+        query = query.where(*filters)
 
     result = await db.execute(query)
     return result.scalars().all()

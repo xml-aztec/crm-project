@@ -1,3 +1,18 @@
+"""Аналитические выборки.
+
+ВАЖНО про `order_items.final_price`: это ИТОГ ПО СТРОКЕ, в него уже заложено
+количество (см. app/utils/orders.py::recalculate_order_total, который просто
+складывает final_price позиций, и расчёт на фронте — unit_price * quantity).
+Поэтому выручка агрегируется как `SUM(final_price)` и НИКОГДА не умножается
+на quantity повторно. Раньше в этом файле сосуществовали обе формулы: семь
+запросов (KPI, план/факт, таблица лидеров) считали
+`SUM(final_price * quantity)` и завышали выручку во столько раз, каково
+среднее количество единиц в строке, тогда как P&L и ABC считали верно —
+два экрана приложения показывали разные числа.
+
+На себестоимость это не распространяется: `Product.cost_price` — цена ЗА
+ЕДИНИЦУ, поэтому в расчёте прибыли `quantity * cost_price` умножение нужно.
+"""
 from calendar import month_abbr
 from decimal import Decimal
 from sqlalchemy import and_, select, func, cast, Date, extract
@@ -8,6 +23,7 @@ from collections import defaultdict
 from statistics import mean, pstdev
 
 from app.models.order import Order
+from app.utils.orders import order_counts_as_revenue
 from app.models.order_item import OrderItem
 from app.models.monthly_target import MonthlyTarget
 from app.models.payroll import Payroll
@@ -70,7 +86,7 @@ async def get_sales_by_month(db: AsyncSession):
         .join(OrderItem, OrderItem.order_id == Order.id)
         .where(
             extract("year", Order.created_at) == current_year,
-            Order.confirmed == True
+            order_counts_as_revenue()
         )
         .group_by(extract("month", Order.created_at))
         .order_by(extract("month", Order.created_at))
@@ -103,7 +119,7 @@ async def get_kpi_monthly_revenue_profit(db: AsyncSession):
         .join(OrderItem, Order.id == OrderItem.order_id)
         .join(Product, Product.id == OrderItem.product_id)
         .where(
-            Order.confirmed == True,
+            order_counts_as_revenue(),
             extract("year", Order.created_at) == current_year
         )
         .group_by("month")
@@ -137,7 +153,7 @@ async def get_recent_orders(db: AsyncSession, limit: int = 5):
             selectinload(Order.status),
             selectinload(Order.items).selectinload(OrderItem.product)
         )
-        .where(Order.confirmed == True)
+        .where(order_counts_as_revenue())
         .order_by(Order.created_at.desc())
         .limit(limit)
     )
@@ -159,7 +175,7 @@ async def get_recent_orders(db: AsyncSession, limit: int = 5):
 
 async def get_order_status_summary(db: AsyncSession):
     total_query = await db.execute(
-        select(func.count()).select_from(Order).where(Order.confirmed == True)
+        select(func.count()).select_from(Order).where(order_counts_as_revenue())
     )
     total_orders = total_query.scalar() or 1  # чтобы не делить на 0
 
@@ -169,7 +185,7 @@ async def get_order_status_summary(db: AsyncSession):
             func.count(Order.id).label("count")
         )
         .join(Order, Order.status_id == OrderStatus.id)
-        .where(Order.confirmed == True)
+        .where(order_counts_as_revenue())
         .group_by(OrderStatus.name)
         .order_by(func.count(Order.id).desc())
     )
@@ -372,22 +388,28 @@ async def get_monthly_target_data(db: AsyncSession, manager_id: int):
     target_amount = kpi_result.scalar() or 0
 
     revenue_result = await db.execute(
-        select(func.sum(OrderItem.final_price * OrderItem.quantity))
+        select(func.sum(OrderItem.final_price))
         .join(Order)
         .where(
             Order.user_id == manager_id,
             extract("month", Order.created_at) == month,
-            extract("year", Order.created_at) == year
+            extract("year", Order.created_at) == year,
+            # Здесь фильтра не было вообще: личный KPI менеджера считал и
+            # неподтверждённые, и отменённые заказы — то есть показывал план
+            # выполненным по заявкам, которые ничего не принесли. Приводим к
+            # тому же правилу, что и остальная аналитика.
+            order_counts_as_revenue(),
         )
     )
     revenue = revenue_result.scalar() or 0
 
     today_result = await db.execute(
-        select(func.sum(OrderItem.final_price * OrderItem.quantity))
+        select(func.sum(OrderItem.final_price))
         .join(Order)
         .where(
             Order.user_id == manager_id,
-            func.date(Order.created_at) == today
+            func.date(Order.created_at) == today,
+            order_counts_as_revenue(),
         )
     )
     today_revenue = today_result.scalar() or 0
@@ -416,22 +438,22 @@ async def get_monthly_target_summary(db: AsyncSession):
     total_target = float(target_result.scalar() or 0)
 
     revenue_result = await db.execute(
-        select(func.coalesce(func.sum(OrderItem.final_price * OrderItem.quantity), 0))
+        select(func.coalesce(func.sum(OrderItem.final_price), 0))
         .join(Order)
         .where(
             extract("month", Order.created_at) == month,
             extract("year", Order.created_at) == year,
-            Order.confirmed == True,
+            order_counts_as_revenue(),
         )
     )
     total_revenue = float(revenue_result.scalar() or 0)
 
     today_result = await db.execute(
-        select(func.coalesce(func.sum(OrderItem.final_price * OrderItem.quantity), 0))
+        select(func.coalesce(func.sum(OrderItem.final_price), 0))
         .join(Order)
         .where(
             func.date(Order.created_at) == today,
-            Order.confirmed == True,
+            order_counts_as_revenue(),
         )
     )
     today_revenue = float(today_result.scalar() or 0)
@@ -455,7 +477,7 @@ async def get_leaderboard_data(db: AsyncSession):
         select(
             User.id.label("manager_id"),
             User.full_name.label("manager_name"),
-            func.coalesce(func.sum(OrderItem.final_price * OrderItem.quantity), 0).label("revenue"),
+            func.coalesce(func.sum(OrderItem.final_price), 0).label("revenue"),
             MonthlyTarget.target_amount.label("target")
         )
         .join(Order, User.id == Order.user_id)
@@ -467,7 +489,7 @@ async def get_leaderboard_data(db: AsyncSession):
             MonthlyTarget.month == month_start
         )
         .group_by(User.id, User.full_name, MonthlyTarget.target_amount)
-        .order_by(func.sum(OrderItem.final_price * OrderItem.quantity).desc())
+        .order_by(func.sum(OrderItem.final_price).desc())
     )
 
     result = await db.execute(query)
@@ -493,7 +515,7 @@ async def get_kpi_extended_analytics(db: AsyncSession):
         select(
             User.id.label("manager_id"),
             User.full_name,
-            func.coalesce(func.sum(OrderItem.final_price * OrderItem.quantity), 0).label("revenue"),
+            func.coalesce(func.sum(OrderItem.final_price), 0).label("revenue"),
             func.count(Order.id).label("orders_count"),
             func.coalesce(func.avg(Order.total_price), 0).label("average_check"),
             MonthlyTarget.target_amount.label("target")
@@ -574,7 +596,7 @@ async def get_abc_analysis(db: AsyncSession):
         .join(OrderItem, OrderItem.product_id == Product.id)
         .join(Order, Order.id == OrderItem.order_id)
         .where(
-            Order.confirmed == True,
+            order_counts_as_revenue(),
             extract("year", Order.created_at) == year,
             extract("month", Order.created_at) == month
         )
@@ -628,7 +650,7 @@ async def get_xyz_analysis(db):
         .where(
             extract("year", Order.created_at) == year,
             extract("month", Order.created_at) == month,
-            Order.confirmed == True
+            order_counts_as_revenue()
         )
     )
     result = await db.execute(query)
@@ -673,7 +695,7 @@ async def get_pnl_report(db: AsyncSession, year: int, month: int) -> dict:
         select(func.coalesce(func.sum(OrderItem.final_price), 0))
         .join(Order, Order.id == OrderItem.order_id)
         .where(
-            Order.confirmed == True,
+            order_counts_as_revenue(),
             extract("year", Order.created_at) == year,
             extract("month", Order.created_at) == month,
         )
@@ -684,7 +706,7 @@ async def get_pnl_report(db: AsyncSession, year: int, month: int) -> dict:
         .join(Order, Order.id == OrderItem.order_id)
         .join(Product, Product.id == OrderItem.product_id)
         .where(
-            Order.confirmed == True,
+            order_counts_as_revenue(),
             extract("year", Order.created_at) == year,
             extract("month", Order.created_at) == month,
         )
@@ -721,7 +743,7 @@ async def get_pnl_yearly(db: AsyncSession, year: int) -> list:
         )
         .join(OrderItem, Order.id == OrderItem.order_id)
         .join(Product, Product.id == OrderItem.product_id)
-        .where(Order.confirmed == True, extract("year", Order.created_at) == year)
+        .where(order_counts_as_revenue(), extract("year", Order.created_at) == year)
         .group_by(extract("month", Order.created_at))
         .order_by(extract("month", Order.created_at))
     )

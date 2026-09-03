@@ -13,6 +13,7 @@ from app.models.kpi_rule import KpiRule
 from app.models.monthly_target import MonthlyTarget
 from app.models.order import Order
 from app.repositories.monthly_target import get_manager_kpi
+from app.utils.orders import order_counts_as_revenue
 
 
 async def get_payrolls(
@@ -52,7 +53,7 @@ async def get_actual_sales(db: AsyncSession, manager_id: int, month: str) -> flo
         .where(
             and_(
                 Order.user_id == manager_id,
-                Order.confirmed == True,
+                order_counts_as_revenue(),
                 Order.confirmed_at >= start,
                 Order.confirmed_at < end
             )
@@ -96,10 +97,23 @@ async def generate_payrolls_for_month(db: AsyncSession, month: str, creator_id: 
                 rule = await get_matching_kpi_rule(db, kpi_percent)
                 if rule:
                     kpi_rule_id = rule.id
-                    if rule.bonus > 0:
-                        bonus = int(base * rule.bonus / 100)
-                    elif rule.penalty > 0:
-                        penalty = int(base * rule.penalty / 100)
+                    # Бонус и штраф считаются НЕЗАВИСИМО (было `if ... elif`,
+                    # из-за чего у правила с заполненным бонусом штраф был
+                    # недостижим в принципе). По бизнес-смыслу ступень KPI —
+                    # либо поощрительная, либо штрафная, и схема теперь это
+                    # прямо запрещает (см. KpiRuleBase), но на уже
+                    # существующих строках с обоими полями поведение должно
+                    # быть предсказуемым, а не молча терять штраф.
+                    #
+                    # `or 0` обязателен: обе колонки nullable, и правило,
+                    # созданное только со штрафом, роняло генерацию зарплат
+                    # целиком — `None > 0` бросает TypeError.
+                    rule_bonus = rule.bonus or 0
+                    rule_penalty = rule.penalty or 0
+                    if rule_bonus > 0:
+                        bonus = int(base * rule_bonus / 100)
+                    if rule_penalty > 0:
+                        penalty = int(base * rule_penalty / 100)
 
         total = base + bonus - penalty
 

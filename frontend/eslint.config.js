@@ -5,7 +5,13 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist'] },
+  {
+    // Кроме dist здесь ещё три служебных каталога с чужим/сгенерированным
+    // кодом: ds-bundle (2,9 МБ), .ds-sync (11 МБ) и .design-sync. Пока их не
+    // игнорировали, `npx eslint .` шёл больше пяти минут вместо пяти секунд
+    // на src — из-за чего линтер фактически никто не запускал.
+    ignores: ['dist', 'ds-bundle', '.ds-sync', '.design-sync'],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],

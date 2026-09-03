@@ -1,3 +1,24 @@
+"""Операции над складскими остатками.
+
+Два правила, которым подчинён весь файл (аудит H1, H2):
+
+1. НИ ОДНА функция здесь не коммитит. Транзакцией управляет вызывающий код
+   (repositories/order.py, repositories/order_return.py) — он же решает, что
+   считается одной неделимой операцией. Раньше reserve/restore/release
+   коммитили каждая сама, из-за чего, например, confirm_order выполнялся в
+   трёх отдельных транзакциях: остаток уже зафиксирован, а флаг заказа ещё
+   нет — сбой между ними оставлял склад и заказ рассогласованными.
+
+2. Любой путь «прочитать остаток → решить → записать» берёт блокировку строки
+   через SELECT ... FOR UPDATE. Без неё два одновременных заказа на последнюю
+   единицу товара оба проходили проверку и оба списывали остаток (TOCTOU), а
+   deduct_stock_for_order к тому же считал новое значение в Python
+   (`stock.quantity -= n`) — классическая потерянная запись.
+
+   Простое прибавление/вычитание без предварительного чтения (reserve,
+   restore, release) блокировки не требует: `SET quantity = quantity + :n`
+   атомарен на уровне СУБД сам по себе.
+"""
 from fastapi import HTTPException
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,21 +28,23 @@ from app.models.product_stock import ProductStock
 from app.models.order import Order
 
 
+async def _order_warehouse_id(db: AsyncSession, order_id: int):
+    result = await db.execute(select(Order.warehouse_id).where(Order.id == order_id))
+    return result.scalar_one_or_none()
+
+
+async def _order_items(db: AsyncSession, order_id: int) -> list[OrderItem]:
+    result = await db.execute(select(OrderItem).where(OrderItem.order_id == order_id))
+    return list(result.scalars().all())
+
+
 async def restore_stock_for_order(db: AsyncSession, order_id: int):
     """Восстанавливает физический остаток при отмене/разподтверждении подтверждённого заказа."""
-    warehouse_result = await db.execute(
-        select(Order.warehouse_id).where(Order.id == order_id)
-    )
-    warehouse_id = warehouse_result.scalar_one_or_none()
+    warehouse_id = await _order_warehouse_id(db, order_id)
     if warehouse_id is None:
         return
 
-    result = await db.execute(
-        select(OrderItem).where(OrderItem.order_id == order_id)
-    )
-    items = result.scalars().all()
-
-    for item in items:
+    for item in await _order_items(db, order_id):
         await db.execute(
             update(ProductStock)
             .where(
@@ -31,24 +54,16 @@ async def restore_stock_for_order(db: AsyncSession, order_id: int):
             .values(quantity=ProductStock.quantity + item.quantity)
         )
 
-    await db.commit()
+    await db.flush()
 
 
 async def reserve_stock_for_order(db: AsyncSession, order_id: int):
     """Резервирует остаток для нового/возвращённого в ожидание заказа."""
-    warehouse_result = await db.execute(
-        select(Order.warehouse_id).where(Order.id == order_id)
-    )
-    warehouse_id = warehouse_result.scalar_one_or_none()
+    warehouse_id = await _order_warehouse_id(db, order_id)
     if warehouse_id is None:
         return
 
-    result = await db.execute(
-        select(OrderItem).where(OrderItem.order_id == order_id)
-    )
-    items = result.scalars().all()
-
-    for item in items:
+    for item in await _order_items(db, order_id):
         await db.execute(
             update(ProductStock)
             .where(
@@ -58,24 +73,16 @@ async def reserve_stock_for_order(db: AsyncSession, order_id: int):
             .values(reserved=ProductStock.reserved + item.quantity)
         )
 
-    await db.commit()
+    await db.flush()
 
 
 async def release_stock_reservation(db: AsyncSession, order_id: int):
     """Снимает резерв при отмене/удалении неподтверждённого заказа."""
-    warehouse_result = await db.execute(
-        select(Order.warehouse_id).where(Order.id == order_id)
-    )
-    warehouse_id = warehouse_result.scalar_one_or_none()
+    warehouse_id = await _order_warehouse_id(db, order_id)
     if warehouse_id is None:
         return
 
-    result = await db.execute(
-        select(OrderItem).where(OrderItem.order_id == order_id)
-    )
-    items = result.scalars().all()
-
-    for item in items:
+    for item in await _order_items(db, order_id):
         await db.execute(
             update(ProductStock)
             .where(
@@ -85,7 +92,7 @@ async def release_stock_reservation(db: AsyncSession, order_id: int):
             .values(reserved=func.greatest(ProductStock.reserved - item.quantity, 0))
         )
 
-    await db.commit()
+    await db.flush()
 
 
 async def check_stock_before_order_creation(
@@ -93,10 +100,21 @@ async def check_stock_before_order_creation(
     items: list[OrderItem],
     warehouse_id: int
 ):
+    """Проверяет доступность и УДЕРЖИВАЕТ строки остатков до конца транзакции.
+
+    Блокировка здесь — половина защиты от гонки: вторая половина в том, что
+    вызывающий create_order резервирует остаток в этой же транзакции, а не
+    отдельным коммитом после. Пока она не завершилась, параллельный заказ на
+    тот же товар ждёт на SELECT ... FOR UPDATE и видит уже обновлённый резерв.
+    """
     for item in items:
-        stmt = select(ProductStock.quantity, ProductStock.reserved).where(
-            ProductStock.product_id == item.product_id,
-            ProductStock.warehouse_id == warehouse_id
+        stmt = (
+            select(ProductStock.quantity, ProductStock.reserved)
+            .where(
+                ProductStock.product_id == item.product_id,
+                ProductStock.warehouse_id == warehouse_id
+            )
+            .with_for_update()
         )
         result = await db.execute(stmt)
         row = result.one_or_none()
@@ -152,27 +170,48 @@ async def apply_return_stock_effect(
 
 
 async def deduct_stock_for_order(db: AsyncSession, order: Order):
+    """Списывает остаток при подтверждении заказа.
+
+    Строка сначала блокируется (FOR UPDATE), и только потом проверяется и
+    изменяется — иначе между проверкой `stock.quantity < item.quantity` и
+    записью успевает вклиниться параллельное подтверждение, и остаток уходит
+    в минус. Само изменение выражено через UPDATE от текущего значения
+    колонки, а не через пересчёт в Python.
+    """
     await db.refresh(order, ["items", "warehouse"])
 
     for item in order.items:
-        stmt = select(ProductStock).where(
-            ProductStock.product_id == item.product_id,
-            ProductStock.warehouse_id == order.warehouse_id
+        locked = await db.execute(
+            select(ProductStock.quantity)
+            .where(
+                ProductStock.product_id == item.product_id,
+                ProductStock.warehouse_id == order.warehouse_id
+            )
+            .with_for_update()
         )
-        result = await db.execute(stmt)
-        stock = result.scalar_one_or_none()
+        row = locked.one_or_none()
 
-        if not stock:
+        if row is None:
             raise HTTPException(400, detail=f"Товар id={item.product_id} не найден на складе")
 
-        if stock.quantity < item.quantity:
+        (current_quantity,) = row
+        if (current_quantity or 0) < item.quantity:
             raise HTTPException(
                 status_code=400,
                 detail=f"Недостаточно товара id={item.product_id} на складе id={order.warehouse_id}"
             )
 
-        stock.quantity -= item.quantity
-        # Снимаем резерв: товар переходит из «зарезервирован» в «списан»
-        stock.reserved = max(0, stock.reserved - item.quantity)
+        await db.execute(
+            update(ProductStock)
+            .where(
+                ProductStock.product_id == item.product_id,
+                ProductStock.warehouse_id == order.warehouse_id
+            )
+            .values(
+                quantity=ProductStock.quantity - item.quantity,
+                # Товар переходит из «зарезервирован» в «списан».
+                reserved=func.greatest(ProductStock.reserved - item.quantity, 0),
+            )
+        )
 
     await db.flush()

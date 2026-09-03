@@ -28,7 +28,11 @@ jobs:
 
     env:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/crm_db
-      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      # Значение только для прогона тестов — подписывает JWT внутри одного
+      # job'а и никуда не уходит. Раньше здесь был ${{ secrets.SECRET_KEY }}:
+      # если секрет в репозитории не задан, переменная приезжала пустой строкой
+      # и падение было неочевидным.
+      SECRET_KEY: ci-test-secret-key-not-used-outside-ci
       ADMIN_EMAIL: admin@example.com
       ADMIN_PASSWORD: testpassword123
       ADMIN_FULL_NAME: Test Admin
@@ -47,6 +51,14 @@ jobs:
       - name: Install dependencies
         working-directory: backend
         run: poetry install --with dev
+
+      # Отдельная проверка, что цепочка миграций накатывается на пустую базу.
+      # Тесты её не покрывают: они поднимают схему через init_db() на своей
+      # базе crm_db_test, поэтому расхождение моделей и alembic/ раньше
+      # прошло бы в main незамеченным.
+      - name: Verify migrations apply from empty database
+        working-directory: backend
+        run: poetry run alembic upgrade head
 
       - name: Run tests
         working-directory: backend

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { calculateLineTotal, calculateOrderTotal } from '../../utils/orderPricing';
 import { 
   useGetProductsQuery,
   useGetBrandsQuery,
@@ -107,7 +108,7 @@ export default function OrderForm({ order, isOpen, onClose, onSuccess }: OrderFo
           ? { 
               ...item, 
               quantity,
-              final_price: item.unit_price * quantity
+              final_price: calculateLineTotal(item.unit_price, quantity)
             }
           : item
       )
@@ -122,9 +123,7 @@ export default function OrderForm({ order, isOpen, onClose, onSuccess }: OrderFo
   };
 
   const calculateTotal = () => {
-    return orderData.items.reduce((total, item: OrderItem) => {
-      return total + item.final_price;
-    }, 0);
+    return calculateOrderTotal(orderData.items);
   };
 
   // Step navigation

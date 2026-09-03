@@ -2,15 +2,21 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.core.config import settings
 
+_connect_args: dict = {}
+if settings.DB_DISABLE_STATEMENT_CACHE:
+    # См. комментарий у DB_DISABLE_STATEMENT_CACHE в core/config.py: нужно
+    # только за пулером в transaction-режиме.
+    _connect_args["statement_cache_size"] = 0
+
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
     future=True,
-    pool_size=20,
-    max_overflow=10,
-    pool_timeout=30,
+    pool_size=settings.DB_POOL_SIZE,
+    max_overflow=settings.DB_MAX_OVERFLOW,
+    pool_timeout=settings.DB_POOL_TIMEOUT,
     pool_pre_ping=True,
-    connect_args={"statement_cache_size": 0},
+    connect_args=_connect_args,
 )
 
 SessionLocal = sessionmaker(

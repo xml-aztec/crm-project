@@ -13,6 +13,24 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
     SENTRY_DSN: Optional[str] = None
 
+    # Пул соединений SQLAlchemy. Значения по умолчанию подобраны так, чтобы
+    # один процесс приложения помещался в лимиты минимальных тарифов
+    # managed-Postgres (у Render free это ~97 соединений на инстанс, часть из
+    # которых резервирует сам провайдер). Раньше здесь было жёстко
+    # прошито 20 + 10 overflow = до 30 соединений на процесс, что при паре
+    # инстансов или воркеров упиралось в отказ БД в подключении.
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 5
+    DB_POOL_TIMEOUT: int = 30
+
+    # asyncpg кэширует подготовленные запросы; это ломается ТОЛЬКО за
+    # пулером в transaction-режиме (PgBouncer, Supabase pooler), который
+    # отдаёт разные backend-соединения в рамках одной сессии. Render отдаёт
+    # прямое соединение с Postgres, поэтому по умолчанию кэш включён —
+    # выключать его глобально означало заново разбирать и планировать каждый
+    # запрос. Переезд за пулер = выставить этот флаг в true.
+    DB_DISABLE_STATEMENT_CACHE: bool = False
+
     # Email via Resend (optional — leave RESEND_API_KEY blank to disable email notifications)
     RESEND_API_KEY: Optional[str] = None
     MAIL_FROM: Optional[str] = "onboarding@resend.dev"

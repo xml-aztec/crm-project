@@ -43,6 +43,13 @@ async def get_current_user(
     if not user or not user.is_active or not user.is_approved:
         raise HTTPException(status_code=401, detail="Пользователь недоступен")
 
+    # Отзыв токена. Токены, выпущенные до появления claim "ver", считаем
+    # версией 0 — это позволяет выкатить изменение, не разлогинивая разом
+    # всех активных пользователей. Любая смена пароля или деактивация
+    # поднимает token_version, и такой токен сразу перестаёт подходить.
+    if payload.get("ver", 0) != (user.token_version or 0):
+        raise HTTPException(status_code=401, detail="Сессия завершена, войдите заново")
+
     return user
 
 async def is_admin(

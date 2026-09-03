@@ -23,6 +23,13 @@ class User(Base):
     position_id = Column(Integer, ForeignKey("positions.id", ondelete="SET NULL"))
     branch_id = Column(Integer, ForeignKey("branches.id", ondelete="SET NULL"), nullable=True)
 
+    # Версия сессии. Растёт при смене пароля и деактивации; JWT несёт своё
+    # значение в claim "ver", и get_current_user отклоняет токен, если версии
+    # разошлись. Раньше выданный токен жил свои 60 минут несмотря ни на что:
+    # logout лишь удалял cookie, а смена пароля или блокировка пользователя
+    # не обрывали уже украденную сессию.
+    token_version = Column(Integer, nullable=False, default=0, server_default="0")
+
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Полнотекстовый поиск по сотрудникам (см. app/api/search.py).

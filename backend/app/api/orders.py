@@ -1,6 +1,6 @@
 from datetime import date
 from typing import Optional
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Path, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Path, Query, Request, Response, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import SessionLocal
@@ -8,6 +8,7 @@ from app.core.dependencies import get_current_user, get_db, is_order_owner_or_ad
 from app.rbac.dependencies import require_permission
 from app.models.user import User
 from app.repositories import order as repo
+from app.utils.discounts import ensure_may_discount
 from app.repositories import notification as notif_repo
 from app.repositories import order_history as history_repo
 from app.repositories import stock_log as stock_log_repo
@@ -47,11 +48,13 @@ router = APIRouter(prefix="/orders", tags=["Orders"])
                 "Менеджер может также указать индивидуальные цены и заметку к заказу."
 )
 async def create_order(
+    request: Request,
     data: OrderCreate,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    await ensure_may_discount(request, current_user, db, data.items)
     order = await repo.create_order(
         db,
         data.model_dump(exclude={"items"}),

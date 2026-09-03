@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, ForeignKey, DateTime, UniqueConstraint
+from sqlalchemy import CheckConstraint, Column, Integer, ForeignKey, DateTime, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 from datetime import datetime, timezone
@@ -8,7 +8,7 @@ class ProductStock(Base):
 
     id = Column(Integer, primary_key=True, index=True) 
     product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
-    warehouse_id = Column(Integer, ForeignKey("warehouses.id", ondelete="CASCADE"), nullable=False)
+    warehouse_id = Column(Integer, ForeignKey("warehouses.id", ondelete="CASCADE"), nullable=False, index=True)
     quantity = Column(Integer, nullable=False, default=0)
     reserved = Column(Integer, nullable=False, default=0, server_default='0')
     # Возвращённый брак — отдельный, недоступный для продажи учёт (см.
@@ -22,4 +22,12 @@ class ProductStock(Base):
 
     __table_args__ = (
         UniqueConstraint("product_id", "warehouse_id", name="uix_product_warehouse"),
+        # Последний рубеж против отрицательных остатков: блокировки в
+        # app/utils/stock.py защищают от гонок в коде приложения, но ошибка в
+        # любом будущем запросе не должна молча уводить склад в минус.
+        CheckConstraint("quantity >= 0", name="ck_product_stock_quantity_non_negative"),
+        CheckConstraint("reserved >= 0", name="ck_product_stock_reserved_non_negative"),
+        CheckConstraint(
+            "defective_quantity >= 0", name="ck_product_stock_defective_non_negative"
+        ),
     )

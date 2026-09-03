@@ -39,7 +39,12 @@ class OrderRead(OrderBase):
     confirmed: bool
     confirmed_at: Optional[datetime]
 
-    customer: CustomerBase
+    # Необязательный — как и customer_id выше. Клиента можно удалить, и по
+    # FK ondelete="SET NULL" заказ намеренно остаётся с customer_id = NULL.
+    # Пока в get_orders стоял внутренний join, такие заказы просто не
+    # доходили до сериализации; после перехода на outer join обязательное
+    # поле здесь роняло весь список с ResponseValidationError (500).
+    customer: Optional[CustomerBase] = None
     user: Optional[UserOutOrder]
     payment_method: Optional[PaymentMethodOut]
     installment_months: Optional[int]

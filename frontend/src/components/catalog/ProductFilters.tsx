@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   useGetBrandsQuery, 
   useGetCategoriesQuery, 
@@ -40,21 +40,38 @@ export default function ProductFilters({ filters, onFiltersChange }: ProductFilt
   const { data: categories = [] } = useGetCategoriesQuery();
   const { data: subcategories = [] } = useGetSubcategoriesQuery();
 
+  // Свежие filters/onFiltersChange держим в ref, а не в зависимостях.
+  //
+  // Эффекты ниже обязаны срабатывать ТОЛЬКО на изменение debounced-значения:
+  // добавить `filters` в зависимости нельзя — onFiltersChange меняет filters,
+  // и эффект зациклится. Но и оставлять их захваченными нельзя, как было
+  // раньше: `filters` замораживался на том рендере, где эффект создан,
+  // поэтому если пользователь менял категорию, а затем срабатывал debounce
+  // поиска, `{ ...filters }` разворачивал УСТАРЕВШИЙ объект и молча
+  // откатывал только что выбранную категорию.
+  const latest = useRef({ filters, onFiltersChange });
   useEffect(() => {
-    if (debouncedSearchTerm !== filters.name) {
-      onFiltersChange({ ...filters, name: debouncedSearchTerm });
+    latest.current = { filters, onFiltersChange };
+  });
+
+  useEffect(() => {
+    const { filters: current, onFiltersChange: notify } = latest.current;
+    if (debouncedSearchTerm !== current.name) {
+      notify({ ...current, name: debouncedSearchTerm });
     }
   }, [debouncedSearchTerm]);
 
   useEffect(() => {
-    if (debouncedSKU !== filters.sku) {
-      onFiltersChange({ ...filters, sku: debouncedSKU });
+    const { filters: current, onFiltersChange: notify } = latest.current;
+    if (debouncedSKU !== current.sku) {
+      notify({ ...current, sku: debouncedSKU });
     }
   }, [debouncedSKU]);
 
   useEffect(() => {
-    if (debouncedBarcode !== filters.barcode) {
-      onFiltersChange({ ...filters, barcode: debouncedBarcode });
+    const { filters: current, onFiltersChange: notify } = latest.current;
+    if (debouncedBarcode !== current.barcode) {
+      notify({ ...current, barcode: debouncedBarcode });
     }
   }, [debouncedBarcode]);
 

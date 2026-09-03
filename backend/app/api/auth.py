@@ -78,7 +78,7 @@ async def login(
     if not user.is_approved:
         raise HTTPException(status_code=403, detail="User is not approved")
 
-    token = security.create_access_token({"sub": user.email})
+    token = security.create_access_token({"sub": user.email, "ver": user.token_version or 0})
 
     is_https = settings.BASE_URL.startswith("https://")
     response.set_cookie(

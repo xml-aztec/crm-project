@@ -69,6 +69,10 @@ async def update_password(db: AsyncSession, user_id: int, new_password: str) -> 
     user = result.scalar_one_or_none()
     if user:
         user.hashed_password = get_password_hash(new_password)
+        # Обрывает все ранее выданные токены этого пользователя: и при смене
+        # пароля из профиля, и при сбросе по ссылке из письма (оба пути
+        # проходят здесь).
+        user.token_version = (user.token_version or 0) + 1
         await db.commit()
 
 async def get_user_by_id(db: AsyncSession, user_id: int):
@@ -234,8 +238,19 @@ async def update_user_admin(db: AsyncSession, user_id: int, data: UserUpdateAdmi
     user = result.scalar_one_or_none()
     if not user:
         return None
-    for key, value in data.model_dump(exclude_unset=True).items():
+    changes = data.model_dump(exclude_unset=True)
+    # Деактивация должна обрывать уже выданные токены немедленно. Проверка
+    # is_active в get_current_user отсекает их и так, но token_version делает
+    # отзыв явным и покрывает случай повторной активации: у заблокированного
+    # и снова включённого пользователя старые токены не оживают.
+    deactivated = changes.get("is_active") is False and user.is_active is not False
+
+    for key, value in changes.items():
         setattr(user, key, value)
+
+    if deactivated:
+        user.token_version = (user.token_version or 0) + 1
+
     await db.flush()
     await sync_rbac_role_for_user(user.id, db)
     await db.commit()

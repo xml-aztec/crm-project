@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user, get_db, is_order_owner_or_admin
 from app.schemas.order_item import OrderItemCreate, OrderItemUpdate, OrderItemRead
+from app.models.user import User
 from app.repositories import order_item as repo
+from app.utils.discounts import ensure_may_discount
 
 router = APIRouter(prefix="/orders", tags=["Order Items"])
 
@@ -16,9 +18,12 @@ router = APIRouter(prefix="/orders", tags=["Order Items"])
 )
 async def add_item_to_order(
     order_id: int,
+    request: Request,
     item_data: OrderItemCreate,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    await ensure_may_discount(request, current_user, db, [item_data])
     return await repo.add_order_item(db, order_id, item_data)
 
 
@@ -33,9 +38,12 @@ async def add_item_to_order(
 async def update_order_item(
     order_id: int,
     item_id: int,
+    request: Request,
     item_data: OrderItemUpdate,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    await ensure_may_discount(request, current_user, db, [item_data])
     updated_item = await repo.update_order_item(db, order_id, item_id, item_data)
     if not updated_item:
         raise HTTPException(status_code=404, detail="Item not found")

@@ -19,7 +19,10 @@ PERMISSIONS_MATRIX: dict[str, list[str]] = {
     "stock": ["create", "read", "update", "delete"],
     "cashflow": ["create", "read", "update", "delete", "approve"],
     "supplies": ["create", "read", "update", "delete", "approve"],
-    "orders": ["create", "read", "update", "delete"],
+    # discount — право отклонить цену позиции от каталожной (см.
+    # app/utils/orders.py::price_order_item). Отдельное, потому что это
+    # прямое влияние на выручку.
+    "orders": ["create", "read", "update", "delete", "discount"],
     "users": ["invite", "read", "update", "delete", "manage_roles"],
     "payroll": ["create", "read", "update", "delete"],
     "reports": ["read", "export"],

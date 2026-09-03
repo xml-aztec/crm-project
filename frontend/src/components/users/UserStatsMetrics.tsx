@@ -48,22 +48,12 @@ export default function UserStatsMetrics({ className = '', userId }: UserStatsMe
 
   const isLoading = currentLoading || previousLoading;
 
-  // Если userId не передан, показываем сообщение
-  if (!userId) {
-    return (
-      <div className={`bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 ${className}`}>
-        <div className="flex items-center">
-          <svg className="w-5 h-5 text-yellow-500 dark:text-yellow-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-          </svg>
-          <span className="text-sm text-yellow-700 dark:text-yellow-400">
-            Для отображения статистики необходимо указать пользователя
-          </span>
-        </div>
-      </div>
-    );
-  }
-
+  // ВАЖНО: все хуки вызываются ДО любого раннего return. Раньше этот
+  // useMemo стоял ниже `if (!userId) return ...`, из-за чего число
+  // вызванных хуков менялось между рендерами: как только userId
+  // приходил (данные загрузились, открыли карточку сотрудника), React
+  // ловил рассинхрон порядка хуков и падал с «Rendered more hooks than
+  // during the previous render», унося поддерево в ErrorBoundary.
   // Вычисляем изменения по сравнению с предыдущим периодом
   const statsComparison = useMemo(() => {
     if (!currentStats || !previousStats) {
@@ -108,6 +98,23 @@ export default function UserStatsMetrics({ className = '', userId }: UserStatsMe
       canceledGrowth: canceledChange >= 0
     };
   }, [currentStats, previousStats]);
+
+  // Если userId не передан, показываем сообщение
+  if (!userId) {
+    return (
+      <div className={`bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 ${className}`}>
+        <div className="flex items-center">
+          <svg className="w-5 h-5 text-yellow-500 dark:text-yellow-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+          <span className="text-sm text-yellow-700 dark:text-yellow-400">
+            Для отображения статистики необходимо указать пользователя
+          </span>
+        </div>
+      </div>
+    );
+  }
+
 
   // Функции форматирования
   const formatCurrency = (amount: number) => {

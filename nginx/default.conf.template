@@ -9,6 +9,23 @@ map $http_x_forwarded_proto $forwarded_scheme {
 server {
     listen ${PORT};
 
+    # Заголовки безопасности. always — чтобы они ставились и на ответы с
+    # ошибками (4xx/5xx), а не только на 2xx/3xx.
+    #
+    # CSP: 'unsafe-inline' для стилей нужен из-за инлайновых style-атрибутов,
+    # которые генерируют Tailwind-компоненты и ApexCharts; для скриптов он НЕ
+    # выдан. connect-src разрешает своё же происхождение (фронт ходит на
+    # /api того же хоста) и blob: для выгрузок PDF/Excel. img-src включает
+    # data: (QR-коды в base64) и https: (логотип компании и картинки товаров
+    # из R2).
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' blob:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    # HSTS имеет смысл только когда наружу торчит https (его терминирует
+    # внешний edge — Render/Railway); по http браузер заголовок игнорирует.
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
     location / {
         root /usr/share/nginx/html;
         index index.html;

@@ -70,7 +70,29 @@ COPY --from=backend-build /app/backend /app/backend
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-ENV PORT=80
-EXPOSE 80
+# Непривилегированный пользователь: и uvicorn, и nginx работают от него.
+# Раньше оба процесса шли от root — компрометация любого из них давала полный
+# контроль над контейнером.
+#
+# Из-за этого порт по умолчанию 8080, а не 80: процесс без root не может
+# занять порт ниже 1024. На реальный деплой это не влияет — и Render, и
+# Railway подставляют свой $PORT (заведомо высокий), а nginx читает его через
+# envsubst в docker-entrypoint.sh.
+#
+# nginx пишет pid, временные буферы и логи — все эти каталоги нужно передать
+# новому владельцу, иначе мастер-процесс не стартует.
+RUN useradd --system --create-home --uid 10001 --shell /usr/sbin/nologin appuser \
+    && mkdir -p /var/cache/nginx /var/lib/nginx/body /var/log/nginx /run \
+    && chown -R appuser:appuser \
+        /var/cache/nginx /var/lib/nginx /var/log/nginx /run \
+        /etc/nginx /usr/share/nginx/html /app \
+    # Логи nginx в образе — симлинки на /dev/stdout|stderr; они уже доступны
+    # на запись всем, а вот сам каталог должен принадлежать appuser.
+    && chmod -R u+rwX /var/lib/nginx
+
+USER appuser
+
+ENV PORT=8080
+EXPOSE 8080
 
 CMD ["docker-entrypoint.sh"]

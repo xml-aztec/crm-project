@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { calculateLineTotal, calculateOrderTotal } from '../utils/orderPricing';
 import { useNavigate } from 'react-router';
 import {
   useGetProductsQuery,
@@ -158,7 +159,7 @@ export default function CreateOrderPage() {
           ...prev,
           items: prev.items.map(item =>
             item.product_id === product.id
-              ? { ...item, quantity: item.quantity + 1, final_price: item.unit_price * (item.quantity + 1) }
+              ? { ...item, quantity: item.quantity + 1, final_price: calculateLineTotal(item.unit_price, item.quantity + 1) }
               : item
           )
         };
@@ -187,7 +188,7 @@ export default function CreateOrderPage() {
       ...prev,
       items: prev.items.map(item =>
         item.product_id === productId
-          ? { ...item, quantity: safeQuantity, final_price: item.unit_price * safeQuantity }
+          ? { ...item, quantity: safeQuantity, final_price: calculateLineTotal(item.unit_price, safeQuantity) }
           : item
       )
     }));
@@ -198,7 +199,7 @@ export default function CreateOrderPage() {
       ...prev,
       items: prev.items.map(item =>
         item.product_id === productId
-          ? { ...item, final_price: newPricePerUnit * item.quantity }
+          ? { ...item, final_price: calculateLineTotal(newPricePerUnit, item.quantity) }
           : item
       )
     }));
@@ -212,7 +213,7 @@ export default function CreateOrderPage() {
   };
 
   const calculateTotal = () => {
-    return orderData.items.reduce((total, item: OrderItem) => total + item.final_price, 0);
+    return calculateOrderTotal(orderData.items);
   };
 
   const validateOrderData = () => {

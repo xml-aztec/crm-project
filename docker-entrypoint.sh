@@ -36,7 +36,14 @@ fi
 
 # --proxy-headers: доверяем X-Forwarded-Proto от nginx (127.0.0.1), иначе
 # uvicorn считает схему всегда http и ломает редиректы/куки за https-edge.
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*' &
+#
+# --forwarded-allow-ips: строго 127.0.0.1 — nginx живёт в этом же контейнере и
+# является единственным легитимным источником X-Forwarded-*. Раньше здесь было
+# '*', то есть uvicorn доверял заголовку от кого угодно; slowapi определяет
+# клиента через get_remote_address, поэтому атакующий, подставляя случайный
+# X-Forwarded-For в каждый запрос, полностью обходил лимиты 5/мин на
+# /auth/login и 3/мин на /auth/register и /auth/forgot-password.
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='127.0.0.1' &
 
 # Railway задаёт $PORT динамически при каждом деплое — подставляем его в
 # конфиг nginx перед стартом.

@@ -1,3 +1,4 @@
+import secrets
 from datetime import date
 from typing import Optional
 
@@ -63,7 +64,13 @@ async def list_tasks(
 async def trigger_reminder_processing(
     x_reminder_token: str = Header(..., alias="X-Reminder-Token"),
 ):
-    if not settings.TASK_REMINDER_TOKEN or x_reminder_token != settings.TASK_REMINDER_TOKEN:
+    # compare_digest — сравнение за постоянное время: обычный != выходит из
+    # цикла на первом несовпавшем байте, что по времени ответа даёт подбирать
+    # токен посимвольно. Проверка «токен вообще задан» остаётся первой, чтобы
+    # эндпоинт был закрыт по умолчанию.
+    if not settings.TASK_REMINDER_TOKEN or not secrets.compare_digest(
+        x_reminder_token, settings.TASK_REMINDER_TOKEN
+    ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Неверный токен")
     return await process_due_reminders()
 
