@@ -83,12 +83,12 @@ jobs:
 
       # Линтер до этого не был подключён ни к одной проверке и накопил
       # 162 ошибки. Сейчас их ноль, и шаг держит счётчик на нуле.
-      # Восемь оставшихся предупреждений (exhaustive-deps, react-refresh)
+      # Шесть оставшихся предупреждений (exhaustive-deps, react-refresh)
       # сборку не валят — предел выставлен по текущему уровню, чтобы новые
       # не добавлялись незаметно.
       - name: Lint
         working-directory: frontend
-        run: npx eslint . --max-warnings 8
+        run: npx eslint . --max-warnings 6
 
       - name: Unit tests
         working-directory: frontend

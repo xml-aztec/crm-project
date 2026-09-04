@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { getApiErrorMessage, ApiValidationIssue } from '../types/apiError';
 import { asApiError } from '../types/apiError';
-import { calculateLineTotal, calculateOrderTotal } from '../utils/orderPricing';
+import { calculateOrderTotal } from '../utils/orderPricing';
+import { addItem, removeItem, setItemQuantity, setItemUnitPrice } from '../utils/orderItems';
+import { validateOrder } from '../utils/orderValidation';
 import { useNavigate } from 'react-router';
 import {
   useGetProductsQuery,
@@ -154,28 +156,7 @@ export default function CreateOrderPage() {
   };
 
   const addOrderItem = (product: Product) => {
-    setOrderData(prev => {
-      const existingItem = prev.items.find(item => item.product_id === product.id);
-      if (existingItem) {
-        return {
-          ...prev,
-          items: prev.items.map(item =>
-            item.product_id === product.id
-              ? { ...item, quantity: item.quantity + 1, final_price: calculateLineTotal(item.unit_price, item.quantity + 1) }
-              : item
-          )
-        };
-      }
-      return {
-        ...prev,
-        items: [...prev.items, {
-          product_id: product.id,
-          quantity: 1,
-          unit_price: product.price,
-          final_price: product.price
-        }]
-      };
-    });
+    setOrderData(prev => ({ ...prev, items: addItem(prev.items, product) }));
     setSearchProduct('');
     setProductHighlight(0);
     setShowProductSuggestions(false);
@@ -183,77 +164,24 @@ export default function CreateOrderPage() {
   };
 
   const updateOrderItem = (productId: number, quantity: number) => {
-    // Удаление товара из корзины — только через крестик (removeOrderItem),
-    // поэтому количество всегда не меньше 1, а не убирает позицию.
-    const safeQuantity = Math.max(1, quantity);
-    setOrderData(prev => ({
-      ...prev,
-      items: prev.items.map(item =>
-        item.product_id === productId
-          ? { ...item, quantity: safeQuantity, final_price: calculateLineTotal(item.unit_price, safeQuantity) }
-          : item
-      )
-    }));
+    setOrderData(prev => ({ ...prev, items: setItemQuantity(prev.items, productId, quantity) }));
   };
 
   const updateOrderItemPrice = (productId: number, newPricePerUnit: number) => {
-    setOrderData(prev => ({
-      ...prev,
-      items: prev.items.map(item =>
-        item.product_id === productId
-          ? { ...item, final_price: calculateLineTotal(newPricePerUnit, item.quantity) }
-          : item
-      )
-    }));
+    // setItemUnitPrice меняет И unit_price, И итог строки. Прежняя версия
+    // правила только final_price, из-за чего поле ввода (оно привязано к
+    // item.unit_price) откатывалось к каталожной цене, а на сервер уходило
+    // старое значение — введённая вручную цена не доезжала.
+    setOrderData(prev => ({ ...prev, items: setItemUnitPrice(prev.items, productId, newPricePerUnit) }));
   };
 
   const removeOrderItem = (productId: number) => {
-    setOrderData(prev => ({
-      ...prev,
-      items: prev.items.filter(item => item.product_id !== productId)
-    }));
+    setOrderData(prev => ({ ...prev, items: removeItem(prev.items, productId) }));
   };
 
-  const calculateTotal = () => {
-    return calculateOrderTotal(orderData.items);
-  };
+  const calculateTotal = () => calculateOrderTotal(orderData.items);
 
-  const validateOrderData = () => {
-    const errors: string[] = [];
-
-    if (!orderData.customer_id) errors.push('Не выбран клиент');
-    if (!orderData.warehouse_id) errors.push('Не выбран склад');
-    if (orderData.items.length === 0) errors.push('Не добавлены товары в заказ');
-
-    if (orderData.payment_method_id) {
-      const selectedMethod = paymentMethods.find(pm => pm.id === orderData.payment_method_id);
-      if (selectedMethod && selectedMethod.max_months && selectedMethod.max_months > 0) {
-        if (!orderData.installment_months || orderData.installment_months <= 0) {
-          errors.push('Не указано количество месяцев рассрочки');
-        }
-        if (orderData.installment_months && orderData.installment_months > selectedMethod.max_months) {
-          errors.push(`Максимальное количество месяцев рассрочки: ${selectedMethod.max_months}`);
-        }
-      }
-    }
-
-    orderData.items.forEach((item, index) => {
-      if (item.quantity <= 0) errors.push(`Товар ${index + 1}: некорректное количество`);
-      if (item.unit_price <= 0) errors.push(`Товар ${index + 1}: некорректная цена за единицу`);
-      if (item.final_price <= 0) errors.push(`Товар ${index + 1}: некорректная общая стоимость`);
-    });
-
-    if (orderData.delivery_date) {
-      const deliveryDate = new Date(orderData.delivery_date);
-      const today = getNowInBishkek();
-      today.setHours(0, 0, 0, 0);
-      if (deliveryDate < today) errors.push('Дата доставки не может быть в прошлом');
-    }
-
-    if (calculateTotal() <= 0) errors.push('Общая сумма заказа должна быть больше 0');
-
-    return errors;
-  };
+  const validateOrderData = () => validateOrder(orderData, paymentMethods);
 
   const canSubmit =
     orderData.customer_id !== '' &&

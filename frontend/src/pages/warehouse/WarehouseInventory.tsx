@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { nameLookup, sortStockRows } from '../../utils/stockSorting';
 import { useParams, useNavigate } from 'react-router';
 import { LOW_STOCK_THRESHOLD } from '../../constants/stock';
 import { useGetWarehouseByIdQuery } from '../../store/api/warehouseApi';
@@ -150,32 +151,15 @@ const WarehouseInventory: React.FC = () => {
 
   // ✅ Клиентская сортировка (фильтрация теперь делается на сервере)
   const filteredInventory = useMemo(() => {
-    const filtered = [...currentInventory];
+    // Сортировка на клиенте; фильтрация делается на сервере.
+    // На этой странице поле называется 'name'/'updated', приводим к общим.
+    const field = filters.sortBy === 'name' ? 'product_name'
+      : filters.sortBy === 'quantity' ? 'quantity'
+      : 'updated_at';
 
-    // Сортировка (фильтрация теперь делается на сервере)
-    filtered.sort((a, b) => {
-      let compareValue = 0;
-      
-      switch (filters.sortBy) {
-        case 'name':
-          {
-          const productA = products.find(p => p.id === a.product_id);
-          const productB = products.find(p => p.id === b.product_id);
-          compareValue = (productA?.name || '').localeCompare(productB?.name || '');
-          break;
-          }
-        case 'quantity':
-          compareValue = a.quantity - b.quantity;
-          break;
-        case 'updated':
-          compareValue = new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
-          break;
-      }
-
-      return filters.sortOrder === 'desc' ? -compareValue : compareValue;
+    return sortStockRows(currentInventory, field, filters.sortOrder, {
+      productName: nameLookup(products),
     });
-
-    return filtered;
   }, [currentInventory, products, filters.sortBy, filters.sortOrder]);
 
   // ✅ Используем статистику из API или вычисляем локально если нет

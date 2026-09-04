@@ -1,4 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import {
+  calculatePayrollTotal,
+  kpiColorClass,
+  validatePayrollForm,
+} from '../../utils/payrollCalc';
 import { getApiErrorMessage } from '../../types/apiError';
 import { asApiError } from '../../types/apiError';
 import { Payroll, PayrollCreate, PayrollUpdate } from '../../types/payroll';
@@ -157,14 +162,10 @@ const PayrollModal: React.FC<PayrollModalProps> = ({
   };
 
   // Расчет итоговой суммы
-  const calculateTotal = useMemo(() => {
-    const base = parseFloat(formData.base_salary || '0');
-    const bonus = parseFloat(formData.bonus_amount || '0');
-    const penalty = parseFloat(formData.penalty_amount || '0');
-    const kpiMultiplier = (parseFloat(formData.kpi_percent || '100')) / 100;
-    
-    return Math.max(0, (base + bonus - penalty) * kpiMultiplier);
-  }, [formData.base_salary, formData.bonus_amount, formData.penalty_amount, formData.kpi_percent]);
+  // Итог считается ТОЙ ЖЕ формулой, что и на сервере: оклад + премия − штраф.
+  // Раньше здесь результат ещё умножался на kpi_percent / 100, из-за чего
+  // предпросмотр расходился с суммой, которая реально сохраняется.
+  const calculateTotal = useMemo(() => calculatePayrollTotal(formData), [formData]);
 
   // Форматирование суммы
   const formatAmount = (amount: number) => {
@@ -184,54 +185,8 @@ const PayrollModal: React.FC<PayrollModalProps> = ({
     });
   };
 
-  // Получение цвета KPI
-  const getKPIColor = (kpiPercent?: number) => {
-    if (!kpiPercent) return 'text-gray-500';
-    if (kpiPercent >= 120) return 'text-green-600';
-    if (kpiPercent >= 100) return 'text-green-500';
-    if (kpiPercent >= 80) return 'text-yellow-500';
-    return 'text-red-500';
-  };
-
-  // Валидация формы
   const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-
-    // Проверка сотрудника (только для создания)
-    if (!isEditMode && (!formData.user_id || formData.user_id === '')) {
-      newErrors.user_id = 'Выберите сотрудника';
-    }
-
-    // Проверка месяца (только для создания)
-    if (!isEditMode && (!formData.month || formData.month === '')) {
-      newErrors.month = 'Выберите месяц';
-    }
-
-    // Базовая зарплата - обязательное поле
-    if (!formData.base_salary || isNaN(Number(formData.base_salary)) || Number(formData.base_salary) < 0) {
-      newErrors.base_salary = 'Введите корректную базовую зарплату';
-    }
-
-    // Бонус - необязательное поле, но если указан, должен быть корректным
-    if (formData.bonus_amount && (isNaN(Number(formData.bonus_amount)) || Number(formData.bonus_amount) < 0)) {
-      newErrors.bonus_amount = 'Введите корректную сумму бонуса';
-    }
-
-    // Штраф - необязательное поле, но если указан, должен быть корректным
-    if (formData.penalty_amount && (isNaN(Number(formData.penalty_amount)) || Number(formData.penalty_amount) < 0)) {
-      newErrors.penalty_amount = 'Введите корректную сумму штрафа';
-    }
-
-    // KPI процент - необязательное поле
-    if (formData.kpi_percent && (isNaN(Number(formData.kpi_percent)) || Number(formData.kpi_percent) < 0 || Number(formData.kpi_percent) > 1000)) {
-      newErrors.kpi_percent = 'Введите корректный процент KPI (0-1000%)';
-    }
-
-    // KPI rule ID - необязательное поле
-    if (formData.kpi_rule_id && (isNaN(Number(formData.kpi_rule_id)) || Number(formData.kpi_rule_id) <= 0)) {
-      newErrors.kpi_rule_id = 'Введите корректный ID правила KPI';
-    }
-
+    const newErrors = validatePayrollForm(formData, { isEditMode });
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -554,7 +509,7 @@ const PayrollModal: React.FC<PayrollModalProps> = ({
                 )}
                 {formData.kpi_percent && (
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    KPI: <span className={getKPIColor(parseFloat(formData.kpi_percent))}>{formData.kpi_percent}%</span>
+                    KPI: <span className={kpiColorClass(parseFloat(formData.kpi_percent))}>{formData.kpi_percent}%</span>
                   </p>
                 )}
               </div>

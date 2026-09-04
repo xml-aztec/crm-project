@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { nameLookup, sortStockRows } from '../../utils/stockSorting';
 import type { Stock } from '../../store/api/stockApi';
 import { LOW_STOCK_THRESHOLD } from '../../constants/stock';
 import { useGetStockQuery, useDeleteStockMutation } from '../../store/api/stockApi';
@@ -56,50 +57,26 @@ const StockManagement: React.FC = () => {
   const { data: warehouses = [] } = useGetWarehousesQuery();
   const [deleteStock, { isLoading: isDeleting }] = useDeleteStockMutation();
 
-  // Извлекаем данные из новой структуры ответа
-  const stockData = stockResponse?.stocks || [];
+  // Извлекаем данные из новой структуры ответа.
+  // useMemo здесь не для скорости: без него `|| []` создаёт НОВЫЙ массив на
+  // каждый рендер, из-за чего useMemo с сортировкой ниже пересчитывался
+  // всегда и мемоизация не работала вовсе.
+  const stockData = useMemo(() => stockResponse?.stocks ?? [], [stockResponse]);
   const apiStats = stockResponse?.stats;
 
   // Мемоизированная сортировка (фильтрация теперь делается на сервере)
   const filteredAndSortedStock = useMemo(() => {
-    const filtered = [...stockData];
+    // Сортировка на клиенте; фильтрация делается на сервере.
+    // Соответствие имён полей странице -> канонические поля sortStockRows.
+    const field = filters.sortBy === 'product_name' ? 'product_name'
+      : filters.sortBy === 'warehouse_name' ? 'warehouse_name'
+      : filters.sortBy === 'quantity' ? 'quantity'
+      : 'updated_at';
 
-    // Сортировка (основная фильтрация делается на сервере)
-    filtered.sort((a, b) => {
-      let compareValue = 0;
-      
-      switch (filters.sortBy) {
-        case 'product_name':
-          {
-          const productA = products.find(p => p.id === a.product_id);
-          const productB = products.find(p => p.id === b.product_id);
-          compareValue = (productA?.name || '').localeCompare(productB?.name || '');
-          break;
-          }
-        case 'warehouse_name':
-          {
-          const warehouseA = warehouses.find(w => w.id === a.warehouse_id);
-          const warehouseB = warehouses.find(w => w.id === b.warehouse_id);
-          compareValue = (warehouseA?.name || '').localeCompare(warehouseB?.name || '');
-          break;
-          }
-        case 'quantity':
-          compareValue = a.quantity - b.quantity;
-          break;
-        case 'updated_at':
-          {
-          // Сравнение дат
-          const dateA = new Date(a.updated_at).getTime();
-          const dateB = new Date(b.updated_at).getTime();
-          compareValue = dateA - dateB;
-          break;
-          }
-      }
-
-      return filters.sortOrder === 'desc' ? -compareValue : compareValue;
+    return sortStockRows(stockData, field, filters.sortOrder, {
+      productName: nameLookup(products),
+      warehouseName: nameLookup(warehouses),
     });
-
-    return filtered;
   }, [stockData, products, warehouses, filters.sortBy, filters.sortOrder]);
 
   // Статистика из API (больше не нужно локальное вычисление)

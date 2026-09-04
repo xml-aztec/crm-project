@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Order } from '../../store/api/ordersApi';
-import { calculateLineTotal, calculateOrderTotal } from '../../utils/orderPricing';
+import { calculateOrderTotal } from '../../utils/orderPricing';
+import { addItem, removeItem, setItemQuantity } from '../../utils/orderItems';
 import { 
   useGetProductsQuery,
   useGetBrandsQuery,
@@ -79,48 +80,23 @@ export default function OrderForm({ order, isOpen, onClose, onSuccess }: OrderFo
   };
 
   const addOrderItem = (product: Product) => {
-    const existingItem = orderData.items.find(item => item.product_id === product.id);
-    
-    if (existingItem) {
-      updateOrderItem(product.id, existingItem.quantity + 1);
-    } else {
-      setOrderData(prev => ({
-        ...prev,
-        items: [...prev.items, {
-          product_id: product.id,
-          quantity: 1,
-          unit_price: product.price,
-          final_price: product.price
-        }]
-      }));
-    }
+    setOrderData(prev => ({ ...prev, items: addItem(prev.items, product) }));
   };
 
   const updateOrderItem = (productId: number, quantity: number) => {
+    // Отличие от CreateOrderPage сохранено намеренно: здесь ноль убирает
+    // позицию из заказа, а там зажимается к единице (убрать можно только
+    // крестиком). Поэтому setItemQuantity вызывается уже после этой проверки.
     if (quantity <= 0) {
       removeOrderItem(productId);
       return;
     }
 
-    setOrderData(prev => ({
-      ...prev,
-      items: prev.items.map(item =>
-        item.product_id === productId
-          ? { 
-              ...item, 
-              quantity,
-              final_price: calculateLineTotal(item.unit_price, quantity)
-            }
-          : item
-      )
-    }));
+    setOrderData(prev => ({ ...prev, items: setItemQuantity(prev.items, productId, quantity) }));
   };
 
   const removeOrderItem = (productId: number) => {
-    setOrderData(prev => ({
-      ...prev,
-      items: prev.items.filter(item => item.product_id !== productId)
-    }));
+    setOrderData(prev => ({ ...prev, items: removeItem(prev.items, productId) }));
   };
 
   const calculateTotal = () => {

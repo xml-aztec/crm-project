@@ -180,8 +180,8 @@ Fixed in the 2026-09-03/04 audit follow-up (see `docs/audit-2026-09-03.md` for t
 
 Known and deliberately not addressed yet:
 
-1. **Eight components exceed 600 lines** (`pages/CreateOrderPage.tsx` 838, `pages/warehouse/WarehouseInventory.tsx` 769, `components/orders/OrderForm.tsx` 710, and five more). The duplicated order-line pricing was extracted to `frontend/src/utils/orderPricing.ts`, but the components themselves were not split — doing so without component-level tests is a poor risk/benefit trade.
-2. **Eight ESLint warnings remain** (`react-hooks/exhaustive-deps`, `react-refresh/only-export-components`). CI pins the ceiling at exactly 8 so new ones cannot slip in unnoticed.
+1. **Seven components still exceed 600 lines** (largest: `pages/CreateOrderPage.tsx` 766, `pages/warehouse/WarehouseInventory.tsx` 753, `components/orders/OrderForm.tsx` 686). Their *business logic* has been pulled out into tested pure modules under `frontend/src/utils/` — `orderPricing`, `orderItems`, `orderValidation`, `stockSorting`, `payrollCalc` — so what remains in the components is mostly JSX and local UI state. Splitting the markup itself is still open; `components/orders/OrdersTable.tsx`, `pages/orders/OrderDetailsPage.tsx` and `pages/finance/CashflowMetaManagement.tsx` have not been touched at all.
+2. **Six ESLint warnings remain** (`react-hooks/exhaustive-deps`, `react-refresh/only-export-components`). CI pins the ceiling at exactly 6 so new ones cannot slip in unnoticed.
 
 ---
 
