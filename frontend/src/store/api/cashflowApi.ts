@@ -1,5 +1,4 @@
-import { createApi } from '@reduxjs/toolkit/query/react';
-import { baseQueryWithReauth } from './baseQuery';
+import { baseApi } from './baseApi';
 
 export interface CashflowType {
   id: number;
@@ -51,10 +50,7 @@ export interface UpdateCashflowTypeRequest {
   name: string;
 }
 
-export const cashflowApi = createApi({
-  reducerPath: 'cashflowApi',
-  baseQuery: baseQueryWithReauth,
-  tagTypes: ['CashflowCategory', 'CashflowType', 'CashflowEntry'],
+export const cashflowApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // === КАТЕГОРИИ ===
     getCashflowCategories: builder.query<CashflowCategory[], void>({

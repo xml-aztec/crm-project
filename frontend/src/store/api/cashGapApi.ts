@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 
 export interface CashGap {
   id: number;
@@ -28,17 +28,7 @@ export interface UpdateCashGapRequest {
   comment?: string; // ✅ Добавляем комментарий
 }
 
-export const cashGapApi = createApi({
-  reducerPath: 'cashGapApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    credentials: 'include', // Используем cookies вместо токенов
-    prepareHeaders: (headers) => {
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
-  tagTypes: ['CashGap'],
+export const cashGapApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // ✅ ИСПРАВЛЯЕМ: Правильное название метода
     getCashGaps: builder.query<CashGap[], CashGapFilters>({

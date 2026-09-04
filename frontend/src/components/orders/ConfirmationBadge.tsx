@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { getApiErrorMessage } from '../../types/apiError';
+import { asApiError } from '../../types/apiError';
 import { useConfirmOrderMutation } from '../../store/api/ordersApi';
 import { Order } from '../../store/api/ordersApi';
 import OrderConfirmationModal from './OrderConfirmationModal';
@@ -79,13 +81,14 @@ export default function ConfirmationBadge({
       if (onConfirmationChange) {
         onConfirmationChange(result);
       }
-    } catch (error: any) {
+    } catch (rawError) {
+      const error = asApiError(rawError);
       // Оставляем alert только для критических ошибок
       if (error?.status === 400) {
-        if (error.data?.detail?.includes('insufficient')) {
+        if (getApiErrorMessage(error, 'Произошла ошибка')?.includes('insufficient')) {
           alert('Недостаточно товара на складе для подтверждения заказа');
         } else {
-          alert(`Ошибка: ${error.data?.detail || 'Не удалось подтвердить заказ'}`);
+          alert(`Ошибка: ${getApiErrorMessage(error, 'Не удалось подтвердить заказ')}`);
         }
       } else if (error?.status === 422) {
         alert('Ошибка валидации данных заказа');

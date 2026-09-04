@@ -14,7 +14,7 @@ export const isDateNotInPast = (dateString: string): boolean => {
     today.setHours(0, 0, 0, 0);
     
     return inputDate >= today;
-  } catch (error) {
+  } catch {
     return false;
   }
 };
@@ -26,7 +26,7 @@ export const isValidDate = (dateString: string | Date): boolean => {
   try {
     const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
     return !isNaN(date.getTime());
-  } catch (error) {
+  } catch {
     return false;
   }
 };

@@ -1,4 +1,6 @@
 import { useState, ChangeEvent, FormEvent, useCallback } from "react";
+import { getApiErrorMessage } from '../../types/apiError';
+import { asApiError } from '../../types/apiError';
 import { Link } from "react-router";
 import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
@@ -151,11 +153,12 @@ export default function SignUpForm() {
     try {
       // Роль назначается сервером при регистрации (всегда "manager") — клиент её не выбирает
       await register(formData).unwrap();
-    } catch (error: any) {
+    } catch (rawError) {
+      const error = asApiError(rawError);
       // Обрабатываем ошибки API
       console.error("Ошибка регистрации:", error);
       
-      if (error.data?.detail === 'Email already registered') {
+      if (getApiErrorMessage(error, 'Произошла ошибка')=== 'Email already registered') {
         setErrors({ email: 'Этот email уже зарегистрирован' });
       } else if (error.data?.errors) {
         // Преобразуем ошибки API в формат ошибок формы

@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 
 export interface PaymentMethod {
   id: number;
@@ -19,17 +19,7 @@ export interface UpdatePaymentMethodRequest {
   max_months?: number | null;
 }
 
-export const paymentMethodsApi = createApi({
-  reducerPath: 'paymentMethodsApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    credentials: 'include', // Используем cookies вместо токенов
-    prepareHeaders: (headers) => {
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
-  tagTypes: ['PaymentMethod'],
+export const paymentMethodsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getPaymentMethods: builder.query<PaymentMethod[], void>({
       query: () => '/payment-methods/',

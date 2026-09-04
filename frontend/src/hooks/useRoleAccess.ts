@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import type { UserRead } from '../types/auth';
 import { useAppSelector } from './reduxHooks';
 import { UserRole, PermissionCheck } from '../types/auth';
 
@@ -6,7 +7,7 @@ import { UserRole, PermissionCheck } from '../types/auth';
  * Хук для проверки прав доступа пользователя
  */
 export const useRoleAccess = (): PermissionCheck & {
-  user: any;
+  user: UserRead | null;
   isAuthenticated: boolean;
 } => {
   const { user, isAuthenticated } = useAppSelector(state => state.auth);

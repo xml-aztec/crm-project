@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 
 export interface KPIRule {
   id: number;
@@ -21,17 +21,7 @@ export interface UpdateKPIRuleRequest {
   penalty?: number;
 }
 
-export const kpiRulesApi = createApi({
-  reducerPath: 'kpiRulesApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    credentials: 'include',
-    prepareHeaders: (headers) => {
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
-  tagTypes: ['KpiRule'],
+export const kpiRulesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Получить все KPI правила
     getKPIRules: builder.query<KPIRule[], void>({

@@ -43,7 +43,7 @@ const PayrollFiltersComponent: React.FC<PayrollFiltersComponentProps> = ({
   };
 
   // Обработчик изменения фильтров
-  const handleFilterChange = useCallback((field: keyof PayrollFilters, value: any) => {
+  const handleFilterChange = useCallback(<K extends keyof PayrollFilters>(field: K, value: PayrollFilters[K]) => {
     const newFilters = { ...localFilters, [field]: value };
     setLocalFilters(newFilters);
     onFiltersChange(newFilters);

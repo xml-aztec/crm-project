@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 
 export interface MonthlyTarget {
   id: number;
@@ -26,19 +26,7 @@ export interface MonthlyTargetFilters {
   manager_id?: number;
 }
 
-export const monthlyTargetsApi = createApi({
-  reducerPath: 'monthlyTargetsApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: '/api/monthly-targets',
-    prepareHeaders: (headers, { getState }) => {
-      const token = (getState() as any).auth.token;
-      if (token) {
-        headers.set('authorization', `Bearer ${token}`);
-      }
-      return headers;
-    },
-  }),
-  tagTypes: ['MonthlyTarget'],
+export const monthlyTargetsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Получить все месячные цели с фильтрацией
     getMonthlyTargets: builder.query<MonthlyTarget[], MonthlyTargetFilters>({

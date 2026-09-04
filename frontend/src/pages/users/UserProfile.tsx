@@ -52,7 +52,7 @@ export default function UserProfile() {
     updateFormData();
   }, [updateFormData]);
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = <K extends keyof typeof formData>(field: K, value: (typeof formData)[K]) => {
     setFormData(prev => ({
       ...prev,
       [field]: value

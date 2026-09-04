@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { asApiError, getApiErrorMessage } from '../../types/apiError';
 import { useDropzone } from 'react-dropzone';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -219,11 +220,12 @@ export default function ProductImageManager({ productId, images }: ProductImageM
           await confirmImage({ productId, key }).unwrap();
 
           setUploads((prev) => prev.filter((u) => u.id !== uploadId));
-        } catch (err: any) {
+        } catch (rawErr) {
+          const err = asApiError(rawErr);
           setUploads((prev) =>
             prev.map((u) =>
               u.id === uploadId
-                ? { ...u, status: 'error', error: err?.data?.detail || err?.message || 'Ошибка загрузки' }
+                ? { ...u, status: 'error', error: getApiErrorMessage(err, 'Ошибка загрузки') }
                 : u
             )
           );

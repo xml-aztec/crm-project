@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { asApiError } from '../../types/apiError';
 import { useNavigate } from "react-router";
 import {
   useGetSuppliersPaginatedQuery,
@@ -73,7 +74,8 @@ const Suppliers: React.FC = () => {
         await createSupplier(data as CreateSupplierRequest).unwrap();
       }
       handleCloseModal();
-    } catch (error: any) {
+    } catch (rawError) {
+      const error = asApiError(rawError);
       console.error('Ошибка при сохранении поставщика:', error);
     }
   }, [editingSupplier, createSupplier, updateSupplier, handleCloseModal]);

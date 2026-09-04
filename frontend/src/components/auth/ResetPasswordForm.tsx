@@ -1,4 +1,5 @@
 import { useState, ChangeEvent, FormEvent, useCallback } from "react";
+import { asApiError, getApiErrorMessage } from '../../types/apiError';
 import { useNavigate, useSearchParams, Link } from "react-router";
 import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
@@ -87,10 +88,16 @@ export default function ResetPasswordForm() {
         replace: true,
         state: { message: 'Пароль успешно изменён. Войдите с новым паролем.' },
       });
-    } catch (error: any) {
-      const detail = error?.data?.detail;
+    } catch (rawError) {
+      const error = asApiError(rawError);
       setErrors({
-        general: detail || 'Не удалось сбросить пароль. Попробуйте ещё раз позже.',
+        // detail приходит строкой либо массивом (ошибка валидации FastAPI) —
+        // помощник разбирает оба случая. Раньше массив попадал в строковое
+        // поле как есть и показывался пользователю как [object Object].
+        general: getApiErrorMessage(
+          error,
+          'Не удалось сбросить пароль. Попробуйте ещё раз позже.',
+        ),
       });
     }
   }, [token, formData, validateForm, resetPassword, navigate]);

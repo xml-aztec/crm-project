@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { getApiErrorMessage, ApiValidationIssue } from '../types/apiError';
+import { asApiError } from '../types/apiError';
 import { calculateLineTotal, calculateOrderTotal } from '../utils/orderPricing';
 import { useNavigate } from 'react-router';
 import {
@@ -129,7 +131,7 @@ export default function CreateOrderPage() {
     return brand?.name || 'Неизвестный бренд';
   };
 
-  const handleInputChange = (field: keyof typeof orderData, value: any) => {
+  const handleInputChange = <K extends keyof typeof orderData>(field: K, value: (typeof orderData)[K]) => {
     setOrderData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -286,24 +288,25 @@ export default function CreateOrderPage() {
 
       await createOrder(orderPayload).unwrap();
       navigate('/orders');
-    } catch (error: any) {
+    } catch (rawError) {
+      const error = asApiError(rawError);
       if (error?.status === 400) {
-        alert(`Ошибка: ${error.data?.detail || 'Недостаточно товара на складе'}`);
+        alert(`Ошибка: ${getApiErrorMessage(error, 'Недостаточно товара на складе')}`);
         return;
       }
 
       if (error?.status === 422) {
-        if (error.data?.detail) {
+        if (getApiErrorMessage(error, 'Произошла ошибка')) {
           let errorMessage = 'Ошибки валидации:\n';
-          if (Array.isArray(error.data.detail)) {
-            error.data.detail.forEach((err: any) => {
+          if (Array.isArray(error?.data?.detail)) {
+            (error?.data?.detail as ApiValidationIssue[]).forEach((err) => {
               if (err.loc && err.msg) {
                 const field = err.loc.join(' → ');
                 errorMessage += `• ${field}: ${err.msg}\n`;
               }
             });
           } else {
-            errorMessage += error.data.detail;
+            errorMessage += getApiErrorMessage(error, 'Произошла ошибка');
           }
           alert(errorMessage);
         } else {

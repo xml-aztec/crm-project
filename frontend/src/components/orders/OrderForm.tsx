@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { Order } from '../../store/api/ordersApi';
 import { calculateLineTotal, calculateOrderTotal } from '../../utils/orderPricing';
 import { 
   useGetProductsQuery,
@@ -20,7 +21,7 @@ interface OrderItem {
 }
 
 interface OrderFormProps {
-  order?: any;
+  order?: Order;
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
@@ -70,7 +71,7 @@ export default function OrderForm({ order, isOpen, onClose, onSuccess }: OrderFo
   };
 
   // Order management functions
-  const handleInputChange = (field: keyof typeof orderData, value: any) => {
+  const handleInputChange = <K extends keyof typeof orderData>(field: K, value: (typeof orderData)[K]) => {
     setOrderData(prev => ({
       ...prev,
       [field]: value
@@ -355,7 +356,7 @@ export default function OrderForm({ order, isOpen, onClose, onSuccess }: OrderFo
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {warehouses.map((warehouse: any) => (
+                {warehouses.map((warehouse) => (
                   <div
                     key={warehouse.id}
                     onClick={() => handleInputChange('warehouse_id', warehouse.id.toString())}

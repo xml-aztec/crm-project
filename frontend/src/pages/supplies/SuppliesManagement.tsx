@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import type { Supply, SupplyItem } from '../../store/api/suppliesApi';
 import { useNavigate } from 'react-router';
 import {
   useGetSuppliesQuery,
@@ -39,7 +40,7 @@ const SuppliesManagement: React.FC = () => {
     },
   });
 
-  const [supplyToDelete, setSupplyToDelete] = useState<any>(null);
+  const [supplyToDelete, setSupplyToDelete] = useState<Supply | null>(null);
 
   // API запросы
   const {
@@ -95,7 +96,7 @@ const SuppliesManagement: React.FC = () => {
   const hasActiveFilters = !!search || !!filters.warehouse_id || !!filters.supplier_id || !!filters.date_from || !!filters.date_to;
 
   // Вычисление общей стоимости поставки
-  const calculateSupplyTotal = (items: any[]) => {
+  const calculateSupplyTotal = (items: SupplyItem[]) => {
     return items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
   };
 

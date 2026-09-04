@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { asApiError, getApiErrorMessage } from '../../types/apiError';
 import { useGetReturnsQuery, useDecideReturnMutation, OrderReturn, ReturnStatus } from '../../store/api/returnsApi';
 import { useRoleAccess } from '../../hooks/useRoleAccess';
 import Button from '../ui/button/Button';
@@ -43,8 +44,9 @@ function ReturnRow({ orderReturn }: { orderReturn: OrderReturn }) {
     setError(null);
     try {
       await decideReturn({ id: orderReturn.id, approve }).unwrap();
-    } catch (err: any) {
-      setError(err?.data?.detail || 'Не удалось сохранить решение');
+    } catch (rawErr) {
+      const err = asApiError(rawErr);
+      setError(getApiErrorMessage(err, 'Не удалось сохранить решение'));
     }
   };
 

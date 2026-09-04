@@ -92,7 +92,7 @@ export const formatDateTime = (
     }
     
     return result;
-  } catch (error) {
+  } catch {
     return 'Ошибка даты';
   }
 };
@@ -121,7 +121,7 @@ export const formatTime = (dateString: string | Date): string => {
     const minutes = localDate.getMinutes().toString().padStart(2, '0');
     
     return `${hours}:${minutes}`;
-  } catch (error) {
+  } catch {
     return 'Ошибка времени';
   }
 };
@@ -143,7 +143,7 @@ export const formatMonth = (monthString: string): string => {
     ];
 
     return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
-  } catch (error) {
+  } catch {
     return 'Ошибка месяца';
   }
 };
@@ -166,7 +166,7 @@ export const formatShortDate = (dateString: string | Date): string => {
     const year = localDate.getFullYear();
     
     return `${day}.${month}.${year}`;
-  } catch (error) {
+  } catch {
     return 'Ошибка даты';
   }
 };
@@ -187,7 +187,7 @@ export const isToday = (dateString: string | Date): boolean => {
       dateInBishkek.getMonth() === todayInBishkek.getMonth() &&
       dateInBishkek.getFullYear() === todayInBishkek.getFullYear()
     );
-  } catch (error) {
+  } catch {
     return false;
   }
 };
@@ -213,7 +213,7 @@ export const getRelativeTime = (dateString: string | Date): string => {
     if (diffDays < 7) return `${diffDays} дн. назад`;
     
     return formatShortDate(utcDate);
-  } catch (error) {
+  } catch {
     return 'неизвестно';
   }
 };

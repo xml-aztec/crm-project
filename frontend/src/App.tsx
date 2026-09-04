@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router";
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
@@ -7,53 +7,61 @@ import { fetchCurrentUser } from './store/slices/authSlice';
 import { ThemeProvider } from './context/ThemeContext';
 import { SidebarProvider } from './context/SidebarContext';
 import SignIn from "./pages/AuthPages/SignIn";
-import SignUp from "./pages/AuthPages/SignUp";
-import ForgotPassword from "./pages/AuthPages/ForgotPassword";
-import ResetPassword from "./pages/AuthPages/ResetPassword";
-import NotFound from "./pages/OtherPage/NotFound";
-import UserProfiles from "./pages/UserProfiles";
-import Users from "./pages/users/Users";
-import RegistrationRequests from "./pages/users/RegistrationRequests";
-import BasicTables from "./pages/Tables/BasicTables";
-import FormElements from "./pages/Forms/FormElements";
+
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
-import Home from "./pages/Dashboard/Home";
-import Calendar from "./pages/Calendar";
+
 import RequireAuth from "./components/auth/RequireAuth";
 import RequirePermission from "./components/auth/RequirePermission";
-import AllOrders from './pages/orders/AllOrders';
-import CreateOrderPage from './pages/CreateOrderPage';
-import OrderDetailsPage from './pages/orders/OrderDetailsPage';
-import ReturnsManagement from './pages/returns/ReturnsManagement';
-import Products from './pages/catalog/Products';
-import CreateProduct from './pages/catalog/CreateProduct';
-import Categories from './pages/catalog/Categories';
-import Customers from './pages/customers/Customers';
-import CustomerTypes from './pages/customers/CustomerTypes';
-import General from './pages/config/General';
-import PaymentMethods from './pages/config/PaymentMethods';
-import Positions from './pages/config/Positions';
-import Notifications from './pages/config/Notifications';
-import Branches from './pages/branches/Branches';
-import Warehouses from './pages/warehouse/Warehouses';
-import WarehouseInventory from './pages/warehouse/WarehouseInventory';
-import StockManagement from './pages/stock/StockManagement';
-import StockLogsPage from './pages/stock/StockLogsPage';
-import SuppliesManagement from './pages/supplies/SuppliesManagement';
-import CreateSupply from './pages/supplies/CreateSupply';
-import SupplyDetails from './pages/supplies/SupplyDetails';
-import EditSupply from './pages/supplies/EditSupply';
-import Suppliers from './pages/suppliers/Suppliers';
-import Finance from './pages/finance/Finance';
-import PayrollManagement from './pages/payroll/PayrollManagement';
-import CashflowMetaManagement from './pages/finance/CashflowMetaManagement';
-import MonthlyTargetsManagement from './pages/finance/MonthlyTargetsManagement';
-import PnLReport from './pages/finance/PnLReport';
+
 import { useAppDispatch, useAppSelector } from './hooks/reduxHooks';
-import EditProduct from "./pages/catalog/EditProduct";
-import SettingsHub from './pages/settings/SettingsHub';
-import RolesPermissions from './pages/settings/RolesPermissions';
+
+// Ленивая загрузка страниц: раньше в приложении не было ни одного
+// динамического импорта, и весь код (включая FullCalendar, ApexCharts,
+// jVectorMap, Swiper и сканер штрихкодов) приезжал одним бандлом на 2,6 МБ
+// ещё до показа формы входа. Теперь каждый маршрут — отдельный чанк.
+const SignUp = lazy(() => import('./pages/AuthPages/SignUp'));
+const ForgotPassword = lazy(() => import('./pages/AuthPages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/AuthPages/ResetPassword'));
+const NotFound = lazy(() => import('./pages/OtherPage/NotFound'));
+const UserProfiles = lazy(() => import('./pages/UserProfiles'));
+const Users = lazy(() => import('./pages/users/Users'));
+const RegistrationRequests = lazy(() => import('./pages/users/RegistrationRequests'));
+const BasicTables = lazy(() => import('./pages/Tables/BasicTables'));
+const FormElements = lazy(() => import('./pages/Forms/FormElements'));
+const Home = lazy(() => import('./pages/Dashboard/Home'));
+const Calendar = lazy(() => import('./pages/Calendar'));
+const AllOrders = lazy(() => import('./pages/orders/AllOrders'));
+const CreateOrderPage = lazy(() => import('./pages/CreateOrderPage'));
+const OrderDetailsPage = lazy(() => import('./pages/orders/OrderDetailsPage'));
+const ReturnsManagement = lazy(() => import('./pages/returns/ReturnsManagement'));
+const Products = lazy(() => import('./pages/catalog/Products'));
+const CreateProduct = lazy(() => import('./pages/catalog/CreateProduct'));
+const Categories = lazy(() => import('./pages/catalog/Categories'));
+const Customers = lazy(() => import('./pages/customers/Customers'));
+const CustomerTypes = lazy(() => import('./pages/customers/CustomerTypes'));
+const General = lazy(() => import('./pages/config/General'));
+const PaymentMethods = lazy(() => import('./pages/config/PaymentMethods'));
+const Positions = lazy(() => import('./pages/config/Positions'));
+const Notifications = lazy(() => import('./pages/config/Notifications'));
+const Branches = lazy(() => import('./pages/branches/Branches'));
+const Warehouses = lazy(() => import('./pages/warehouse/Warehouses'));
+const WarehouseInventory = lazy(() => import('./pages/warehouse/WarehouseInventory'));
+const StockManagement = lazy(() => import('./pages/stock/StockManagement'));
+const StockLogsPage = lazy(() => import('./pages/stock/StockLogsPage'));
+const SuppliesManagement = lazy(() => import('./pages/supplies/SuppliesManagement'));
+const CreateSupply = lazy(() => import('./pages/supplies/CreateSupply'));
+const SupplyDetails = lazy(() => import('./pages/supplies/SupplyDetails'));
+const EditSupply = lazy(() => import('./pages/supplies/EditSupply'));
+const Suppliers = lazy(() => import('./pages/suppliers/Suppliers'));
+const Finance = lazy(() => import('./pages/finance/Finance'));
+const PayrollManagement = lazy(() => import('./pages/payroll/PayrollManagement'));
+const CashflowMetaManagement = lazy(() => import('./pages/finance/CashflowMetaManagement'));
+const MonthlyTargetsManagement = lazy(() => import('./pages/finance/MonthlyTargetsManagement'));
+const PnLReport = lazy(() => import('./pages/finance/PnLReport'));
+const EditProduct = lazy(() => import('./pages/catalog/EditProduct'));
+const SettingsHub = lazy(() => import('./pages/settings/SettingsHub'));
+const RolesPermissions = lazy(() => import('./pages/settings/RolesPermissions'));
 
 const AppWithRedux = () => {
   const dispatch = useAppDispatch();
@@ -68,6 +76,13 @@ const AppWithRedux = () => {
   return (
     <Router>
       <ScrollToTop />
+      <Suspense
+        fallback={
+          <div className="flex h-screen items-center justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-brand-500" />
+          </div>
+        }
+      >
       <Routes>
         {/* Публичные маршруты */}
         <Route path="/signin" element={<SignIn />} />
@@ -158,6 +173,7 @@ const AppWithRedux = () => {
         {/* Fallback Route */}
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
       
     </Router>
   );

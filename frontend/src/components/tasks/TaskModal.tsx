@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { getApiErrorMessage } from '../../types/apiError';
+import { asApiError } from '../../types/apiError';
 import { Modal } from '../ui/modal';
 import Button from '../ui/button/Button';
 import Input from '../form/input/InputField';
@@ -137,8 +139,9 @@ export default function TaskModal({
         }).unwrap();
       }
       onClose();
-    } catch (err: any) {
-      setError(err?.data?.detail || 'Не удалось сохранить задачу');
+    } catch (rawErr) {
+      const err = asApiError(rawErr);
+      setError(getApiErrorMessage(err, 'Не удалось сохранить задачу'));
     }
   };
 

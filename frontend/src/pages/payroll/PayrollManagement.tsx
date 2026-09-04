@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { getApiErrorMessage } from '../../types/apiError';
+import { asApiError } from '../../types/apiError';
 import { 
   useGetPayrollsQuery,
   useCreatePayrollMutation,
@@ -61,7 +63,8 @@ const PayrollManagement: React.FC = () => {
       });
       setShowModal(false);
       refetch();
-    } catch (error: any) {
+    } catch (rawError) {
+      const error = asApiError(rawError);
       console.error('Ошибка при создании зарплатной ведомости:', error);
       setNotification({
         type: 'error',
@@ -85,7 +88,8 @@ const PayrollManagement: React.FC = () => {
       setShowModal(false);
       setEditingPayroll(null);
       refetch();
-    } catch (error: any) {
+    } catch (rawError) {
+      const error = asApiError(rawError);
       console.error('Ошибка при обновлении зарплатной ведомости:', error);
       setNotification({
         type: 'error',
@@ -108,7 +112,8 @@ const PayrollManagement: React.FC = () => {
       });
       
       refetch();
-    } catch (error: any) {
+    } catch (rawError) {
+      const error = asApiError(rawError);
       console.error('Ошибка при выплате зарплаты:', error);
       setNotification({
         type: 'error',
@@ -125,7 +130,8 @@ const PayrollManagement: React.FC = () => {
         message: 'Зарплатная ведомость успешно пересчитана'
       });
       refetch();
-    } catch (error: any) {
+    } catch (rawError) {
+      const error = asApiError(rawError);
       console.error('Ошибка при пересчете зарплатной ведомости:', error);
       setNotification({
         type: 'error',
@@ -145,11 +151,11 @@ const PayrollManagement: React.FC = () => {
           });
           refetch();
         })
-        .catch((error: any) => {
+        .catch((error: unknown) => {
           console.error('Ошибка при удалении зарплатной ведомости:', error);
           setNotification({
             type: 'error',
-            message: error?.data?.message || 'Failed to delete payroll'
+            message: getApiErrorMessage(error, 'Failed to delete payroll')
           });
         });
     }

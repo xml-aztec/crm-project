@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 
 export interface Position {
   id: number;
@@ -13,17 +13,7 @@ export interface UpdatePositionRequest {
   name?: string;
 }
 
-export const positionsApi = createApi({
-  reducerPath: 'positionsApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    credentials: 'include', // Используем cookies вместо токенов
-    prepareHeaders: (headers) => {
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
-  tagTypes: ['Position'],
+export const positionsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getPositions: builder.query<Position[], void>({
       query: () => '/positions/',

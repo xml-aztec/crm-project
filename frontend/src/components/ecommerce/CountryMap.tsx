@@ -16,7 +16,9 @@ const CountryMap: React.FC<CountryMapProps> = ({ mapColor }) => {
         initial: {
           fill: "#465FFF",
           r: 4, // Custom radius for markers
-        } as any, // Type assertion to bypass strict CSS property checks
+          // Библиотека карт типизирована неполно: описания допустимых CSS-свойств
+    // у regionStyle нет, поэтому приведение здесь остаётся осознанным.
+  } as React.CSSProperties,
       }}
       markersSelectable={true}
       markers={[

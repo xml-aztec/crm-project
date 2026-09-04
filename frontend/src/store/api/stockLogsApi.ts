@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 
 export interface StockLogUser {
   id: number;
@@ -49,17 +49,7 @@ export interface StockLogPage {
 }
 
 // API для логов движения товаров
-export const stockLogsApi = createApi({
-  reducerPath: 'stockLogsApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    credentials: 'include',
-    prepareHeaders: (headers) => {
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
-  tagTypes: ['StockLog'],
+export const stockLogsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Получить логи движения товаров с фильтрацией
     getStockLogs: builder.query<StockLog[], StockLogsFilters>({

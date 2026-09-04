@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import type { Customer, CreateCustomerRequest } from '../../store/api/customersApi';
+import { getApiErrorMessage, ApiValidationIssue } from '../../types/apiError';
+import { asApiError, getFieldError } from '../../types/apiError';
 import { useCreateCustomerMutation } from '../../store/api/customersApi';
 import { useGetCustomerTypesQuery } from '../../store/api/customerTypesApi';
 import Button from '../../components/ui/button/Button';
@@ -6,7 +9,7 @@ import Button from '../../components/ui/button/Button';
 interface QuickCustomerFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (customer: any) => void;
+  onSuccess: (customer: Customer) => void;
 }
 
 export default function QuickCustomerForm({ isOpen, onClose, onSuccess }: QuickCustomerFormProps) {
@@ -60,7 +63,7 @@ export default function QuickCustomerForm({ isOpen, onClose, onSuccess }: QuickC
     }
 
     try {
-      const customerData: any = {
+      const customerData: CreateCustomerRequest = {
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         customer_type_id: parseInt(formData.customer_type_id),
@@ -94,33 +97,33 @@ export default function QuickCustomerForm({ isOpen, onClose, onSuccess }: QuickC
       });
       setErrors({});
       
-    } catch (error: any) {
+    } catch (rawError) {
+      const error = asApiError(rawError);
       console.error('❌ Ошибка при создании клиента:', error);
       
       // Обработка ошибок валидации от сервера
       if (error?.status === 422 && error?.data) {
         const serverErrors: Record<string, string> = {};
         
-        if (error.data.detail) {
+        if (getApiErrorMessage(error, 'Произошла ошибка')) {
           // Если ошибка в формате массива объектов валидации
-          if (Array.isArray(error.data.detail)) {
-            error.data.detail.forEach((err: any) => {
+          if (Array.isArray(error?.data?.detail)) {
+            (error?.data?.detail as ApiValidationIssue[]).forEach((err) => {
               if (err.loc && err.loc.length > 1) {
                 const field = err.loc[1]; // Берем имя поля
                 serverErrors[field] = err.msg || 'Ошибка валидации';
               }
             });
-          } else if (typeof error.data.detail === 'string') {
-            serverErrors.general = error.data.detail;
+          } else if (typeof getApiErrorMessage(error, 'Произошла ошибка')=== 'string') {
+            serverErrors.general = getApiErrorMessage(error, 'Произошла ошибка');
           } else {
             serverErrors.general = 'Ошибка валидации данных';
           }
         } else {
           // Обработка других форматов ошибок
-          if (error.data.phone) {
-            serverErrors.phone = Array.isArray(error.data.phone) 
-              ? error.data.phone[0] 
-              : error.data.phone;
+          const phoneError = getFieldError(error, 'phone');
+          if (phoneError) {
+            serverErrors.phone = phoneError;
           }
           if (error.data.email) {
             serverErrors.email = Array.isArray(error.data.email) 

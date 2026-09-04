@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { ApiValidationIssue } from '../../types/apiError';
+import { asApiError } from '../../types/apiError';
 import { useNavigate, useSearchParams } from 'react-router';
 import { 
   useCreateProductMutation, 
@@ -180,12 +182,13 @@ export default function CreateProduct() {
       // вида products/{product_id}/...) — сразу ведём на страницу редактирования,
       // где можно их добавить, вместо возврата в список.
       navigate(`/catalog/products/${created.id}/edit`);
-    } catch (error: any) {
+    } catch (rawError) {
+      const error = asApiError(rawError);
       if (error?.status === 422 && error?.data?.detail) {
         const serverErrors: FormErrors = {};
         
-        if (Array.isArray(error.data.detail)) {
-          error.data.detail.forEach((err: any) => {
+        if (Array.isArray(error?.data?.detail)) {
+          (error?.data?.detail as ApiValidationIssue[]).forEach((err) => {
             if (err.loc && err.loc.length > 1 && err.msg) {
               const fieldName = err.loc[err.loc.length - 1];
               serverErrors[fieldName] = err.msg;

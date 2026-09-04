@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { Order } from '../../store/api/ordersApi';
 import { useNavigate, useSearchParams } from 'react-router';
 import { OrderFilters, useExportOrdersExcelMutation } from '../../store/api/ordersApi';
 import OrdersStats from '../../components/orders/OrdersStats';
@@ -51,11 +52,11 @@ export default function AllOrders() {
     setSearchParams(newParams);
   };
 
-  const handleViewDetails = (order: any) => {
+  const handleViewDetails = (order: Order) => {
     navigate(`/orders/${order.id}`);
   };
 
-  const handleEdit = (order: any) => {
+  const handleEdit = (order: Order) => {
     navigate(`/orders/${order.id}/edit`);
   };
 

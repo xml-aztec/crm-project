@@ -1,5 +1,4 @@
-import { createApi } from '@reduxjs/toolkit/query/react';
-import { baseQueryWithReauth } from './baseQuery';
+import { baseApi } from './baseApi';
 
 export interface AppNotification {
   id: number;
@@ -39,10 +38,7 @@ export interface NotificationPreferenceUpdate {
   enabled: boolean;
 }
 
-export const notificationsApi = createApi({
-  reducerPath: 'notificationsApi',
-  baseQuery: baseQueryWithReauth,
-  tagTypes: ['Notification', 'NotificationPreference'],
+export const notificationsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getNotifications: builder.query<AppNotification[], void>({
       query: () => 'notifications',

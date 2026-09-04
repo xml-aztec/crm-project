@@ -1,17 +1,7 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 import { User } from '../../types/user';
 
-export const usersApi = createApi({
-  reducerPath: 'usersApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    credentials: 'include',
-    prepareHeaders: (headers) => {
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
-  tagTypes: ['User'],
+export const usersApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getUsers: builder.query<User[], void>({
       query: () => 'users/',

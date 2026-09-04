@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 
 // Типы данных
 export interface User {
@@ -229,17 +229,7 @@ export interface OrderHistoryEntry {
   user: OrderHistoryUser | null;
 }
 
-export const ordersApi = createApi({
-  reducerPath: 'ordersApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    credentials: 'include',
-    prepareHeaders: (headers) => {
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
-  tagTypes: ['Order', 'OrderItem', 'OrderStatus', 'Customer', 'Analytics', 'Stock'],
+export const ordersApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Заказы с пагинацией
     getOrders: builder.query<PaginatedOrdersResponse | Order[], OrderFilters>({
@@ -275,7 +265,25 @@ export const ordersApi = createApi({
         };
       },
       providesTags: ['Order'],
-      transformResponse: (response: any): PaginatedOrdersResponse => {
+      transformResponse: (response: unknown): PaginatedOrdersResponse => {
+        // Бэкенд отдаёт список заказов в одной из трёх форм (голый массив,
+        // DRF-подобный {results,count} или {items,total}), поэтому здесь
+        // разбор с сужением типа. Раньше параметр был `any`, и любое
+        // несовпадение полей проходило молча до самого рендера.
+        type LooseOrdersPayload = {
+          results?: Order[];
+          items?: Order[];
+          data?: Order[];
+          count?: number;
+          total?: number;
+          skip?: number;
+          limit?: number;
+          next?: unknown;
+          previous?: unknown;
+          has_next?: boolean;
+          has_previous?: boolean;
+        };
+
         if (Array.isArray(response)) {
           return {
             items: response,
@@ -288,26 +296,29 @@ export const ordersApi = createApi({
         }
         
         if (response && typeof response === 'object') {
-          if ('results' in response) {
-            return {
-              items: response.results || [],
-              total: response.count || 0,
-              skip: 0, 
-              limit: response.results?.length || 10,
-              has_next: !!response.next,
-              has_previous: !!response.previous
-            };
-          }
-          
-          if ('items' in response || 'data' in response) {
-            const items = response.items || response.data || [];
+          const payload = response as LooseOrdersPayload;
+
+          if ('results' in payload) {
+            const items = payload.results ?? [];
             return {
               items,
-              total: response.total || response.count || items.length,
-              skip: response.skip || 0,
-              limit: response.limit || items.length,
-              has_next: response.has_next || false,
-              has_previous: response.has_previous || false
+              total: payload.count ?? 0,
+              skip: 0,
+              limit: items.length || 10,
+              has_next: !!payload.next,
+              has_previous: !!payload.previous
+            };
+          }
+
+          if ('items' in payload || 'data' in payload) {
+            const items = payload.items ?? payload.data ?? [];
+            return {
+              items,
+              total: payload.total ?? payload.count ?? items.length,
+              skip: payload.skip ?? 0,
+              limit: payload.limit ?? items.length,
+              has_next: payload.has_next ?? false,
+              has_previous: payload.has_previous ?? false
             };
           }
         }
@@ -381,7 +392,6 @@ export const ordersApi = createApi({
       invalidatesTags: (_, __, { orderId }) => [
         { type: 'Order', id: orderId },
         'Order',
-        'OrderItem'
       ],
     }),
 
@@ -395,11 +405,9 @@ export const ordersApi = createApi({
         method: 'PATCH',
         body: data,
       }),
-      invalidatesTags: (_, __, { orderId, itemId }) => [
+      invalidatesTags: (_, __, { orderId }) => [
         { type: 'Order', id: orderId },
-        { type: 'OrderItem', id: itemId },
         'Order',
-        'OrderItem'
       ],
     }),
 
@@ -408,11 +416,9 @@ export const ordersApi = createApi({
         url: `/orders/${orderId}/items/${itemId}`,
         method: 'DELETE',
       }),
-      invalidatesTags: (_, __, { orderId, itemId }) => [
+      invalidatesTags: (_, __, { orderId }) => [
         { type: 'Order', id: orderId },
-        { type: 'OrderItem', id: itemId },
         'Order',
-        'OrderItem'
       ],
     }),
 
@@ -424,7 +430,10 @@ export const ordersApi = createApi({
 
     getCustomers: builder.query<Customer[], void>({
       query: () => '/customers/',
-      providesTags: ['Customer'],
+      // Тот же тег, что отдаёт список в customersApi ({ id: 'LIST' }).
+      // Голый 'Customer' сюда не подходит: мутации клиентов сбрасывают
+      // именно вариант с id 'LIST', а это по правилам RTK Query другой тег.
+      providesTags: [{ type: 'Customer' as const, id: 'LIST' }],
     }),
 
     getMonthlyAnalytics: builder.query<MonthlyAnalyticsResponse, void>({

@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react';
+import { getApiErrorMessage } from '../../types/apiError';
+import { asApiError } from '../../types/apiError';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import Button from '../../components/ui/button/Button';
 import DeleteConfirmModal from '../../components/ui/DeleteConfirmModal';
@@ -153,8 +155,9 @@ const RoleEditorModal: React.FC<{
         }).unwrap();
       }
       onClose();
-    } catch (e: any) {
-      setError(e?.data?.detail || 'Не удалось сохранить роль');
+    } catch (rawE) {
+      const e = asApiError(rawE);
+      setError(getApiErrorMessage(e, 'Не удалось сохранить роль'));
     }
   };
 
@@ -164,8 +167,9 @@ const RoleEditorModal: React.FC<{
       await deleteRole(role.id).unwrap();
       setConfirmDelete(false);
       onClose();
-    } catch (e: any) {
-      setError(e?.data?.detail || 'Не удалось удалить роль');
+    } catch (rawE) {
+      const e = asApiError(rawE);
+      setError(getApiErrorMessage(e, 'Не удалось удалить роль'));
     }
   };
 
@@ -176,8 +180,9 @@ const RoleEditorModal: React.FC<{
     try {
       await assignRole({ roleId: role.id, userId: Number(newUserId) }).unwrap();
       setNewUserId('');
-    } catch (e: any) {
-      setError(e?.data?.detail || 'Не удалось назначить роль');
+    } catch (rawE) {
+      const e = asApiError(rawE);
+      setError(getApiErrorMessage(e, 'Не удалось назначить роль'));
     }
   };
 

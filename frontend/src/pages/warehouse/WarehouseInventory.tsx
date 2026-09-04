@@ -150,7 +150,7 @@ const WarehouseInventory: React.FC = () => {
 
   // ✅ Клиентская сортировка (фильтрация теперь делается на сервере)
   const filteredInventory = useMemo(() => {
-    let filtered = [...currentInventory];
+    const filtered = [...currentInventory];
 
     // Сортировка (фильтрация теперь делается на сервере)
     filtered.sort((a, b) => {
@@ -158,10 +158,12 @@ const WarehouseInventory: React.FC = () => {
       
       switch (filters.sortBy) {
         case 'name':
+          {
           const productA = products.find(p => p.id === a.product_id);
           const productB = products.find(p => p.id === b.product_id);
           compareValue = (productA?.name || '').localeCompare(productB?.name || '');
           break;
+          }
         case 'quantity':
           compareValue = a.quantity - b.quantity;
           break;
@@ -215,12 +217,12 @@ const WarehouseInventory: React.FC = () => {
     try {
       await deleteStock(stockToDelete.id).unwrap();
       setStockToDelete(null);
-    } catch (error) {
+    } catch {
       // Ошибка обработана в middleware
     }
   }, [stockToDelete, deleteStock]);
 
-  const handleFilterChange = useCallback((field: keyof InventoryFilters, value: any) => {
+  const handleFilterChange = useCallback(<K extends keyof InventoryFilters>(field: K, value: InventoryFilters[K]) => {
     setFilters(prev => ({ ...prev, [field]: value }));
   }, []);
 
@@ -494,7 +496,7 @@ const WarehouseInventory: React.FC = () => {
             </label>
             <select
               value={filters.stockLevel}
-              onChange={(e) => handleFilterChange('stockLevel', e.target.value as any)}
+              onChange={(e) => handleFilterChange('stockLevel', e.target.value as InventoryFilters['stockLevel'])}
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">Все товары</option>
@@ -511,7 +513,7 @@ const WarehouseInventory: React.FC = () => {
             </label>
             <select
               value={filters.sortBy}
-              onChange={(e) => handleFilterChange('sortBy', e.target.value as any)}
+              onChange={(e) => handleFilterChange('sortBy', e.target.value as InventoryFilters['sortBy'])}
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="name">Названию</option>
@@ -527,7 +529,7 @@ const WarehouseInventory: React.FC = () => {
             </label>
             <select
               value={filters.sortOrder}
-              onChange={(e) => handleFilterChange('sortOrder', e.target.value as any)}
+              onChange={(e) => handleFilterChange('sortOrder', e.target.value as InventoryFilters['sortOrder'])}
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="asc">По возрастанию</option>

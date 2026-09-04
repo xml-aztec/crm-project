@@ -84,7 +84,7 @@ export const logoutUser = createAsyncThunk(
     try {
       localStorage.removeItem('redirectAfterLogin');
       localStorage.removeItem('rememberMe');
-    } catch (error) {
+    } catch {
       // Игнорируем ошибки localStorage (например, в приватном режиме)
     }
     

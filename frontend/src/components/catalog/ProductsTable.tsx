@@ -92,7 +92,7 @@ export default function ProductsTable({ products, isLoading = false, brandsMap =
         // Если это был последний элемент на странице, переходим на предыдущую
         setCurrentPage(prev => prev - 1);
       }
-    } catch (error) {
+    } catch {
       // Обработка ошибки без логирования
     } finally {
       setIsDeleting(false);

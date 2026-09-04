@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 
 export interface Payroll {
   id: number;
@@ -65,17 +65,7 @@ export interface PayPayrollRequest {
   comment?: string;
 }
 
-export const payrollApi = createApi({
-  reducerPath: 'payrollApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    credentials: 'include', // Используем cookies вместо токенов
-    prepareHeaders: (headers) => {
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
-  tagTypes: ['Payroll'],
+export const payrollApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Получить все записи зарплат с фильтрацией
     getPayrolls: builder.query<Payroll[], PayrollFilters>({

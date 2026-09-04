@@ -119,7 +119,7 @@ const KPIRulesManagement: React.FC = () => {
       setEditingRule(null);
       setErrors({});
       
-    } catch (error) {
+    } catch {
       // Ошибка обработана в middleware
     }
   }, [editingRule, ruleFormData, validateRuleForm, updateRule, createRule]);
@@ -152,7 +152,7 @@ const KPIRulesManagement: React.FC = () => {
     try {
       await deleteRule(deleteRuleConfirm.id).unwrap();
       setDeleteRuleConfirm(null);
-    } catch (error) {
+    } catch {
       // Ошибка обработана в middleware
     }
   }, [deleteRuleConfirm, deleteRule]);

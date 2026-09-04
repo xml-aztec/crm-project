@@ -12,7 +12,7 @@ if (import.meta.env.PROD) {
 
 // Сохраняем только критичные логи
 export const logger = {
-  error: (message: string, error?: any) => {
+  error: (message: string, error?: unknown) => {
     if (import.meta.env.DEV) {
       console.error(message, error);
     }
@@ -20,19 +20,19 @@ export const logger = {
     // sendToErrorTracking(message, error);
   },
   
-  warn: (message: string, data?: any) => {
+  warn: (message: string, data?: unknown) => {
     if (import.meta.env.DEV) {
       console.warn(message, data);
     }
   },
   
-  info: (message: string, data?: any) => {
+  info: (message: string, data?: unknown) => {
     if (import.meta.env.DEV) {
       console.info(message, data);
     }
   },
 
-  debug: (message: string, data?: any) => {
+  debug: (message: string, data?: unknown) => {
     if (import.meta.env.DEV) {
       console.debug(message, data);
     }

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { ApiValidationIssue } from '../../types/apiError';
+import { asApiError } from '../../types/apiError';
 import { Warehouse } from '../../store/api/warehouseApi';
 import { Branch } from '../../store/api/branchesApi';
 import Button from '../ui/button/Button';
@@ -101,15 +103,16 @@ const WarehouseForm: React.FC<WarehouseFormProps> = ({
         location: formData.location.trim(),
         branch_id: parseInt(formData.branch_id),
       });
-    } catch (error: any) {
+    } catch (rawError) {
+      const error = asApiError(rawError);
       console.error('Ошибка при сохранении склада:', error);
       
       // Обработка ошибок от сервера
       if (error?.status === 422 && error?.data?.detail) {
         const serverErrors: Record<string, string> = {};
         
-        if (Array.isArray(error.data.detail)) {
-          error.data.detail.forEach((err: any) => {
+        if (Array.isArray(error?.data?.detail)) {
+          (error?.data?.detail as ApiValidationIssue[]).forEach((err) => {
             if (err.loc && err.loc.length > 1 && err.msg) {
               const fieldName = err.loc[err.loc.length - 1];
               serverErrors[fieldName] = err.msg;

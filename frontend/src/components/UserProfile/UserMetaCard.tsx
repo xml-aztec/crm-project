@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { asApiError } from '../../types/apiError';
 import { useModal } from "../../hooks/useModal";
 import { Modal } from "../ui/modal";
 import Button from "../ui/button/Button";
@@ -63,7 +64,7 @@ export default function UserMetaCard() {
     try {
       await updateUser(formData).unwrap();
       closeModal();
-    } catch (error) {
+    } catch {
       // Обработка ошибки без алерта
     }
   };
@@ -79,7 +80,7 @@ export default function UserMetaCard() {
 
   // Обработка ошибки
   if (error) {
-    const errorStatus = (error as any).status;
+    const errorStatus = asApiError(error).status;
     
     // Если ошибка авторизации - редирект на логин
     if (errorStatus === 401) {

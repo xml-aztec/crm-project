@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import type { Stock } from '../../store/api/stockApi';
 import { LOW_STOCK_THRESHOLD } from '../../constants/stock';
 import { useGetStockQuery, useDeleteStockMutation } from '../../store/api/stockApi';
 import { useGetProductsQuery } from '../../store/api/catalogApi';
@@ -28,7 +29,7 @@ const StockManagement: React.FC = () => {
     sortOrder: 'desc'
   });
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
-  const [stockToDelete, setStockToDelete] = useState<any>(null);
+  const [stockToDelete, setStockToDelete] = useState<Stock | null>(null);
   const [transferTarget, setTransferTarget] = useState<{ productId: number; warehouseId: number } | null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 50;
@@ -61,7 +62,7 @@ const StockManagement: React.FC = () => {
 
   // Мемоизированная сортировка (фильтрация теперь делается на сервере)
   const filteredAndSortedStock = useMemo(() => {
-    let filtered = [...stockData];
+    const filtered = [...stockData];
 
     // Сортировка (основная фильтрация делается на сервере)
     filtered.sort((a, b) => {
@@ -69,24 +70,30 @@ const StockManagement: React.FC = () => {
       
       switch (filters.sortBy) {
         case 'product_name':
+          {
           const productA = products.find(p => p.id === a.product_id);
           const productB = products.find(p => p.id === b.product_id);
           compareValue = (productA?.name || '').localeCompare(productB?.name || '');
           break;
+          }
         case 'warehouse_name':
+          {
           const warehouseA = warehouses.find(w => w.id === a.warehouse_id);
           const warehouseB = warehouses.find(w => w.id === b.warehouse_id);
           compareValue = (warehouseA?.name || '').localeCompare(warehouseB?.name || '');
           break;
+          }
         case 'quantity':
           compareValue = a.quantity - b.quantity;
           break;
         case 'updated_at':
+          {
           // Сравнение дат
           const dateA = new Date(a.updated_at).getTime();
           const dateB = new Date(b.updated_at).getTime();
           compareValue = dateA - dateB;
           break;
+          }
       }
 
       return filters.sortOrder === 'desc' ? -compareValue : compareValue;
@@ -129,12 +136,12 @@ const StockManagement: React.FC = () => {
     try {
       await deleteStock(stockToDelete.id).unwrap();
       setStockToDelete(null);
-    } catch (error) {
+    } catch {
       // Ошибка обработана в middleware
     }
   }, [stockToDelete, deleteStock]);
 
-  const handleFilterChange = useCallback((field: keyof StockFilters, value: any) => {
+  const handleFilterChange = useCallback(<K extends keyof StockFilters>(field: K, value: StockFilters[K]) => {
     setFilters(prev => ({ ...prev, [field]: value }));
     setPage(1); // Сброс пагинации при изменении фильтров
   }, []);
@@ -385,7 +392,7 @@ const StockManagement: React.FC = () => {
             </label>
             <select
               value={filters.stock_level}
-              onChange={(e) => handleFilterChange('stock_level', e.target.value as any)}
+              onChange={(e) => handleFilterChange('stock_level', e.target.value as StockFilters['stock_level'])}
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">Все товары</option>
@@ -402,7 +409,7 @@ const StockManagement: React.FC = () => {
             </label>
             <select
               value={filters.sortBy}
-              onChange={(e) => handleFilterChange('sortBy', e.target.value as any)}
+              onChange={(e) => handleFilterChange('sortBy', e.target.value as StockFilters['sortBy'])}
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="updated_at">Дате обновления</option>
@@ -419,7 +426,7 @@ const StockManagement: React.FC = () => {
             </label>
             <select
               value={filters.sortOrder}
-              onChange={(e) => handleFilterChange('sortOrder', e.target.value as any)}
+              onChange={(e) => handleFilterChange('sortOrder', e.target.value as StockFilters['sortOrder'])}
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="desc">По убыванию</option>

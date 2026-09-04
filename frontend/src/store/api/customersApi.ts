@@ -1,12 +1,17 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 
+// Приведено в соответствие со схемой бэкенда (backend/app/schemas/customer.py):
+// обязательным там является ТОЛЬКО name, остальное Optional. Раньше здесь
+// phone, email и customer_type_id были помечены обязательными, из-за чего
+// формы, которые их не собирают (быстрое создание клиента в заказе), не
+// проходили типизацию, а данные без email считались невозможными.
 export interface Customer {
   id: number;
   name: string;
-  phone: string;
-  email: string;
-  customer_type_id: number;
-  address?: string; // Сделали необязательным
+  phone?: string;
+  email?: string;
+  customer_type_id?: number;
+  address?: string;
   created_at: string;
   customer_type?: {
     id: number;
@@ -16,9 +21,9 @@ export interface Customer {
 
 export interface CreateCustomerRequest {
   name: string;
-  phone: string;
-  email: string;
-  customer_type_id: number;
+  phone?: string;
+  email?: string;
+  customer_type_id?: number;
   address?: string;
 }
 
@@ -47,17 +52,7 @@ export interface CustomersPaginationParams {
   page_size?: number;
 }
 
-export const customersApi = createApi({
-  reducerPath: 'customersApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    credentials: 'include', // Используем cookies вместо токенов
-    prepareHeaders: (headers) => {
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
-  tagTypes: ['Customer'],
+export const customersApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getCustomers: builder.query<Customer[], void>({
       query: () => '/customers/',

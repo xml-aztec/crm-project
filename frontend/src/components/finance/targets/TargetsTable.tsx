@@ -10,7 +10,7 @@ interface ManagerInfo {
 interface TargetsTableProps {
   targets: MonthlyTarget[];
   isLoading: boolean;
-  error: any;
+  error: unknown;
   formatAmount: (amount: number) => string;
   formatMonth: (monthStr: string) => string;
   getManagerInfo: (managerId: number) => ManagerInfo;

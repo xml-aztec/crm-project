@@ -36,7 +36,7 @@ export default function BrandForm({ brand, isOpen, onClose, onSuccess }: BrandFo
       }
 
       onSuccess();
-    } catch (error) {
+    } catch {
       // Обработка ошибки без логирования
     }
   };

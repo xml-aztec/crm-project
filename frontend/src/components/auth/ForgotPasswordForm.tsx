@@ -68,7 +68,7 @@ export default function ForgotPasswordForm() {
 
     try {
       await forgotPassword({ email: formData.email.trim() }).unwrap();
-    } catch (error) {
+    } catch {
       // Backend всегда отвечает 200 независимо от того, найден email или нет —
       // сюда попадают только реальные сбои (сеть, rate limit, 500).
       setErrors({ general: 'Не удалось отправить запрос. Попробуйте ещё раз позже.' });

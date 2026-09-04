@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getApiErrorMessage } from '../../types/apiError';
 import PageBreadCrumb from "../../components/common/PageBreadCrumb";
 import PendingUsersTable from "../../components/users/PendingUsersTable";
 import { useGetPendingUsersQuery } from "../../store/api/usersManagementApi";
@@ -53,7 +54,7 @@ export default function RegistrationRequests() {
         <PageBreadCrumb pageTitle="Запросы регистрации" />
         <div className="rounded-2xl border border-red-200 bg-red-50 p-5 dark:border-red-800 dark:bg-red-900/20">
           <p className="text-red-600 dark:text-red-400">
-            Ошибка при загрузке запросов: {(usersError as any)?.data?.detail || 'Неизвестная ошибка'}
+            Ошибка при загрузке запросов: {getApiErrorMessage(usersError, 'Неизвестная ошибка')}
           </p>
         </div>
       </>

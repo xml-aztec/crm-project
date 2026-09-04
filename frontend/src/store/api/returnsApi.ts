@@ -1,5 +1,4 @@
-import { createApi } from '@reduxjs/toolkit/query/react';
-import { baseQueryWithReauth } from './baseQuery';
+import { baseApi } from './baseApi';
 
 export type ReturnStatus = 'requested' | 'approved' | 'rejected' | 'completed';
 export type ReturnItemCondition = 'resalable' | 'defective';
@@ -75,10 +74,7 @@ export interface ReturnFilters {
   date_to?: string;
 }
 
-export const returnsApi = createApi({
-  reducerPath: 'returnsApi',
-  baseQuery: baseQueryWithReauth,
-  tagTypes: ['Return', 'Order', 'Stock'],
+export const returnsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getReturns: builder.query<OrderReturn[], ReturnFilters | void>({
       query: (filters) => ({

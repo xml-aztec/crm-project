@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 
 export interface Stock {
   id: number;
@@ -67,17 +67,7 @@ export interface StockStats {
   total_quantity: number;
 }
 
-export const stockApi = createApi({
-  reducerPath: 'stockApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    credentials: 'include',
-    prepareHeaders: (headers) => {
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
-  tagTypes: ['Stock'],
+export const stockApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getStock: builder.query<StockResponse, StockFilters>({
       query: (filters = {}) => {

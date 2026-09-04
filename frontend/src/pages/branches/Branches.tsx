@@ -45,27 +45,25 @@ const Branches: React.FC = () => {
 
   const handleDeleteConfirm = async () => {
     if (!branchToDelete) return;
-    
+
     try {
       await deleteBranch(branchToDelete.id).unwrap();
       setBranchToDelete(null);
-    } catch (error) {
+    } catch {
       // Ошибка обработана в middleware
     }
   };
 
   const handleFormSubmit = async (data: { name: string; location: string }) => {
-    try {
-      if (editingBranch) {
-        await updateBranch({ id: editingBranch.id, data }).unwrap();
-      } else {
-        await createBranch(data).unwrap();
-      }
-      setIsFormOpen(false);
-      setEditingBranch(null);
-    } catch (error) {
-      throw error; // Пробрасываем ошибку для отображения в форме
+    // Исключение намеренно уходит наверх — форма показывает его сама.
+    // Раньше здесь стоял try/catch, который просто делал throw error.
+    if (editingBranch) {
+      await updateBranch({ id: editingBranch.id, data }).unwrap();
+    } else {
+      await createBranch(data).unwrap();
     }
+    setIsFormOpen(false);
+    setEditingBranch(null);
   };
 
   const handleFormClose = () => {

@@ -21,7 +21,7 @@ export const useUniversalFormatters = () => {
       if (!date) return '-';
       try {
         return formatDateTime(date);
-      } catch (error) {
+      } catch {
         return 'Ошибка даты';
       }
     },
@@ -31,7 +31,7 @@ export const useUniversalFormatters = () => {
       if (!date) return '-';
       try {
         return formatDate(date);
-      } catch (error) {
+      } catch {
         return 'Ошибка даты';
       }
     },
@@ -41,7 +41,7 @@ export const useUniversalFormatters = () => {
       if (!date) return '-';
       try {
         return formatTime(date);
-      } catch (error) {
+      } catch {
         return 'Ошибка времени';
       }
     },
@@ -51,7 +51,7 @@ export const useUniversalFormatters = () => {
       if (!date) return '-';
       try {
         return getRelativeTime(date);
-      } catch (error) {
+      } catch {
         return 'неизвестно';
       }
     },
@@ -61,7 +61,7 @@ export const useUniversalFormatters = () => {
       if (!monthString) return '-';
       try {
         return formatMonth(monthString);
-      } catch (error) {
+      } catch {
         return 'Ошибка месяца';
       }
     },
@@ -121,7 +121,7 @@ export const useUniversalFormatters = () => {
     now: () => getNowInBishkek(),
     
     // Безопасное значение
-    safe: (value: any, fallback: string = '-'): string => {
+    safe: (value: unknown, fallback: string = '-'): string => {
       if (value === null || value === undefined || value === '' || 
           (typeof value === 'string' && value.trim() === '')) {
         return fallback;

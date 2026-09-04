@@ -1,4 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import type { Product } from '../../store/api/catalogApi';
+import { ApiValidationIssue } from '../../types/apiError';
+import { asApiError } from '../../types/apiError';
 import { useParams, useNavigate } from 'react-router';
 import { 
   useGetSupplyByIdQuery,
@@ -75,7 +78,7 @@ const EditSupply: React.FC = () => {
   );
   
   // Обработчики
-  const handleInputChange = useCallback((field: keyof FormData, value: any) => {
+  const handleInputChange = useCallback(<K extends keyof FormData>(field: K, value: FormData[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Очистка ошибок при изменении поля
@@ -84,7 +87,7 @@ const EditSupply: React.FC = () => {
     }
   }, [errors]);
   
-  const addProduct = useCallback((product: any) => {
+  const addProduct = useCallback((product: Product) => {
     const existingItemIndex = formData.items.findIndex(item => item.product_id === product.id);
     
     if (existingItemIndex >= 0) {
@@ -167,14 +170,15 @@ const EditSupply: React.FC = () => {
       
       await updateSupply({ id: supplyId, data: updateData }).unwrap();
       navigate(`/supplies/${supplyId}`);
-    } catch (error: any) {
+    } catch (rawError) {
+      const error = asApiError(rawError);
       console.error('Ошибка обновления поставки:', error);
       
       if (error?.status === 422 && error?.data?.detail) {
         const serverErrors: FormErrors = {};
         
-        if (Array.isArray(error.data.detail)) {
-          error.data.detail.forEach((err: any) => {
+        if (Array.isArray(error?.data?.detail)) {
+          (error?.data?.detail as ApiValidationIssue[]).forEach((err) => {
             if (err.loc && err.loc.length > 1 && err.msg) {
               const fieldName = err.loc[err.loc.length - 1];
               serverErrors[fieldName as keyof FormErrors] = err.msg;

@@ -32,7 +32,7 @@ export default function OrderDetails({ orderId, onClose }: OrderDetailsProps) {
   };
 
   // Функция для отображения статуса
-  const getStatusDisplay = (status: any) => {
+  const getStatusDisplay = (status: { name?: string } | string | null | undefined) => {
     if (typeof status === 'object' && status?.name) {
       return status.name;
     }
@@ -120,7 +120,7 @@ export default function OrderDetails({ orderId, onClose }: OrderDetailsProps) {
               Товары в заказе
             </h3>
             <div className="space-y-3">
-              {orderDetails.items?.map((item: any) => {
+              {orderDetails.items?.map((item) => {
                 const product = getProductInfo(item.product_id);
                 return (
                   <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -137,10 +137,14 @@ export default function OrderDetails({ orderId, onClose }: OrderDetailsProps) {
                     <div className="text-right">
                       <p className="font-medium">{item.quantity} шт.</p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {item.price?.toLocaleString()} сом за шт.
+                        {item.unit_price?.toLocaleString()} сом за шт.
                       </p>
                       <p className="font-semibold text-blue-600 dark:text-blue-400">
-                        {(item.price * item.quantity)?.toLocaleString()} сом
+                        {/* final_price — итог по строке, количество в нём уже
+                            учтено. Здесь стояло item.price, которого в типе
+                            OrderItem нет вовсе: под `any` это молча
+                            выводило undefined и NaN. */}
+                        {item.final_price?.toLocaleString()} сом
                       </p>
                     </div>
                   </div>

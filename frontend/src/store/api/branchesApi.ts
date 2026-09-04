@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 
 export interface Branch {
   id: number;
@@ -16,17 +16,7 @@ export interface UpdateBranchRequest {
   location?: string;
 }
 
-export const branchesApi = createApi({
-  reducerPath: 'branchesApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    credentials: 'include', // Используем cookies вместо токенов
-    prepareHeaders: (headers) => {
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
-  tagTypes: ['Branch'],
+export const branchesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getBranches: builder.query<Branch[], void>({
       query: () => 'branches/',

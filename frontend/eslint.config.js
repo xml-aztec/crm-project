@@ -25,6 +25,20 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // Имя с ведущим подчёркиванием — принятый в проекте способ пометить
+      // намеренно неиспользуемый аргумент или элемент деструктуризации
+      // (например, при пропуске позиционного параметра). Без этой настройки
+      // линтер ругался на такие имена, и правило приходилось игнорировать
+      // целиком вместо точечных исключений.
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+        },
+      ],
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },

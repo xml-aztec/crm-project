@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { getApiErrorMessage } from '../../types/apiError';
+import { asApiError } from '../../types/apiError';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import PageMeta from '../../components/common/PageMeta';
 import Button from '../../components/ui/button/Button';
@@ -129,10 +131,11 @@ export default function CustomerTypes() {
         setCustomerTypeToDelete(null);
         setIsDeleteModalOpen(false);
         showSuccess('Тип клиента успешно удален');
-      } catch (error: any) {
+      } catch (rawError) {
+        const error = asApiError(rawError);
         console.error('Delete customer type error:', error);
-        if (error?.data?.detail) {
-          showError(error.data.detail);
+        if (getApiErrorMessage(error, 'Произошла ошибка')) {
+          showError(getApiErrorMessage(error, 'Произошла ошибка'));
         } else {
           showError('Ошибка при удалении типа клиента');
         }

@@ -74,7 +74,7 @@ const CashflowMetaManagement: React.FC = () => {
       
       setTypeFormData({ name: '', category_id: 0 });
       setEditingType(null);
-    } catch (error) {
+    } catch {
       // Обработка ошибки без алерта
     }
   };
@@ -98,7 +98,7 @@ const CashflowMetaManagement: React.FC = () => {
     try {
       await deleteType(deleteTypeConfirm.id).unwrap();
       setDeleteTypeConfirm(null);
-    } catch (error) {
+    } catch {
       // Обработка ошибки без алерта
     }
   };
@@ -126,7 +126,7 @@ const CashflowMetaManagement: React.FC = () => {
       
       setCategoryFormData({ name: '', type: 'income' });
       setEditingCategory(null);
-    } catch (error) {
+    } catch {
       // Обработка ошибки без алерта
     }
   };
@@ -150,7 +150,7 @@ const CashflowMetaManagement: React.FC = () => {
     try {
       await deleteCategory(deleteCategoryConfirm.id).unwrap();
       setDeleteCategoryConfirm(null);
-    } catch (error) {
+    } catch {
       // Обработка ошибки без алерта
     }
   };

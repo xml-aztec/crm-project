@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 import type {
   Category as CategoryFull,
   Subcategory as SubcategoryFull,
@@ -206,17 +206,7 @@ export interface ProductFilters extends PaginationParams {
   max_cost_price?: number;  
 }
 
-export const catalogApi = createApi({
-  reducerPath: 'catalogApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    credentials: 'include', // Используем cookies вместо токенов
-    prepareHeaders: (headers) => {
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
-  tagTypes: ['Product', 'Category', 'Brand', 'Subcategory'],
+export const catalogApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getProducts: builder.query<Product[], ProductFilters | void>({
       query: (filters) => {
@@ -316,7 +306,7 @@ export const catalogApi = createApi({
     getProductQRCode: builder.query<Blob, number>({
       query: (id) => ({
         url: `products/${id}/qr`,
-        responseHandler: (response) => response.blob(),
+        responseHandler: (response: Response) => response.blob(),
       }),
       providesTags: (_, __, id) => [{ type: 'Product', id: `${id}-qr` }],
     }),
@@ -325,7 +315,7 @@ export const catalogApi = createApi({
       query: (id) => ({
         url: `products/${id}/qr/download`,
         method: 'GET',
-        responseHandler: (response) => response.blob(),
+        responseHandler: (response: Response) => response.blob(),
       }),
     }),
 

@@ -46,7 +46,7 @@ export default function UsersTable({ users, isLoading, roles, positions }: Users
     setIsEditModalOpen(true);
   };
 
-  const handleSaveUser = async (userId: number, userData: any) => {
+  const handleSaveUser = async (userId: number, userData: Partial<UserRead>) => {
     try {
       await adminUpdateUser({ id: userId, data: userData }).unwrap();
       setIsEditModalOpen(false);

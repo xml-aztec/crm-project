@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { getApiErrorMessage, ApiValidationIssue } from '../../types/apiError';
+import { asApiError } from '../../types/apiError';
 import { useUpdateStockMutation } from '../../store/api/stockApi';
 
 interface QuantityEditorProps {
@@ -84,18 +86,19 @@ const QuantityEditor: React.FC<QuantityEditorProps> = ({
       onUpdate(newQuantity);
       setIsEditing(false);
       setError(null);
-    } catch (error: any) {
+    } catch (rawError) {
+      const error = asApiError(rawError);
       console.error('Ошибка обновления количества:', error);
       
       // Обработка различных типов ошибок
       if (error?.status === 422 && error?.data?.detail) {
-        if (Array.isArray(error.data.detail)) {
-          const quantityError = error.data.detail.find((err: any) => 
+        if (Array.isArray(error?.data?.detail)) {
+          const quantityError = (error?.data?.detail as ApiValidationIssue[]).find((err) => 
             err.loc && err.loc.includes('quantity')
           );
           setError(quantityError?.msg || 'Ошибка валидации');
         } else {
-          setError(error.data.detail);
+          setError(getApiErrorMessage(error, 'Произошла ошибка'));
         }
       } else if (error?.status === 404) {
         setError('Остаток не найден');

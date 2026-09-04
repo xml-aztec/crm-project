@@ -47,7 +47,7 @@ export default function SubcategoryForm({ subcategory, isOpen, onClose, onSucces
       }
 
       onSuccess();
-    } catch (error) {
+    } catch {
       // Обработка ошибки без алерта
     }
   };

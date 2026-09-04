@@ -4,7 +4,7 @@ import { KPIRule } from '../../../store/api/kpiRulesApi';
 interface KPIRulesTableProps {
   rules: KPIRule[];
   isLoading: boolean;
-  error: any;
+  error: unknown;
   formatAmount: (amount: number) => string;
   onEdit: (rule: KPIRule) => void;
   onDelete: (rule: KPIRule) => void;

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { asApiError, getApiErrorMessage, getFieldError } from '../../types/apiError';
 import { useCreateCustomerTypeMutation, useUpdateCustomerTypeMutation } from '../../store/api/customerTypesApi';
 import { CustomerType } from '../../store/api/customerTypesApi';
 import Button from '../ui/button/Button';
@@ -77,13 +78,14 @@ export default function CustomerTypeForm({ customerType, isOpen, onClose, onSucc
       }
       
       onSuccess();
-    } catch (error: any) {
+    } catch (rawError) {
+      const error = asApiError(rawError);
       console.error('Ошибка при сохранении типа клиента:', error);
       
-      if (error?.data?.name) {
+      if (getFieldError(error, 'name')) {
         setErrors({ name: 'Тип клиента с таким названием уже существует' });
-      } else if (error?.data?.detail) {
-        setErrors({ general: error.data.detail });
+      } else if (getApiErrorMessage(error, 'Произошла ошибка')) {
+        setErrors({ general: getApiErrorMessage(error, 'Ошибка сохранения') });
       } else {
         setErrors({ general: `Ошибка при ${isEditMode ? 'обновлении' : 'создании'} типа клиента` });
       }

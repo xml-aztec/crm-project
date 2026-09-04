@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router";
+import { asApiError } from '../../types/apiError';
 import { useGetCurrentUserQuery } from "../../store/api/userApi";
 import { useGetRolesQuery, useGetPositionsQuery } from "../../store/api/rolesPositionsApi";
 
@@ -33,7 +34,7 @@ export default function UserInfoCard() {
 
   // Обработка ошибок
   if (userError) {
-    const errorStatus = (userError as any).status;
+    const errorStatus = asApiError(userError).status;
     
     // Если ошибка авторизации - редирект на логин
     if (errorStatus === 401) {

@@ -3,7 +3,7 @@ import { logout } from '../slices/authSlice';
 
 interface ErrorWithStatus {
   status?: number;
-  data?: any;
+  data?: unknown;
 }
 
 const PUBLIC_PATHS = ['/signin', '/signup'];

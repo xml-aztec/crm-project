@@ -47,27 +47,25 @@ const Warehouses: React.FC = () => {
 
   const handleDeleteConfirm = async () => {
     if (!warehouseToDelete) return;
-    
+
     try {
       await deleteWarehouse(warehouseToDelete.id).unwrap();
       setWarehouseToDelete(null);
-    } catch (error) {
+    } catch {
       // Ошибка обработана в middleware
     }
   };
 
   const handleFormSubmit = async (data: { name: string; location: string; branch_id: number }) => {
-    try {
-      if (editingWarehouse) {
-        await updateWarehouse({ id: editingWarehouse.id, data }).unwrap();
-      } else {
-        await createWarehouse(data).unwrap();
-      }
-      setIsFormOpen(false);
-      setEditingWarehouse(null);
-    } catch (error) {
-      throw error; // Пробрасываем ошибку для отображения в форме
+    // Исключение намеренно уходит наверх — форма показывает его сама.
+    // Раньше здесь стоял try/catch, который просто делал throw error.
+    if (editingWarehouse) {
+      await updateWarehouse({ id: editingWarehouse.id, data }).unwrap();
+    } else {
+      await createWarehouse(data).unwrap();
     }
+    setIsFormOpen(false);
+    setEditingWarehouse(null);
   };
 
   const handleFormClose = () => {

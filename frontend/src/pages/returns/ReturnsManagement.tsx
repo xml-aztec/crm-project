@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { getApiErrorMessage } from '../../types/apiError';
+import { asApiError } from '../../types/apiError';
 import { useNavigate } from 'react-router';
 import { useGetReturnsQuery, useDecideReturnMutation, OrderReturn, ReturnStatus } from '../../store/api/returnsApi';
 import { useRoleAccess } from '../../hooks/useRoleAccess';
@@ -48,8 +50,9 @@ function ReturnCard({ orderReturn }: { orderReturn: OrderReturn }) {
     setError(null);
     try {
       await decideReturn({ id: orderReturn.id, approve }).unwrap();
-    } catch (err: any) {
-      setError(err?.data?.detail || 'Не удалось сохранить решение');
+    } catch (rawErr) {
+      const err = asApiError(rawErr);
+      setError(getApiErrorMessage(err, 'Не удалось сохранить решение'));
     }
   };
 

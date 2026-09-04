@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 
 // Типы данных
 export interface Budget {
@@ -29,17 +29,7 @@ export interface BudgetFilters {
 }
 
 // API для бюджетов
-export const budgetApi = createApi({
-  reducerPath: 'budgetApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    credentials: 'include', // Используем cookies вместо токенов
-    prepareHeaders: (headers) => {
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
-  tagTypes: ['Budget'],
+export const budgetApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Получить все бюджеты с опциональной фильтрацией по месяцу
     getBudgets: builder.query<Budget[], BudgetFilters>({

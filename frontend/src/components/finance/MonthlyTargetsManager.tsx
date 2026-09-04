@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { getApiErrorMessage, ApiValidationIssue } from '../../types/apiError';
+import { asApiError } from '../../types/apiError';
 import {
   useGetMonthlyTargetsQuery,
   useCreateOrUpdateMonthlyTargetMutation,
@@ -151,14 +153,15 @@ const MonthlyTargetsManager: React.FC<MonthlyTargetsManagerProps> = ({ isOpen, o
       });
       setEditingTarget(null);
       setError(null);
-    } catch (error: any) {
+    } catch (rawError) {
+      const error = asApiError(rawError);
       // Обработка различных типов ошибок
       if (error?.status === 422 && error?.data?.detail) {
-        if (Array.isArray(error.data.detail)) {
-          const errorMessages = error.data.detail.map((err: any) => err.msg || err.message).join(', ');
+        if (Array.isArray(error?.data?.detail)) {
+          const errorMessages = (error?.data?.detail as ApiValidationIssue[]).map((err) => err.msg ?? 'некорректное значение').join(', ');
           setError(`Ошибка валидации: ${errorMessages}`);
         } else {
-          setError(`Ошибка валидации: ${error.data.detail}`);
+          setError(`Ошибка валидации: ${getApiErrorMessage(error, 'Произошла ошибка')}`);
         }
       } else if (error?.status === 500) {
         setError('Внутренняя ошибка сервера. Пожалуйста, обратитесь к администратору.');
@@ -166,8 +169,8 @@ const MonthlyTargetsManager: React.FC<MonthlyTargetsManagerProps> = ({ isOpen, o
         setError('Цель для этого сотрудника на выбранный месяц уже существует.');
       } else if (error?.data?.message) {
         setError(error.data.message);
-      } else if (error?.data?.detail) {
-        setError(typeof error.data.detail === 'string' ? error.data.detail : 'Произошла ошибка при сохранении цели');
+      } else if (getApiErrorMessage(error, 'Произошла ошибка')) {
+        setError(typeof getApiErrorMessage(error, 'Произошла ошибка')=== 'string' ? getApiErrorMessage(error, 'Произошла ошибка'): 'Произошла ошибка при сохранении цели');
       } else {
         setError('Произошла ошибка при сохранении цели. Проверьте подключение к серверу.');
       }
@@ -201,7 +204,7 @@ const MonthlyTargetsManager: React.FC<MonthlyTargetsManagerProps> = ({ isOpen, o
       await deleteTarget(deleteConfirm.id).unwrap();
       setDeleteConfirm(null);
       setError(null);
-    } catch (error: any) {
+    } catch {
       setError('Произошла ошибка при удалении цели');
     }
   };

@@ -1,5 +1,4 @@
-import { createApi } from '@reduxjs/toolkit/query/react';
-import { baseQueryWithReauth } from './baseQuery';
+import { baseApi } from './baseApi';
 
 export type TaskStatus = 'pending' | 'done' | 'cancelled';
 export type TaskPriority = 'low' | 'medium' | 'high';
@@ -71,10 +70,7 @@ function buildQueryString(params?: Record<string, unknown>): string {
   return search.toString();
 }
 
-export const tasksApi = createApi({
-  reducerPath: 'tasksApi',
-  baseQuery: baseQueryWithReauth,
-  tagTypes: ['Task'],
+export const tasksApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getTasksPaginated: builder.query<TaskPage, TasksQueryParams | void>({
       query: (params) => `tasks?${buildQueryString(params as Record<string, unknown>)}`,

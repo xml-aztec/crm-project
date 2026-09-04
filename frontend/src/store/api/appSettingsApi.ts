@@ -1,5 +1,4 @@
-import { createApi } from '@reduxjs/toolkit/query/react';
-import { baseQueryWithReauth } from './baseQuery';
+import { baseApi } from './baseApi';
 
 export interface AppSettings {
   company_name: string | null;
@@ -20,10 +19,7 @@ export interface UpdateAppSettingsRequest {
   default_branch_id?: number | null;
 }
 
-export const appSettingsApi = createApi({
-  reducerPath: 'appSettingsApi',
-  baseQuery: baseQueryWithReauth,
-  tagTypes: ['AppSettings'],
+export const appSettingsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getAppSettings: builder.query<AppSettings, void>({
       query: () => 'settings/general/',

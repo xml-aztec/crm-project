@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 import { Supplier } from './suppliersApi';
 
 export interface SupplyItem {
@@ -65,17 +65,7 @@ export interface UpdateSupplyRequest {
 }
 
 // API для поставок
-export const suppliesApi = createApi({
-  reducerPath: 'suppliesApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    credentials: 'include', // Используем cookies вместо токенов
-    prepareHeaders: (headers) => {
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
-  tagTypes: ['Supply'],
+export const suppliesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getSupplies: builder.query<SuppliesResponse, SupplyFilters>({
       query: (filters = {}) => {
@@ -145,7 +135,7 @@ export const suppliesApi = createApi({
     getSupplyPDF: builder.query<Blob, number>({
       query: (id) => ({
         url: `supplies/${id}/pdf`,
-        responseHandler: (response) => response.blob(),
+        responseHandler: (response: Response) => response.blob(),
       }),
       keepUnusedDataFor: 0, 
     }),

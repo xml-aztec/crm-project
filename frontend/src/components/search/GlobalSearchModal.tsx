@@ -125,12 +125,25 @@ export default function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModal
     </button>
   );
 
-  const RENDERERS: Record<GroupConfig['key'], (item: any) => React.ReactNode> = {
-    customers: renderCustomer,
-    orders: renderOrder,
-    products: renderProduct,
-    employees: renderEmployee,
-    suppliers: renderSupplier,
+  // Каждый рендерер типизирован своей сущностью, а карта принимает их
+  // объединение: конкретный вариант выбирается по ключу группы, поэтому
+  // приведение ниже безопасно и заменяет прежний any на всей карте.
+  type SearchResultItem =
+    | CustomerSearchResult
+    | OrderSearchResult
+    | ProductSearchResult
+    | EmployeeSearchResult
+    | SupplierSearchResult;
+
+  const RENDERERS: Record<
+    GroupConfig['key'],
+    (item: SearchResultItem) => React.ReactNode
+  > = {
+    customers: renderCustomer as (item: SearchResultItem) => React.ReactNode,
+    orders: renderOrder as (item: SearchResultItem) => React.ReactNode,
+    products: renderProduct as (item: SearchResultItem) => React.ReactNode,
+    employees: renderEmployee as (item: SearchResultItem) => React.ReactNode,
+    suppliers: renderSupplier as (item: SearchResultItem) => React.ReactNode,
   };
 
   const visibleGroups = GROUPS.filter((g) => data?.[g.key] && data[g.key]!.items.length > 0);

@@ -1,3 +1,5 @@
+import type { UserRead } from './auth';
+
 export interface LoginCredentials {
   email: string;
   password: string;
@@ -5,7 +7,7 @@ export interface LoginCredentials {
 
 export interface AuthState {
   token: string | null; // Оставляем для совместимости, но не используем
-  user: any | null;
+  user: UserRead | null;
   isAuthenticated: boolean;
   loading: boolean;
   error: string | null;
@@ -13,5 +15,5 @@ export interface AuthState {
 
 export interface LoginResponse {
   message?: string;
-  user?: any; // Опциональные данные пользователя
+  user?: UserRead;
 }

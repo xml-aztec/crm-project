@@ -1,4 +1,5 @@
 import { useState, ChangeEvent, FormEvent, useCallback, useEffect } from "react";
+import { getApiErrorMessage } from '../../types/apiError';
 import { useNavigate, useLocation, Link } from "react-router";
 import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
@@ -133,31 +134,13 @@ export default function SignInForm() {
     return Object.keys(errors).length === 0;
   }, [validateForm]);
 
-  // Функция для безопасного извлечения сообщения об ошибке
-  const getErrorMessage = (error: any): string => {
-    if (!error) return '';
-    
-    // Если это строка - возвращаем как есть
-    if (typeof error === 'string') return error;
-    
-    // Если это объект с message - извлекаем message
-    if (typeof error === 'object' && error.message) {
-      return error.message;
-    }
-    
-    // Если это объект с data.message - извлекаем из data
-    if (typeof error === 'object' && error.data?.message) {
-      return error.data.message;
-    }
-    
-    // Если это объект с data.detail - извлекаем из detail
-    if (typeof error === 'object' && error.data?.detail) {
-      return error.data.detail;
-    }
-    
-    // Возвращаем общее сообщение
-    return 'Произошла ошибка при входе в систему';
-  };
+  // Разбор ошибки вынесен в общий помощник (src/types/apiError.ts): здесь
+  // лежала своя копия той же логики, причём без учёта того, что detail при
+  // ошибке валидации приходит массивом.
+  const getErrorMessage = (error: unknown): string =>
+    typeof error === 'string' && error
+      ? error
+      : getApiErrorMessage(error, 'Произошла ошибка при входе в систему');
 
   // Обработчик отправки формы
   const handleSubmit = useCallback(async (e: FormEvent<HTMLFormElement>) => {
@@ -193,7 +176,7 @@ export default function SignInForm() {
         localStorage.setItem('rememberMe', 'true');
       }
       
-    } catch (error) {
+    } catch {
       // Ошибка уже обработана в slice
     }
   }, [formData, validateForm, dispatch, isChecked]);

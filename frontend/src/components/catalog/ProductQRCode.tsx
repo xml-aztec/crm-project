@@ -38,7 +38,7 @@ export default function ProductQRCode({ productId, productName, isOpen, onClose 
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       
-    } catch (error) {
+    } catch {
       // Обработка ошибки без логирования
     } finally {
       setIsDownloading(false);

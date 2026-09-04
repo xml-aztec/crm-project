@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 
 export interface UserStats {
   orders_count: number;
@@ -22,17 +22,7 @@ export interface UserStatsFilters {
   month?: number;
 }
 
-export const userStatsApi = createApi({
-  reducerPath: 'userStatsApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    credentials: 'include',
-    prepareHeaders: (headers) => {
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
-  tagTypes: ['UserStats'],
+export const userStatsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // ✅ ОСТАВЛЯЕМ ТОЛЬКО ОДИН ЭНДПОИНТ - получить статистику пользователя по ID
     getUserStatsById: builder.query<UserStats, { userId: number } & UserStatsFilters>({

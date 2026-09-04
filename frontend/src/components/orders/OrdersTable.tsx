@@ -166,7 +166,7 @@ export default function OrdersTable({ filters, onEdit, onViewDetails }: OrdersTa
       } else {
         refetch();
       }
-    } catch (error) {
+    } catch {
       // Ошибка обработана в middleware
     }
   }, [orderToDelete, isDeleting, deleteOrder, currentOrders.length, pagination, refetch]);

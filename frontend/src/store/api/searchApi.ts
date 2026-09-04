@@ -1,5 +1,4 @@
-import { createApi } from '@reduxjs/toolkit/query/react';
-import { baseQueryWithReauth } from './baseQuery';
+import { baseApi } from './baseApi';
 
 export interface CustomerSearchResult {
   id: number;
@@ -49,9 +48,7 @@ export interface GlobalSearchResponse {
   suppliers?: SearchGroup<SupplierSearchResult>;
 }
 
-export const searchApi = createApi({
-  reducerPath: 'searchApi',
-  baseQuery: baseQueryWithReauth,
+export const searchApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     globalSearch: builder.query<GlobalSearchResponse, string>({
       query: (q) => `search?q=${encodeURIComponent(q)}`,

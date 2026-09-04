@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 
 export interface Permission {
   id: number;
@@ -35,17 +35,7 @@ export interface RoleUser {
   email: string;
 }
 
-export const rbacApi = createApi({
-  reducerPath: 'rbacApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    credentials: 'include',
-    prepareHeaders: (headers) => {
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
-  tagTypes: ['Permission', 'RbacRole', 'UserRoles', 'RoleUsers'],
+export const rbacApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getPermissions: builder.query<Permission[], void>({
       query: () => 'rbac/permissions',

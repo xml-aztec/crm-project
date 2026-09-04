@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 import { UserRead } from './userApi';
 
 export interface UserPage {
@@ -62,17 +62,7 @@ export interface AdminUpdateUserRequest {
 }
 
 // API для управления пользователями
-export const usersManagementApi = createApi({
-  reducerPath: 'usersManagementApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    credentials: 'include', // Используем cookies вместо токенов
-    prepareHeaders: (headers) => {
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
-  tagTypes: ['Users', 'PendingUsers'],
+export const usersManagementApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Получение всех пользователей
     getAllUsers: builder.query<UserRead[], void>({

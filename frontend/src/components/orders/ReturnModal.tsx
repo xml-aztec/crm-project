@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { getApiErrorMessage } from '../../types/apiError';
+import { asApiError } from '../../types/apiError';
 import { Modal } from '../ui/modal';
 import Button from '../ui/button/Button';
 import { Order } from '../../store/api/ordersApi';
@@ -93,8 +95,9 @@ export default function ReturnModal({ isOpen, onClose, order }: ReturnModalProps
     try {
       await createReturn({ order_id: order.id, reason: reason || undefined, items }).unwrap();
       onClose();
-    } catch (err: any) {
-      setError(err?.data?.detail || 'Не удалось оформить возврат');
+    } catch (rawErr) {
+      const err = asApiError(rawErr);
+      setError(getApiErrorMessage(err, 'Не удалось оформить возврат'));
     }
   };
 

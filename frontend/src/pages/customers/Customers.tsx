@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { CreateCustomerRequest, UpdateCustomerRequest } from '../../store/api/customersApi';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import PageMeta from '../../components/common/PageMeta';
 import Pagination from '../../components/common/Pagination';
@@ -112,7 +113,7 @@ export default function Customers() {
 
   const hasActiveFilters = !!search || !!filters.customer_type_id || sortBy !== 'name';
 
-  const handleCreateCustomer = async (data: any) => {
+  const handleCreateCustomer = async (data: CreateCustomerRequest) => {
     try {
       await createCustomer(data).unwrap();
       showSuccess('Клиент успешно создан');
@@ -123,7 +124,7 @@ export default function Customers() {
     }
   };
 
-  const handleUpdateCustomer = async (data: any) => {
+  const handleUpdateCustomer = async (data: CreateCustomerRequest | UpdateCustomerRequest) => {
     if (!editingCustomer) return;
 
     try {
@@ -158,7 +159,7 @@ export default function Customers() {
     setIsModalOpen(true);
   };
 
-  const getCustomerTypeName = (typeId: number) => {
+  const getCustomerTypeName = (typeId?: number) => {
     const type = customerTypes.find(t => t.id === typeId);
     return type?.name || 'Не указан';
   };
@@ -525,7 +526,13 @@ export default function Customers() {
             setIsModalOpen(false);
             setEditingCustomer(null);
           }}
-          onSubmit={editingCustomer ? handleUpdateCustomer : handleCreateCustomer}
+          onSubmit={(data) =>
+            editingCustomer
+              ? handleUpdateCustomer(data)
+              : // На создании name обязателен, и форма это уже провалидировала;
+                // общий тип формы допускает частичные данные ради режима правки.
+                handleCreateCustomer(data as CreateCustomerRequest)
+          }
           onScheduleTask={() => setIsTaskModalOpen(true)}
           customer={editingCustomer}
           isLoading={isCreating || isUpdating}

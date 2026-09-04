@@ -1,5 +1,4 @@
-import { createApi } from '@reduxjs/toolkit/query/react';
-import { baseQueryWithReauth } from './baseQuery';
+import { baseApi } from './baseApi';
 
 // Тип данных для пользователя
 export interface Position {
@@ -41,10 +40,7 @@ export interface PasswordChangeRequest {
   new_password: string;
 }
 
-export const userApi = createApi({
-  reducerPath: 'userApi',
-  baseQuery: baseQueryWithReauth,
-  tagTypes: ['CurrentUser'],
+export const userApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Получение данных текущего пользователя
     getCurrentUser: builder.query<UserRead, void>({

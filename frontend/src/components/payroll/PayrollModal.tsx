@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { getApiErrorMessage } from '../../types/apiError';
+import { asApiError } from '../../types/apiError';
 import { Payroll, PayrollCreate, PayrollUpdate } from '../../types/payroll';
 import { useGetUsersQuery } from '../../store/api/usersApi';
 import Button from '../ui/button/Button';
@@ -119,7 +121,7 @@ const PayrollModal: React.FC<PayrollModalProps> = ({
     if (!payroll) return null;
     
     // Ищем пользователя в списке
-    const foundUser = users.find((user: any) => user.id === payroll.user_id);
+    const foundUser = users.find((user) => user.id === payroll.user_id);
     
     if (foundUser) {
       return foundUser;
@@ -147,7 +149,7 @@ const PayrollModal: React.FC<PayrollModalProps> = ({
     }
     
     if (!isEditMode && formData.user_id) {
-      const selectedUser = users.find((user: any) => user.id === parseInt(formData.user_id));
+      const selectedUser = users.find((user) => user.id === parseInt(formData.user_id));
       return selectedUser?.full_name || 'Выберите сотрудника';
     }
     
@@ -311,10 +313,11 @@ const PayrollModal: React.FC<PayrollModalProps> = ({
       }
 
       onSuccess();
-    } catch (error: any) {
+    } catch (rawError) {
+      const error = asApiError(rawError);
       console.error('Ошибка при сохранении зарплаты:', error);
       setErrors({ 
-        general: error?.message || error?.data?.detail || 
+        general: error?.message || getApiErrorMessage(error, 'Произошла ошибка')|| 
                 (isEditMode ? 'Ошибка при обновлении зарплаты' : 'Ошибка при создании зарплаты') 
       });
     } finally {
@@ -424,7 +427,7 @@ const PayrollModal: React.FC<PayrollModalProps> = ({
                       required
                     >
                       <option value="">Выберите сотрудника</option>
-                      {users.map((user: any) => (
+                      {users.map((user) => (
                         <option key={user.id} value={user.id}>
                           {user.full_name}
                         </option>

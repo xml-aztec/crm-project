@@ -152,7 +152,7 @@ export default function EntityTable<T extends CatalogItem>({
         await onDelete(itemToDelete);
         setItemToDelete(null);
         setIsDeleteModalOpen(false);
-      } catch (error) {
+      } catch {
         // Обработка ошибки без алерта
       }
     }

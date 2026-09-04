@@ -63,3 +63,39 @@ jobs:
       - name: Run tests
         working-directory: backend
         run: poetry run pytest -v
+
+  frontend:
+    name: Lint and build frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # Линтер до этого не был подключён ни к одной проверке и накопил
+      # 162 ошибки. Сейчас их ноль, и шаг держит счётчик на нуле.
+      # Восемь оставшихся предупреждений (exhaustive-deps, react-refresh)
+      # сборку не валят — предел выставлен по текущему уровню, чтобы новые
+      # не добавлялись незаметно.
+      - name: Lint
+        working-directory: frontend
+        run: npx eslint . --max-warnings 8
+
+      - name: Unit tests
+        working-directory: frontend
+        run: npm test
+
+      # tsc -b отдельно от vite build: vite не проверяет типы при сборке,
+      # так что без этого шага ошибки типизации в CI не видны.
+      - name: Typecheck and build
+        working-directory: frontend
+        run: npm run build

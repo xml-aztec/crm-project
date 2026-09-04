@@ -10,7 +10,7 @@ interface LogoutButtonProps {
   showConfirm?: boolean;
   redirectTo?: string;
   onSuccess?: () => void;
-  onError?: (error: any) => void;
+  onError?: (error: unknown) => void;
 }
 
 export default function LogoutButton({ 

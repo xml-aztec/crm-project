@@ -1,4 +1,6 @@
 import { Navigate } from "react-router";
+import { getApiErrorMessage } from '../types/apiError';
+import { asApiError } from '../types/apiError';
 import { useState } from "react";
 import { useGetCurrentUserQuery, useChangePasswordMutation } from "../store/api/userApi";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
@@ -15,7 +17,7 @@ export default function UserProfiles() {
   const [pwError, setPwError] = useState('');
   const [pwSuccess, setPwSuccess] = useState('');
   
-  if (error && (error as any).status === 401) {
+  if (error && asApiError(error).status === 401) {
     return <Navigate to="/signin" />;
   }
 
@@ -38,8 +40,9 @@ export default function UserProfiles() {
       }).unwrap();
       setPwSuccess('Пароль успешно изменён');
       setPwForm({ current_password: '', new_password: '', confirm_password: '' });
-    } catch (err: any) {
-      setPwError(err?.data?.detail || 'Ошибка при смене пароля');
+    } catch (rawErr) {
+      const err = asApiError(rawErr);
+      setPwError(getApiErrorMessage(err, 'Ошибка при смене пароля'));
     }
   };
 

@@ -1,5 +1,4 @@
-import { createApi } from '@reduxjs/toolkit/query/react';
-import { baseQueryWithReauth } from './baseQuery';
+import { baseApi } from './baseApi';
 
 // Типы данных для запросов и ответов
 export interface RegisterRequest {
@@ -33,9 +32,7 @@ export interface LoginRequest {
 }
 
 // Создание API с использованием RTK Query
-export const authApi = createApi({
-  reducerPath: 'authApi',
-  baseQuery: baseQueryWithReauth,
+export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Вход в систему — FastAPI's OAuth2PasswordRequestForm требует
     // form-urlencoded тело с полями username/password, не JSON.

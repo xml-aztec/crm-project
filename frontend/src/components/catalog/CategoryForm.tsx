@@ -36,7 +36,7 @@ export default function CategoryForm({ category, isOpen, onClose, onSuccess }: C
       }
 
       onSuccess();
-    } catch (error) {
+    } catch {
       // Обработка ошибки без логирования
     }
   };

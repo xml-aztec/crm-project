@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 
 export interface CustomerType {
   id: number;
@@ -14,17 +14,7 @@ export interface UpdateCustomerTypeRequest {
   name: string;
 }
 
-export const customerTypesApi = createApi({
-  reducerPath: 'customerTypesApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    credentials: 'include', // Используем cookies вместо токенов
-    prepareHeaders: (headers) => {
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
-  tagTypes: ['CustomerType'],
+export const customerTypesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getCustomerTypes: builder.query<CustomerType[], void>({
       query: () => '/customer-types/',
