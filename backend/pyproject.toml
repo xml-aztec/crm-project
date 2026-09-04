@@ -18,8 +18,7 @@ greenlet = "^3.2.2"
 pydantic = "^2.11.5"
 pydantic-settings = "^2.9.1"
 alembic = "^1.16.1"
-passlib = {extras = ["bcrypt"], version = "^1.7.4"}
-bcrypt = "^3.2.0"
+bcrypt = "^5.0.0"
 python-jose = {extras = ["cryptography"], version = "^3.5.0"}
 # Пиним явно (иначе тянется транзитивно через python-jose[cryptography] без
 # нижней границы) — используется для подписи JWT, было 9 известных advisory

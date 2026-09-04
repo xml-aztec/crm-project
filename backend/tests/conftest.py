@@ -16,6 +16,7 @@
 """
 import asyncio
 import os
+from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
 # Должно быть установлено до `from app.main import app` — core/limiter.py
@@ -89,8 +90,6 @@ def _read_database_url() -> str:
     if from_env:
         return from_env
 
-    from pathlib import Path
-
     from dotenv import dotenv_values
 
     env_file = Path(__file__).resolve().parent.parent / ".env"
@@ -115,6 +114,27 @@ assert _test_db_url.rstrip("/").endswith("_test"), (
 )
 _recreate_test_database(_test_db_url)
 os.environ["DATABASE_URL"] = _test_db_url
+
+
+def _apply_migrations() -> None:
+    """Поднимает схему тестовой базы через Alembic.
+
+    Раньше схему создавал init_db() (Base.metadata.create_all) внутри
+    lifespan приложения. Теперь единственный источник истины — миграции
+    (аудит M6), поэтому и тесты идут через них. Побочный, но важный эффект:
+    каждый прогон тестов проверяет, что цепочка миграций накатывается на
+    пустую базу, — раньше это не покрывалось ничем.
+    """
+    from alembic import command
+    from alembic.config import Config
+
+    root = Path(__file__).resolve().parent.parent
+    cfg = Config(str(root / "alembic.ini"))
+    cfg.set_main_option("script_location", str(root / "alembic"))
+    command.upgrade(cfg, "head")
+
+
+_apply_migrations()
 
 import pytest_asyncio  # noqa: E402
 from asgi_lifespan import LifespanManager  # noqa: E402

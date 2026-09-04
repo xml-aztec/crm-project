@@ -3,36 +3,60 @@ set -e
 
 cd backend
 
-# С 2026-08-30 baseline-миграция реальная (создаёт всю схему с нуля), так что
-# `alembic upgrade head` теперь отрабатывает и на честно пустой БД сам по себе.
-# Но БД, поднятые до этого фикса, всё ещё существуют: их таблицы созданы через
-# Base.metadata.create_all при старте приложения, а alembic_version никогда не
-# проставлялся — с точки зрения `alembic current` такая БД неотличима от
-# честно пустой, а baseline попытается CREATE TABLE поверх уже существующих
-# таблиц и упадёт. Поэтому на "чистой" по alembic БД сначала прогоняем
-# create_all (идемпотентно — создаёт только то, чего ещё нет) и штампуем head,
-# вместо того чтобы проигрывать историю миграций.
-if [ -z "$(alembic current 2>/dev/null)" ]; then
+# Схему БД поднимает ТОЛЬКО Alembic: приложение больше не вызывает create_all
+# при старте (см. app/main.py). Ниже — один нормальный путь и две ветки
+# совместимости для баз, заведённых до появления миграций в проекте.
+#
+# Различать их приходится по двум признакам: есть ли таблица alembic_version и
+# есть ли вообще пользовательские таблицы.
+has_version_table=$(python - <<'EOF'
+import asyncio, os, asyncpg
+url = os.environ["DATABASE_URL"].replace("postgresql+asyncpg://", "postgresql://")
+async def main():
+    conn = await asyncpg.connect(url)
+    try:
+        version = await conn.fetchval("SELECT to_regclass('public.alembic_version')")
+        tables = await conn.fetchval(
+            "SELECT count(*) FROM information_schema.tables "
+            "WHERE table_schema='public' AND table_name <> 'alembic_version'")
+        print("versioned" if version else ("legacy" if tables else "empty"))
+    finally:
+        await conn.close()
+asyncio.run(main())
+EOF
+)
+
+case "$has_version_table" in
+  empty)
+    # Честно пустая база: обычная накатка с нуля. Именно этот путь проходят
+    # все новые окружения, и именно он раньше подменялся на create_all —
+    # из-за чего миграции на свежем деплое не проверялись ни разу.
+    alembic upgrade head
+    ;;
+  legacy)
+    # Таблицы есть, alembic_version нет. Это база тех времён, когда схему
+    # создавал create_all при старте приложения. Её схема соответствует
+    # МОДЕЛЯМ, а не какой-то конкретной ревизии, поэтому проигрывать историю
+    # нельзя (baseline упадёт на CREATE TABLE поверх существующих таблиц, а
+    # послебазовые миграции — на уже созданных create_all таблицах вроде
+    # notification_types). Достраиваем недостающее тем же create_all и
+    # штампуем head.
+    echo "База заведена до Alembic: достраиваем схему из моделей и штампуем head"
     python -c "import asyncio; from app.core.database import init_db; asyncio.run(init_db())"
     alembic stamp head
-else
-    # БД, которая уже проходила через СТАРУЮ (до сквоша 2026-08-30) цепочку
-    # миграций, хранит в alembic_version ревизию, которой больше нет в
-    # alembic/versions/ (файлы удалены при сквоше) — `alembic current` в
-    # этом случае не возвращает пусто (печатает "FAILED: Can't locate
-    # revision..." прямо в stdout), так что верхняя проверка её не ловит, и
-    # `alembic upgrade head` падает сразу с той же ошибкой. Восстанавливаемся:
-    # штампуем известный текущий baseline с --purge (сбрасывает alembic_version
-    # без попытки резолвить старую/битую ревизию — таблицы baseline на этой БД
-    # уже есть) и затем даём alembic реально накатить всё, что появилось после
-    # baseline, обычным DDL — а не через create_all, который не умеет
-    # добавлять новые колонки (например, notifications.read_at) на уже
-    # существующие таблицы.
+    ;;
+  *)
+    # alembic_version есть. Обычно достаточно upgrade; но если там лежит
+    # ревизия, которой больше нет в alembic/versions (файлы удалены при
+    # сквоше 2026-08-30), upgrade падает на её резолве. Тогда сбрасываем
+    # версию через stamp --purge на известный baseline и доигрываем остальное.
     if ! alembic upgrade head; then
+        echo "Неизвестная ревизия в alembic_version: штампуем baseline и доигрываем"
         alembic stamp 85a67bec609b --purge
         alembic upgrade head
     fi
-fi
+    ;;
+esac
 
 # --proxy-headers: доверяем X-Forwarded-Proto от nginx (127.0.0.1), иначе
 # uvicorn считает схему всегда http и ломает редиректы/куки за https-edge.

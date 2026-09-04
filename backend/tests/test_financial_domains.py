@@ -260,3 +260,91 @@ async def test_cashflow_list_requires_permission_and_responds(admin_client):
     resp = await admin_client.get("/cash-flows/")
     assert resp.status_code == 200, resp.text
     assert isinstance(resp.json(), (list, dict))
+
+
+async def test_kpi_adjustment_survives_decimal_money_types(admin_client, db_session):
+    """После перевода денежных колонок на Numeric target_amount стал Decimal,
+    а get_actual_sales по-прежнему возвращает float. Смешивать их в одном
+    выражении Python не даёт — деление float на Decimal бросает TypeError и
+    роняло бы генерацию зарплат целиком."""
+    from decimal import Decimal
+
+    from app.repositories.payroll import compute_kpi_adjustment
+
+    user = await _make_salaried_user(db_session, salary=60000)
+    month = "2030-09"
+
+    resp = await admin_client.post(
+        "/monthly-targets/",
+        json={"manager_id": user.id, "month": f"{month}-01", "target_amount": 250000.55},
+    )
+    assert resp.status_code in (200, 201), resp.text
+
+    bonus, penalty, kpi_percent, rule_id = await compute_kpi_adjustment(
+        db_session, user.id, month, 60000
+    )
+
+    assert isinstance(bonus, int) and isinstance(penalty, int)
+    # Продаж за этот месяц нет, значит выполнение плана — ровно ноль,
+    # и оно должно быть посчитано, а не упасть с TypeError.
+    assert kpi_percent == Decimal("0.00")
+
+
+async def test_kpi_percent_keeps_fractional_part(admin_client, db_session):
+    """kpi_percent был Integer, и значение вида 87.35 база молча округляла
+    до 87 (аудит M2)."""
+    from decimal import Decimal
+
+    from app.models.payroll import Payroll
+
+    user = await _make_salaried_user(db_session, salary=30000)
+    payroll = Payroll(
+        user_id=user.id, month="2030-10", base_salary=30000,
+        bonus_amount=0, penalty_amount=0, total_paid=30000,
+        created_by=user.id, kpi_percent=Decimal("87.35"),
+    )
+    db_session.add(payroll)
+    await db_session.commit()
+    await db_session.refresh(payroll)
+
+    assert payroll.kpi_percent == Decimal("87.35"), (
+        f"дробная часть процента потеряна: {payroll.kpi_percent}"
+    )
+
+
+async def test_kpi_bonus_is_actually_applied(admin_client, db_session):
+    """Сквозная проверка премии по KPI.
+
+    До исправления get_manager_kpi возвращала None ВСЕГДА (результат
+    normalize_month_string — объект date — уходил в date.fromisoformat,
+    который принимает только строку; TypeError глотался широким except).
+    Из-за этого премии и штрафы не начислялись ни разу, сколько бы целей и
+    правил ни настроили, и зарплата всегда равнялась голому окладу.
+    """
+    from app.repositories.payroll import compute_kpi_adjustment
+
+    user = await _make_salaried_user(db_session, salary=100000)
+    month = "2030-11"
+
+    # Цель на месяц.
+    resp = await admin_client.post(
+        "/monthly-targets/",
+        json={"manager_id": user.id, "month": f"{month}-01", "target_amount": 100000},
+    )
+    assert resp.status_code in (200, 201), resp.text
+
+    # Правило: от 0% выполнения — премия 20% оклада.
+    resp = await admin_client.post("/kpi-rules/", json={"min_percent": 0, "bonus": 20})
+    assert resp.status_code == 201, resp.text
+    rule_id = resp.json()["id"]
+
+    try:
+        bonus, penalty, kpi_percent, matched_rule = await compute_kpi_adjustment(
+            db_session, user.id, month, 100000
+        )
+        assert kpi_percent is not None, "цель KPI обязана находиться"
+        assert matched_rule == rule_id, "правило KPI должно подбираться"
+        assert bonus == 20000, f"премия 20% от 100000 должна быть 20000, получено {bonus}"
+        assert penalty == 0
+    finally:
+        await admin_client.delete(f"/kpi-rules/{rule_id}")

@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Optional, List
 from sqlalchemy import select, delete, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -69,6 +70,54 @@ async def get_matching_kpi_rule(db: AsyncSession, percent: float) -> Optional[Kp
     return result.scalars().first()
 
 
+
+async def compute_kpi_adjustment(
+    db: AsyncSession, user_id: int, month: str, base_salary: int
+) -> tuple[int, int, Optional[Decimal], Optional[int]]:
+    """Единственный расчёт премии и штрафа по KPI.
+
+    Возвращает (bonus, penalty, kpi_percent, kpi_rule_id).
+
+    Раньше этот блок был скопирован в generate_payrolls_for_month и в
+    recalculate_payroll, и копии успели разойтись: исправление ветки
+    `if bonus ... elif penalty` (из-за которой штраф был недостижим у правила
+    с премией) и защиты от `None > 0` попало только в первую. Пересчёт
+    выплаченной ведомости считал бы по старым правилам.
+
+    Про типы: target_amount — Decimal (денежная колонка), а get_actual_sales
+    возвращает float. Смешивать их в одном выражении нельзя, Python бросает
+    TypeError, поэтому обе величины приводятся к Decimal явно.
+    """
+    target_obj = await get_manager_kpi(db, user_id, month)
+    if not target_obj:
+        return 0, 0, None, None
+
+    target = Decimal(str(target_obj.target_amount or 0))
+    if target <= 0:
+        return 0, 0, None, None
+
+    actual = Decimal(str(await get_actual_sales(db, user_id, month)))
+    kpi_percent = (actual / target * Decimal("100")).quantize(Decimal("0.01"))
+
+    rule = await get_matching_kpi_rule(db, float(kpi_percent))
+    if not rule:
+        return 0, 0, kpi_percent, None
+
+    # `or 0`: обе колонки nullable, и правило только со штрафом роняло расчёт
+    # целиком на сравнении None > 0.
+    rule_bonus = rule.bonus or 0
+    rule_penalty = rule.penalty or 0
+
+    # Независимые условия, а не if/elif: см. решение по находке M3 —
+    # ступень KPI поощрительная ЛИБО штрафная (это запрещено схемой), но
+    # уже существующие строки с обоими полями должны считаться предсказуемо.
+    # Округление, а не усечение: int() отбрасывал копейки в пользу компании.
+    bonus = int((Decimal(base_salary) * rule_bonus / 100).quantize(Decimal("1"))) if rule_bonus > 0 else 0
+    penalty = int((Decimal(base_salary) * rule_penalty / 100).quantize(Decimal("1"))) if rule_penalty > 0 else 0
+
+    return bonus, penalty, kpi_percent, rule.id
+
+
 async def generate_payrolls_for_month(db: AsyncSession, month: str, creator_id: int) -> List[Payroll]:
     existing = await db.execute(select(Payroll).where(Payroll.month == month))
     if existing.scalars().first():
@@ -83,37 +132,9 @@ async def generate_payrolls_for_month(db: AsyncSession, month: str, creator_id: 
 
     for user in users:
         base = user.salary_base
-        bonus = 0
-        penalty = 0
-        kpi_percent = None
-        kpi_rule_id = None
-
-        target_obj = await get_manager_kpi(db, user.id, month)
-        if target_obj:
-            target = target_obj.target_amount
-            actual = await get_actual_sales(db, user.id, month)
-            if target > 0:
-                kpi_percent = round((actual / target) * 100, 2)
-                rule = await get_matching_kpi_rule(db, kpi_percent)
-                if rule:
-                    kpi_rule_id = rule.id
-                    # Бонус и штраф считаются НЕЗАВИСИМО (было `if ... elif`,
-                    # из-за чего у правила с заполненным бонусом штраф был
-                    # недостижим в принципе). По бизнес-смыслу ступень KPI —
-                    # либо поощрительная, либо штрафная, и схема теперь это
-                    # прямо запрещает (см. KpiRuleBase), но на уже
-                    # существующих строках с обоими полями поведение должно
-                    # быть предсказуемым, а не молча терять штраф.
-                    #
-                    # `or 0` обязателен: обе колонки nullable, и правило,
-                    # созданное только со штрафом, роняло генерацию зарплат
-                    # целиком — `None > 0` бросает TypeError.
-                    rule_bonus = rule.bonus or 0
-                    rule_penalty = rule.penalty or 0
-                    if rule_bonus > 0:
-                        bonus = int(base * rule_bonus / 100)
-                    if rule_penalty > 0:
-                        penalty = int(base * rule_penalty / 100)
+        bonus, penalty, kpi_percent, kpi_rule_id = await compute_kpi_adjustment(
+            db, user.id, month, base
+        )
 
         total = base + bonus - penalty
 
@@ -147,25 +168,10 @@ async def recalculate_payroll(db: AsyncSession, payroll_id: int) -> Payroll:
     if not user:
         raise HTTPException(status_code=404, detail="Сотрудник не найден")
 
-    target_obj = await get_manager_kpi(db, user.id, payroll.month)
     base = user.salary_base
-    bonus = 0
-    penalty = 0
-    kpi_percent = None
-    kpi_rule_id = None
-
-    if target_obj:
-        target = target_obj.target_amount
-        actual = await get_actual_sales(db, user.id, payroll.month)
-        if target > 0:
-            kpi_percent = round((actual / target) * 100, 2)
-            rule = await get_matching_kpi_rule(db, kpi_percent)
-            if rule:
-                kpi_rule_id = rule.id
-                if rule.bonus > 0:
-                    bonus = int(base * rule.bonus / 100)
-                elif rule.penalty > 0:
-                    penalty = int(base * rule.penalty / 100)
+    bonus, penalty, kpi_percent, kpi_rule_id = await compute_kpi_adjustment(
+        db, user.id, payroll.month, base
+    )
 
     payroll.base_salary = base
     payroll.bonus_amount = bonus

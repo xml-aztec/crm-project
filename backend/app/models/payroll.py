@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Numeric
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -16,7 +16,10 @@ class Payroll(Base):
     comment = Column(String, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"))
 
-    kpi_percent = Column(Integer, nullable=True)
+    # Numeric, а не Integer: в колонку пишется значение вида 87.35, и
+    # PostgreSQL молча округлял его до 87 — процент выполнения плана терял
+    # дробную часть на пути в базу.
+    kpi_percent = Column(Numeric(6, 2), nullable=True)
     kpi_rule_id = Column(Integer, ForeignKey("kpi_rules.id", ondelete="SET NULL"), nullable=True)
 
     user = relationship("User", back_populates="payrolls", foreign_keys=[user_id])

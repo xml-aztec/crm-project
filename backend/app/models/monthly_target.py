@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, ForeignKey, Date, UniqueConstraint
+from sqlalchemy import Column, Integer, Float, ForeignKey, Date, UniqueConstraint, Numeric
 from sqlalchemy.orm import relationship
 from datetime import date
 
@@ -13,6 +13,6 @@ class MonthlyTarget(Base):
     id = Column(Integer, primary_key=True, index=True)
     manager_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     month = Column(Date, nullable=False)  # Лучше хранить как первое число месяца, например: 2025-06-01
-    target_amount = Column(Float, nullable=False)  # KPI в KGS
+    target_amount = Column(Numeric(12, 2), nullable=False)  # KPI в KGS
 
     manager = relationship("User", back_populates="monthly_targets")

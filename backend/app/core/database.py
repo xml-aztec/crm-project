@@ -29,6 +29,14 @@ Base = declarative_base()
 
 
 async def init_db():
+    """Создаёт схему из моделей напрямую, В ОБХОД Alembic.
+
+    НЕ вызывается при старте приложения (см. main.py::lifespan): источник
+    истины для схемы — миграции. Оставлено как служебный инструмент для
+    разовых задач вроде поднятия одноразовой базы в скрипте, и на него всё
+    ещё опирается ветка восстановления в docker-entrypoint.sh для баз,
+    заведённых до появления Alembic в проекте.
+    """
     from app.models import (
         category, subcategory, brand, product,
         customer_type, customer, order_status, order, order_item,

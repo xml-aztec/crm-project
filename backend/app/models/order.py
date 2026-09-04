@@ -15,8 +15,8 @@ class Order(Base):
     payment_method_id = Column(Integer, ForeignKey("payment_methods.id", ondelete="SET NULL"), nullable=True)
     installment_months = Column(Integer, nullable=True)
 
-    total_price = Column(Numeric(10, 2), default=0)
-    finalized_total_price = Column(Numeric(10, 2), nullable=True) 
+    total_price = Column(Numeric(12, 2), default=0)
+    finalized_total_price = Column(Numeric(12, 2), nullable=True) 
     delivery_address = Column(Text, nullable=True)
     delivery_date = Column(Date, nullable=True)
     note = Column(Text, nullable=True)

@@ -32,11 +32,18 @@ async def create_or_update_kpi(db: AsyncSession, data: MonthlyTargetCreate):
 
 async def get_manager_kpi(db: AsyncSession, manager_id: int, month: str):
     """Получить KPI менеджера за конкретный месяц (строка 'YYYY-MM' или 'YYYY-MM-DD')."""
+    # normalize_month_string возвращает готовый date, а не строку. Раньше его
+    # результат отдавали в date.fromisoformat(), который принимает только str,
+    # тот бросал TypeError, а широкий `except Exception` его молча глотал и
+    # возвращал None. Итог: KPI-цель не находилась НИКОГДА, и премии со
+    # штрафами не начислялись вообще, сколько бы целей и правил ни настроили.
+    #
+    # Ловим только ValueError — ровно то, что бросает сам нормализатор на
+    # некорректном формате. Любая другая ошибка теперь не прячется.
     try:
-        normalized = normalize_month_string(month)  # -> "YYYY-MM-01"
-        month_date = date.fromisoformat(normalized)
-    except Exception:
-        return None 
+        month_date = normalize_month_string(month)
+    except ValueError:
+        return None
 
     result = await db.execute(
         select(MonthlyTarget).where(

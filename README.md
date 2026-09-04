@@ -1,6 +1,10 @@
 # LeadFlow CRM
 
-Full-stack CRM/ERP for retail and wholesale businesses. FastAPI + PostgreSQL backend, React 19 + Redux Toolkit frontend. Not currently deployed anywhere — see [Deployment](#deployment).
+Full-stack CRM/ERP for retail and wholesale businesses. FastAPI + PostgreSQL backend, React 19 + Redux Toolkit frontend. Deployment target is Render (`render.yaml`).
+
+> **Документация проекта — в [`docs/`](docs/README.md).** Этот файл даёт только
+> быстрый старт. Более ранние обзорные документы перенесены в
+> [`docs/archive/`](docs/archive/README.md).
 
 ## Quick Start (local)
 

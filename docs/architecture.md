@@ -18,7 +18,7 @@
 | Frontend | React 19 + TypeScript, Redux Toolkit + RTK Query, Tailwind CSS 4, Vite 6, react-router 7 |
 | UI-база | Шаблон **TailAdmin React** (`package.json: "name": "tailadmin-react"`) — часть страниц/компонентов до сих пор шаблонные заглушки, не относящиеся к CRM (см. [features.md](./features.md)) |
 
-Backend: **~10 700** строк Python (152 файла) на момент анализа. Frontend: **~43 800** строк TS/TSX. Обе цифры выросли с июньского отчёта (`PROJECT_REPORT.md`: ~8 100 и ~41 800) — с тех пор было больше 40 коммитов, включая RBAC, password reset, сканер штрихкодов, перевод остатков между складами.
+Backend: **~10 700** строк Python (152 файла) на момент анализа. Frontend: **~43 800** строк TS/TSX. Обе цифры выросли с июньского отчёта (`archive/PROJECT_REPORT.md`: ~8 100 и ~41 800) — с тех пор было больше 40 коммитов, включая RBAC, password reset, сканер штрихкодов, перевод остатков между складами.
 
 ---
 

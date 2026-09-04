@@ -9,8 +9,8 @@ class OrderItem(Base):
     order_id = Column(Integer, ForeignKey("orders.id", ondelete="CASCADE"), index=True)
     product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"), index=True)
     quantity = Column(Integer, nullable=False)
-    unit_price = Column(Numeric(10, 2), nullable=False)
-    final_price = Column(Numeric(10, 2), nullable=False)
+    unit_price = Column(Numeric(12, 2), nullable=False)
+    final_price = Column(Numeric(12, 2), nullable=False)
 
     order = relationship("Order", back_populates="items")
     product = relationship("Product", lazy="selectin")

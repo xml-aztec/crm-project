@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.core.limiter import limiter
-from app.core.database import init_db, SessionLocal
+from app.core.database import SessionLocal
 from app.core.config import settings
 from app.core.logging_config import configure_logging
 from app.scheduler.jobs import process_due_reminders
@@ -60,8 +60,12 @@ async def lifespan(app: FastAPI):
         sentry_sdk.init(dsn=settings.SENTRY_DSN, traces_sample_rate=0.2)
         logger.info("sentry_initialized")
 
-    await init_db()
-
+    # Схему БД поднимает ТОЛЬКО Alembic (docker-entrypoint.sh делает
+    # `alembic upgrade head` до старта приложения). Здесь раньше вызывался
+    # init_db() с Base.metadata.create_all — второй источник истины, который
+    # умеет лишь создавать недостающие таблицы и не умеет менять колонки:
+    # при расхождении моделей и миграций получалась частично применённая
+    # схема без единой ошибки в логе.
     async with SessionLocal() as session:
         await init_roles(session)
         await init_admin_user(session)

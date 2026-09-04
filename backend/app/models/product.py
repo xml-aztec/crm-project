@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Computed, Index, Integer, String, Float, Boolean, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Computed, Index, Integer, String, Float, Boolean, ForeignKey, UniqueConstraint, Numeric
 from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -10,8 +10,8 @@ class Product(Base):
     name = Column(String(200), nullable=False)
     description = Column(String(500), nullable=True)
     detail = Column(String(500), nullable=True)
-    cost_price = Column(Float, nullable=False)
-    price = Column(Float, nullable=False)
+    cost_price = Column(Numeric(12, 2), nullable=False)
+    price = Column(Numeric(12, 2), nullable=False)
     sku = Column(String, unique=True, nullable=False)
     barcode = Column(String, unique=True, nullable=True)
 

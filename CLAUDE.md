@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Full-stack CRM/ERP for retail and wholesale businesses in Central Asia. Backend: FastAPI + async SQLAlchemy + PostgreSQL. Frontend: React 19 + Redux Toolkit (RTK Query) + Tailwind CSS. Not currently deployed (see Deployment section).
+Full-stack CRM/ERP for retail and wholesale businesses in Central Asia. Backend: FastAPI + async SQLAlchemy + PostgreSQL. Frontend: React 19 + Redux Toolkit (RTK Query) + Tailwind CSS. Deployment target is Render (`render.yaml` at the repo root); see the Deployment section.
 
 ---
 
@@ -97,7 +97,9 @@ utils/        → pdf.py (pdfkit + jinja2), barcode_utils.py (QR), stock.py,
 templates/    → Jinja2 HTML for PDF generation (supply invoices)
 ```
 
-**Startup sequence** (`main.py` lifespan): `init_db()` → seed roles → seed admin user → seed order statuses → seed cashflow types → seed positions → migrate users to RBAC roles. On every boot the DB schema is created/verified via `Base.metadata.create_all` (idempotent — only creates missing tables); in deployed environments `docker-entrypoint.sh` runs `alembic upgrade head` (or a create_all+stamp fallback for pre-migration databases) before the app starts, so Alembic is the actual source of truth for schema changes there.
+**Startup sequence** (`main.py` lifespan): seed roles → seed admin user → seed order statuses → seed cashflow types → seed positions → migrate users to RBAC roles → seed notification types, then start the reminder scheduler.
+
+**Alembic is the only source of truth for the schema.** The app no longer calls `Base.metadata.create_all` at startup — `docker-entrypoint.sh` runs `alembic upgrade head` before uvicorn, detecting three database states (empty, legacy create_all-era, already versioned) and handling each explicitly. The test suite applies migrations too (`tests/conftest.py`), so every run also proves the chain applies to an empty database.
 
 **Authentication flow**: `POST /auth/login` sets an httpOnly JWT cookie (`access_token`). All protected routes use `Depends(get_current_user)` from `core/dependencies.py`, which reads the cookie and validates the JWT. Admin-only routes additionally use `Depends(is_admin)`.
 
@@ -108,7 +110,8 @@ templates/    → Jinja2 HTML for PDF generation (supply invoices)
 ```
 store/
   slices/authSlice.ts    → Auth state (user, isAuthenticated, initialized)
-  api/                   → 22 RTK Query API slices, all using baseQuery.ts
+  api/baseApi.ts         → THE single createApi instance; everything else injects into it
+  api/                   → 31 endpoint modules, each calling baseApi.injectEndpoints
   store.ts               → Redux store with redux-persist (auth slice persisted)
   middleware/authErrorMiddleware.ts → Auto-logout on 401 from any RTK Query call
 
@@ -120,14 +123,15 @@ hooks/
 layout/                  → AppLayout, AppSidebar, AppHeader, Backdrop
 ```
 
-**API communication**: All RTK Query slices use `baseQueryWithReauth` from `store/api/baseQuery.ts`. On a 401 response it dispatches `logoutUser` thunk and redirects to `/signin`. `credentials: 'include'` is set globally so cookies are sent automatically.
+**API communication**: there is exactly ONE `createApi` instance (`store/api/baseApi.ts`) using `baseQueryWithReauth`; the 31 domain files add their endpoints via `injectEndpoints`. This matters: RTK Query cache tags only work inside a single instance, so splitting them again would silently break cross-domain invalidation. On a 401 the base query dispatches `logoutUser` and redirects to `/signin`. `credentials: 'include'` is global.
 
 **Route protection**: `<RequireAuth>` wrapper in `App.tsx` guards all non-auth routes. On mount it dispatches `fetchCurrentUser` to validate the existing cookie session.
 
 **Adding a new API domain** (common pattern):
-1. Create `store/api/fooApi.ts` with `createApi({ reducerPath: 'fooApi', baseQuery: baseQueryWithReauth, ... })`
-2. Register reducer and middleware in `store/store.ts`
-3. Use generated hooks in components
+1. Create `store/api/fooApi.ts` with `baseApi.injectEndpoints({ endpoints: (builder) => ({ ... }) })` — never a new `createApi`
+2. Add any new tag names to `tagTypes` in `store/api/baseApi.ts`
+3. Add the module to `store/api/registerEndpoints.ts`
+4. Use generated hooks in components — `store.ts` needs no change
 
 ### Key Business Logic Locations
 
@@ -162,19 +166,33 @@ The following issues from earlier audits have been **fixed**:
 - ~~CI failing on every push (`poetry install --with dev` → `backend does not contain any element`)~~ — `pyproject.toml`'s `packages = [{ include = "backend" }]` resolved relative to `backend/pyproject.toml` itself, i.e. to the nonexistent `backend/backend/`. Fixed to `{ include = "app" }` (the actual importable package) and reproduced/verified fixed in a clean virtualenv.
 - ~~84 known vulnerabilities across 20 backend packages / 3 high-severity frontend~~ (`docs/known-issues.md` #10) — down to 3 backend advisories with no available fix (`pdfkit`, one `ecdsa` wontfix, `pip` itself) and 0 frontend. See `docs/known-issues.md` and `CHANGELOG.md` (2026-08-30 entry) for the full list of version bumps (`fastapi` 0.115→0.141, `cryptography` →50.0.1, `pillow` →12.3.0, `react-router` →7.18.3, etc.) and verification steps.
 
-Remaining / newly found:
+Fixed in the 2026-09-03/04 audit follow-up (see `docs/audit-2026-09-03.md` for the full report):
 
-1. **The test suite never actually creates its database schema.** `tests/conftest.py` drives the app through `httpx.AsyncClient(transport=ASGITransport(app=app))`, which only forwards `http`-type ASGI scopes — it never sends the `lifespan` protocol, so `main.py`'s `init_db()` (and all the startup seeding) never runs. Verified locally: every test that touches the DB fails with `relation "users" does not exist` against a genuinely fresh Postgres. This was previously masked by the CI `poetry install` failure (CI never got far enough to run pytest) — now that CI can actually run, this will surface there too. Fix is probably wrapping the app in `asgi-lifespan`'s `LifespanManager` (or an equivalent fixture that calls `init_db()`) in `conftest.py`.
+- ~~Cancelled orders stayed `confirmed = True` forever~~ — every revenue query filtered on `confirmed` alone, so a confirmed-then-cancelled order permanently inflated revenue, manager KPI and payroll bonuses. The condition now lives in one place: `app/utils/orders.py::order_counts_as_revenue()`.
+- ~~Quantity was counted twice in 7 analytics queries~~ — `order_items.final_price` is the LINE TOTAL (quantity already included), but KPI/leaderboard queries multiplied by quantity again. See the module docstring in `repositories/analytics.py`.
+- ~~`GET /orders/{id}` returned any order to any authenticated user~~ — the ownership check was inverted (it denied the owner and admitted strangers).
+- ~~The test suite never created its schema~~ — `conftest.py` now wraps the app in `LifespanManager`, runs Alembic against a dedicated `<name>_test` database, and recreates it per run.
+- ~~KPI targets were never found~~ — `get_manager_kpi` passed a `date` to `date.fromisoformat()` (which takes `str`) and a bare `except Exception` swallowed the `TypeError`, so bonuses and penalties were never applied to anyone, regardless of configured targets and rules.
+- ~~Stock operations were not atomic and had no row locks~~ — `utils/stock.py` no longer commits internally (callers own the transaction) and takes `SELECT ... FOR UPDATE` before deducting; `CHECK (quantity >= 0)` and siblings now exist in the database.
+- ~~Order item prices came from the client~~ — `unit_price` and `final_price` are computed server-side from the catalogue (`utils/orders.py::price_order_item`); the only sanctioned deviation is `discount_percent`, bounded 0–100 and gated by the `orders.discount` permission.
+- ~~`X-Forwarded-For` could be spoofed to bypass login rate limits~~ — `--forwarded-allow-ips` is now `127.0.0.1`, not `*`.
+- ~~31 separate `createApi` instances~~ — cache tags never crossed instances, so most cross-domain invalidation was a no-op and 22 of 31 slices also bypassed the 401 auto-logout. Now a single `baseApi`.
+
+Known and deliberately not addressed yet:
+
+1. **Eight components exceed 600 lines** (`pages/CreateOrderPage.tsx` 838, `pages/warehouse/WarehouseInventory.tsx` 769, `components/orders/OrderForm.tsx` 710, and five more). The duplicated order-line pricing was extracted to `frontend/src/utils/orderPricing.ts`, but the components themselves were not split — doing so without component-level tests is a poor risk/benefit trade.
+2. **Eight ESLint warnings remain** (`react-hooks/exhaustive-deps`, `react-refresh/only-export-components`). CI pins the ceiling at exactly 8 so new ones cannot slip in unnoticed.
 
 ---
 
 ## Deployment
 
-Not currently deployed anywhere — previously ran on Fly.io (separate `leadflow-backend`/`leadflow-frontend` apps), that setup has been removed; the project will move to a different host later.
+Target host is Render, described by `render.yaml` at the repo root (a Docker web service plus a managed Postgres). It previously ran on Fly.io; that setup was removed.
 
-- **Combined**: `Dockerfile` at root still builds both into a single nginx+uvicorn image; `docker-entrypoint.sh` starts uvicorn in background then nginx in foreground — reusable regardless of host
-- **CORS**: `origins` in `main.py` currently only lists localhost ports — add the new frontend's origin there once a host is chosen
-- **CI**: `.github/workflows/deploy.yml` only runs the test suite now (no deploy step)
+- **Combined image**: the root `Dockerfile` builds frontend and backend into one nginx+uvicorn image. `docker-entrypoint.sh` applies migrations, starts uvicorn in the background and nginx in the foreground. The image runs as the unprivileged `appuser`, so the default port is 8080, not 80 — Render and Railway inject their own `$PORT` anyway.
+- **CORS**: `origins` in `main.py` lists localhost ports plus `settings.FRONTEND_URL`. On Render, `BASE_URL`/`FRONTEND_URL` are left unset on purpose and derived from `RENDER_EXTERNAL_URL` (see `core/config.py`).
+- **Security headers** are set by nginx (`nginx/default.conf.template`): CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, HSTS.
+- **CI**: `.github/workflows/deploy.yml` has two jobs and no deploy step. `test` applies migrations to an empty database and runs pytest; `frontend` runs ESLint, Vitest and the production build.
 
 ## graphify
 
