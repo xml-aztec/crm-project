@@ -1,6 +1,6 @@
 """Тестовая обвязка.
 
-Два обязательных условия, без которых набор не работал (аудит C4):
+Три обязательных условия, без которых набор не работал:
 
 1. `ASGITransport` пробрасывает только scope типа `http` и НЕ выполняет
    протокол lifespan — поэтому `main.py::lifespan` (а с ним `init_db()` и всё
@@ -13,11 +13,19 @@
    второй запуск подряд падал. Имя выводится здесь же и подставляется в
    окружение ДО импорта приложения — движок в `app.core.database` создаётся на
    этапе импорта и читает URL один раз.
+
+3. Прогоны на одной тестовой базе сериализуются блокировкой (`tests/run_lock.py`).
+   Пересоздание из пункта 2 делает DROP ... WITH (FORCE), а FORCE отцепляет живые
+   соединения — поэтому второй запущенный pytest сносил схему у первого прямо
+   посреди прогона. Падало при этом то, что выполнялось в момент сноса, и выглядело
+   как дефект в тестируемом коде. Теперь второй прогон ждёт первого.
 """
 import asyncio
 import os
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
+
+from tests.run_lock import acquire_run_lock
 
 # Должно быть установлено до `from app.main import app` — core/limiter.py
 # читает этот флаг при импорте, чтобы не спотыкаться о лимит /auth/login
@@ -112,6 +120,10 @@ _test_db_url = _derive_test_db_url(_raw_db_url)
 assert _test_db_url.rstrip("/").endswith("_test"), (
     f"Отказ запускаться: {_test_db_url} не похож на тестовую базу"
 )
+# Блокировка берётся ДО пересоздания базы и держится весь процесс: ронять
+# схему можно только когда никакой другой прогон в неё не смотрит.
+_RUN_LOCK_FD = acquire_run_lock(urlsplit(_test_db_url).path.lstrip("/"))
+
 _recreate_test_database(_test_db_url)
 os.environ["DATABASE_URL"] = _test_db_url
 
